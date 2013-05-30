@@ -1,4 +1,6 @@
-Contas
+﻿Contas
 ======
 
-calculos para programação e maquinação de CNC's
+calculadora para programação e maquinação de CNC's
+
+CNC machining and programmming calculator
