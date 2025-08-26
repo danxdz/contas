@@ -991,11 +991,13 @@ M30 ; End`);
   // Handle 3D scene updates when playback changes
   useEffect(() => {
     if (viewMode === '3D' && rendererRef.current && sceneRef.current && cameraRef.current) {
-      // Just redraw the scene with current playback state
+      // Call draw3D with current playback state
+      // Since draw3D is defined inside this component, it has access to current state
       draw3D();
       rendererRef.current.render(sceneRef.current, cameraRef.current);
     }
-  }, [playback.currentLine, playback.showTool, playback.showToolpath, viewMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playback.currentLine, playback.showTool, playback.showToolpath, viewMode, parsedData]);
 
   return (
     <div className="calculator-section">
