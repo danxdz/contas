@@ -722,7 +722,7 @@ M30 ; End`);
         20,
         16
       );
-      const shankMaterial = new THREE.MeshPhongMaterial({ 
+      const shankMaterial = new THREE.MeshStandardMaterial({ 
         color: 0x888888,
         metalness: 0.8,
         roughness: 0.2
