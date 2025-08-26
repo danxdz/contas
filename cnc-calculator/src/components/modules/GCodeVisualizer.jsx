@@ -569,7 +569,44 @@ M30 ; End`);
     };
   };
   
-  // Draw 3D toolpath
+  // Update only tool position (not recreate)
+  const updateToolPosition = () => {
+    if (!parsedData || !toolRef.current) return;
+    
+    // Calculate current tool position based on playback
+    let toolPos = { x: 0, y: 0, z: 0 };
+    
+    if (parsedData.commands.length > 0) {
+      if (playback.currentLine === 0) {
+        if (parsedData.commands[0]) {
+          toolPos = { ...parsedData.commands[0].startPos };
+        }
+      } else {
+        const lastCmdIndex = Math.min(playback.currentLine - 1, parsedData.commands.length - 1);
+        const lastCmd = parsedData.commands[lastCmdIndex];
+        
+        if (lastCmd) {
+          const progress = (playback.currentLine % 1);
+          
+          if (progress > 0 && lastCmdIndex < parsedData.commands.length - 1) {
+            const nextCmd = parsedData.commands[lastCmdIndex + 1];
+            toolPos = {
+              x: lastCmd.endPos.x + (nextCmd.endPos.x - lastCmd.endPos.x) * progress,
+              y: lastCmd.endPos.y + (nextCmd.endPos.y - lastCmd.endPos.y) * progress,
+              z: lastCmd.endPos.z + (nextCmd.endPos.z - lastCmd.endPos.z) * progress
+            };
+          } else {
+            toolPos = { ...lastCmd.endPos };
+          }
+        }
+      }
+    }
+    
+    // Update tool group position
+    toolRef.current.position.set(toolPos.x, toolPos.y, toolPos.z);
+  };
+  
+  // Draw 3D toolpath and create tool
   const draw3D = () => {
     if (!parsedData || !sceneRef.current) return;
     
@@ -590,9 +627,8 @@ M30 ; End`);
       toolpathRef.current = null;
     }
     
-    // Remove old tool
+    // Remove old tool if exists
     if (toolRef.current) {
-      // Handle tool group disposal
       toolRef.current.traverse((child) => {
         if (child.geometry) child.geometry.dispose();
         if (child.material) child.material.dispose();
@@ -679,42 +715,8 @@ M30 ; End`);
     sceneRef.current.add(group);
     toolpathRef.current = group;
     
-    // Draw tool
+    // Create tool (only if showing and doesn't exist)
     if (playback.showTool) {
-      // Calculate current tool position based on playback
-      let toolPos = { x: 0, y: 0, z: 0 };
-      
-      if (parsedData.commands.length > 0) {
-        if (playback.currentLine === 0) {
-          // At start, use initial position (usually 0,0,0 or first command's start)
-          if (parsedData.commands[0]) {
-            toolPos = { ...parsedData.commands[0].startPos };
-          }
-        } else {
-          // Get the position from the last executed command
-          const lastCmdIndex = Math.min(playback.currentLine - 1, parsedData.commands.length - 1);
-          const lastCmd = parsedData.commands[lastCmdIndex];
-          
-          if (lastCmd) {
-            // For partial progress through a command, interpolate position
-            const progress = (playback.currentLine % 1); // Fractional part for interpolation
-            
-            if (progress > 0 && lastCmdIndex < parsedData.commands.length - 1) {
-              // Interpolate between current and next command
-              const nextCmd = parsedData.commands[lastCmdIndex + 1];
-              toolPos = {
-                x: lastCmd.endPos.x + (nextCmd.endPos.x - lastCmd.endPos.x) * progress,
-                y: lastCmd.endPos.y + (nextCmd.endPos.y - lastCmd.endPos.y) * progress,
-                z: lastCmd.endPos.z + (nextCmd.endPos.z - lastCmd.endPos.z) * progress
-              };
-            } else {
-              // Use the end position of the last command
-              toolPos = { ...lastCmd.endPos };
-            }
-          }
-        }
-      }
-      
       // Create tool geometry - make it more visible
       const toolLength = 40;
       const toolGeometry = new THREE.CylinderGeometry(
@@ -739,14 +741,8 @@ M30 ; End`);
       // Rotate tool to align with Z-axis (cylinder is along Y by default)
       tool.rotation.x = -Math.PI / 2;
       
-      // Position tool at calculated position
-      // When rotated, the tool extends along Z-axis
-      // Bottom of tool should be at toolPos.z
-      tool.position.set(
-        toolPos.x, 
-        toolPos.y, 
-        toolPos.z + toolLength / 2
-      );
+      // Position relative to group origin
+      tool.position.set(0, 0, toolLength / 2);
       
       // Add a holder/shank for better visibility
       const shankGeometry = new THREE.CylinderGeometry(
@@ -765,11 +761,7 @@ M30 ; End`);
       // Rotate shank to align with Z-axis
       shank.rotation.x = -Math.PI / 2;
       
-      shank.position.set(
-        toolPos.x,
-        toolPos.y,
-        toolPos.z + toolLength + 10
-      );
+      shank.position.set(0, 0, toolLength + 10);
       
       // Add a small sphere at tool tip for better visibility
       const tipGeometry = new THREE.SphereGeometry(playback.toolDiameter / 2 * 1.1, 16, 16);
@@ -779,11 +771,7 @@ M30 ; End`);
         emissiveIntensity: 0.5
       });
       const tip = new THREE.Mesh(tipGeometry, tipMaterial);
-      tip.position.set(
-        toolPos.x,
-        toolPos.y,
-        toolPos.z
-      );
+      tip.position.set(0, 0, 0);
       
       // Create a group for tool, shank, and tip
       const toolGroup = new THREE.Group();
@@ -793,6 +781,9 @@ M30 ; End`);
       
       sceneRef.current.add(toolGroup);
       toolRef.current = toolGroup;
+      
+      // Set initial position
+      updateToolPosition();
     }
     
     // Add bounding box
@@ -994,13 +985,14 @@ M30 ; End`);
   // Handle 3D scene updates when playback changes
   useEffect(() => {
     if (viewMode === '3D' && rendererRef.current && sceneRef.current && cameraRef.current) {
-      // Call draw3D with current playback state
-      // Since draw3D is defined inside this component, it has access to current state
-      draw3D();
+      // Only update tool position, don't recreate everything
+      if (toolRef.current && playback.showTool) {
+        updateToolPosition();
+      }
       rendererRef.current.render(sceneRef.current, cameraRef.current);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playback.currentLine, playback.showTool, playback.showToolpath, viewMode, parsedData]);
+  }, [playback.currentLine, viewMode]);
 
   return (
     <div className="calculator-section">
