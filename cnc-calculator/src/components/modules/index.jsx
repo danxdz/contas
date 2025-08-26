@@ -7,6 +7,7 @@ export { default as CircularInterpolation } from './CircularInterpolation';
 export { default as PowerTorqueCalculator } from './PowerTorqueCalculator';
 export { default as GeometryTools } from './GeometryTools';
 export { default as PocketMillingWizard } from './PocketMillingWizard';
+export { default as GCodeVisualizer } from './GCodeVisualizer';
 
 // Placeholder component generator
 const createPlaceholder = (name, description) => {
@@ -35,11 +36,6 @@ export const FeedsSpeedsOptimizer = createPlaceholder(
 export const ToolDatabase = createPlaceholder(
   'Tool Database',
   'Save and manage your cutting tools with all parameters. Import/export tool libraries.'
-);
-
-export const GCodeVisualizer = createPlaceholder(
-  'G-Code Visualizer',
-  '2D/3D toolpath visualization with time estimation and syntax checking.'
 );
 
 export const ShopFloorUtilities = createPlaceholder(
