@@ -456,7 +456,13 @@ M30 ; End`);
     
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.4);
     directionalLight.position.set(100, 100, 50);
+    directionalLight.castShadow = true;
     scene.add(directionalLight);
+    
+    // Add another light from below for better tool visibility
+    const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.3);
+    directionalLight2.position.set(-50, -50, 100);
+    scene.add(directionalLight2);
     
     // Add axes helper
     if (viewSettings.show3DAxes) {
@@ -561,8 +567,11 @@ M30 ; End`);
     
     // Remove old tool
     if (toolRef.current) {
-      if (toolRef.current.geometry) toolRef.current.geometry.dispose();
-      if (toolRef.current.material) toolRef.current.material.dispose();
+      // Handle tool group disposal
+      toolRef.current.traverse((child) => {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) child.material.dispose();
+      });
       sceneRef.current.remove(toolRef.current);
       toolRef.current = null;
     }
@@ -646,27 +655,67 @@ M30 ; End`);
     toolpathRef.current = group;
     
     // Draw tool
-    if (playback.showTool && playback.currentLine > 0) {
-      const currentCmd = parsedData.commands[Math.min(playback.currentLine - 1, parsedData.commands.length - 1)];
+    if (playback.showTool && parsedData.commands.length > 0) {
+      const cmdIndex = playback.currentLine > 0 ? playback.currentLine - 1 : 0;
+      const currentCmd = parsedData.commands[Math.min(cmdIndex, parsedData.commands.length - 1)];
       
+      // Create tool geometry - make it more visible
+      const toolLength = 40;
       const toolGeometry = new THREE.CylinderGeometry(
         playback.toolDiameter / 2,
         playback.toolDiameter / 2,
-        30,
+        toolLength,
         16
       );
+      
+      // Use brighter, more visible material
       const toolMaterial = new THREE.MeshPhongMaterial({ 
         color: 0xff0000,
-        opacity: 0.7,
-        transparent: true
+        emissive: 0xff0000,
+        emissiveIntensity: 0.3,
+        opacity: 0.8,
+        transparent: true,
+        shininess: 100
       });
+      
       const tool = new THREE.Mesh(toolGeometry, toolMaterial);
       
-      tool.position.set(currentCmd.endPos.x, currentCmd.endPos.y, currentCmd.endPos.z + 15);
-      tool.rotation.x = Math.PI / 2;
+      // Position tool at current command position
+      // Z position: half tool length above the current Z position
+      tool.position.set(
+        currentCmd.endPos.x, 
+        currentCmd.endPos.y, 
+        currentCmd.endPos.z + toolLength / 2
+      );
       
-      sceneRef.current.add(tool);
-      toolRef.current = tool;
+      // No rotation needed - cylinder is vertical by default in Three.js
+      
+      // Add a holder/shank for better visibility
+      const shankGeometry = new THREE.CylinderGeometry(
+        playback.toolDiameter / 2 + 1,
+        playback.toolDiameter / 2 + 1,
+        20,
+        16
+      );
+      const shankMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x888888,
+        metalness: 0.8,
+        roughness: 0.2
+      });
+      const shank = new THREE.Mesh(shankGeometry, shankMaterial);
+      shank.position.set(
+        currentCmd.endPos.x,
+        currentCmd.endPos.y,
+        currentCmd.endPos.z + toolLength + 10
+      );
+      
+      // Create a group for tool and shank
+      const toolGroup = new THREE.Group();
+      toolGroup.add(tool);
+      toolGroup.add(shank);
+      
+      sceneRef.current.add(toolGroup);
+      toolRef.current = toolGroup;
     }
     
     // Add bounding box
