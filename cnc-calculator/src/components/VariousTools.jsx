@@ -12,7 +12,7 @@ function VariousTools() {
   const [pointLength, setPointLength] = useState('');
   
   // Feed & Speed Quick Reference
-  const [material, setMaterial] = useState('aluminum');
+  const [material, setMaterial] = useState('aluminum6061');
   const [operation, setOperation] = useState('drilling');
   
   const convertToRadians = () => {
@@ -60,33 +60,259 @@ function VariousTools() {
     setPointLength('');
   };
   
-  // Quick reference data
+  // Comprehensive real-world cutting data
   const quickReferenceData = {
     drilling: {
-      aluminum: { speed: 100, feed: 0.15 },
-      brass: { speed: 90, feed: 0.12 },
-      mildSteel: { speed: 30, feed: 0.08 },
-      stainlessSteel: { speed: 20, feed: 0.05 },
-      castIron: { speed: 25, feed: 0.10 },
-      plastic: { speed: 150, feed: 0.20 }
+      // Aluminum Alloys
+      aluminum6061: { 
+        name: 'Aluminum 6061-T6',
+        hss: { speed: 100, feed: 0.15, sfm: 330 },
+        carbide: { speed: 300, feed: 0.20, sfm: 1000 },
+        coolant: 'Flood or MQL',
+        notes: 'Good machinability, use sharp tools'
+      },
+      aluminum7075: { 
+        name: 'Aluminum 7075-T6',
+        hss: { speed: 90, feed: 0.12, sfm: 300 },
+        carbide: { speed: 280, feed: 0.18, sfm: 920 },
+        coolant: 'Flood recommended',
+        notes: 'Harder than 6061, watch for chip evacuation'
+      },
+      aluminum2024: { 
+        name: 'Aluminum 2024-T3',
+        hss: { speed: 85, feed: 0.13, sfm: 280 },
+        carbide: { speed: 250, feed: 0.17, sfm: 820 },
+        coolant: 'Flood or air blast',
+        notes: 'Gummy chips, use polished flutes'
+      },
+      aluminumCast: { 
+        name: 'Cast Aluminum (356)',
+        hss: { speed: 120, feed: 0.18, sfm: 400 },
+        carbide: { speed: 350, feed: 0.25, sfm: 1150 },
+        coolant: 'Air blast preferred',
+        notes: 'Silicon content affects tool wear'
+      },
+      
+      // Steel Alloys
+      mildSteel1018: { 
+        name: 'Mild Steel 1018',
+        hss: { speed: 30, feed: 0.08, sfm: 100 },
+        carbide: { speed: 120, feed: 0.12, sfm: 400 },
+        coolant: 'Flood required',
+        notes: 'Good machinability, forms built-up edge'
+      },
+      steel1045: { 
+        name: 'Steel 1045',
+        hss: { speed: 25, feed: 0.07, sfm: 80 },
+        carbide: { speed: 100, feed: 0.10, sfm: 330 },
+        coolant: 'Flood required',
+        notes: 'Medium carbon, harder than 1018'
+      },
+      steel4140: { 
+        name: 'Steel 4140 (28-32 HRC)',
+        hss: { speed: 20, feed: 0.06, sfm: 65 },
+        carbide: { speed: 90, feed: 0.09, sfm: 300 },
+        coolant: 'Flood required',
+        notes: 'Alloy steel, use coated carbide'
+      },
+      steel4140Hard: { 
+        name: 'Steel 4140 (38-42 HRC)',
+        hss: { speed: 12, feed: 0.04, sfm: 40 },
+        carbide: { speed: 60, feed: 0.06, sfm: 200 },
+        coolant: 'Flood required',
+        notes: 'Hard, use TiAlN coated tools'
+      },
+      toolSteelD2: { 
+        name: 'Tool Steel D2 (58-62 HRC)',
+        hss: { speed: 8, feed: 0.02, sfm: 25 },
+        carbide: { speed: 40, feed: 0.03, sfm: 130 },
+        coolant: 'Flood required',
+        notes: 'Very hard, carbide only recommended'
+      },
+      
+      // Stainless Steel
+      stainless304: { 
+        name: 'Stainless 304',
+        hss: { speed: 20, feed: 0.05, sfm: 65 },
+        carbide: { speed: 60, feed: 0.08, sfm: 200 },
+        coolant: 'Flood required',
+        notes: 'Work hardens, maintain constant feed'
+      },
+      stainless316: { 
+        name: 'Stainless 316',
+        hss: { speed: 18, feed: 0.04, sfm: 60 },
+        carbide: { speed: 55, feed: 0.07, sfm: 180 },
+        coolant: 'Flood required',
+        notes: 'Tougher than 304, use sharp tools'
+      },
+      stainless17_4: { 
+        name: 'Stainless 17-4 PH',
+        hss: { speed: 15, feed: 0.04, sfm: 50 },
+        carbide: { speed: 50, feed: 0.06, sfm: 165 },
+        coolant: 'Flood required',
+        notes: 'Precipitation hardening, varies by condition'
+      },
+      
+      // Cast Iron
+      castIronGray: { 
+        name: 'Gray Cast Iron',
+        hss: { speed: 25, feed: 0.10, sfm: 80 },
+        carbide: { speed: 80, feed: 0.15, sfm: 260 },
+        coolant: 'Dry or air blast',
+        notes: 'Abrasive, produces powder chips'
+      },
+      castIronDuctile: { 
+        name: 'Ductile Cast Iron',
+        hss: { speed: 22, feed: 0.08, sfm: 70 },
+        carbide: { speed: 70, feed: 0.12, sfm: 230 },
+        coolant: 'Dry or air blast',
+        notes: 'Tougher than gray iron'
+      },
+      
+      // Exotic Materials
+      titanium: { 
+        name: 'Titanium Grade 5',
+        hss: { speed: 15, feed: 0.03, sfm: 50 },
+        carbide: { speed: 40, feed: 0.05, sfm: 130 },
+        coolant: 'Flood required (high pressure)',
+        notes: 'Low thermal conductivity, use sharp tools'
+      },
+      inconel718: { 
+        name: 'Inconel 718',
+        hss: { speed: 10, feed: 0.02, sfm: 30 },
+        carbide: { speed: 30, feed: 0.04, sfm: 100 },
+        coolant: 'Flood required (high pressure)',
+        notes: 'Work hardens severely, constant feed critical'
+      },
+      hastelloy: { 
+        name: 'Hastelloy C-276',
+        hss: { speed: 8, feed: 0.02, sfm: 25 },
+        carbide: { speed: 25, feed: 0.03, sfm: 80 },
+        coolant: 'Flood required',
+        notes: 'Extremely tough, use positive rake tools'
+      },
+      
+      // Non-Ferrous
+      brass360: { 
+        name: 'Brass 360',
+        hss: { speed: 90, feed: 0.12, sfm: 300 },
+        carbide: { speed: 200, feed: 0.18, sfm: 650 },
+        coolant: 'Optional (dry or mist)',
+        notes: 'Free machining, excellent finish'
+      },
+      copperC110: { 
+        name: 'Copper C110',
+        hss: { speed: 70, feed: 0.10, sfm: 230 },
+        carbide: { speed: 150, feed: 0.15, sfm: 500 },
+        coolant: 'Flood or mist',
+        notes: 'Soft, use sharp tools and high rake'
+      },
+      bronze: { 
+        name: 'Bronze 932',
+        hss: { speed: 60, feed: 0.10, sfm: 200 },
+        carbide: { speed: 150, feed: 0.15, sfm: 500 },
+        coolant: 'Optional',
+        notes: 'Good machinability, watch for chip control'
+      },
+      
+      // Plastics
+      acrylic: { 
+        name: 'Acrylic (PMMA)',
+        hss: { speed: 150, feed: 0.20, sfm: 500 },
+        carbide: { speed: 400, feed: 0.30, sfm: 1300 },
+        coolant: 'Air blast only',
+        notes: 'Melts easily, use sharp tools and air'
+      },
+      delrin: { 
+        name: 'Delrin (POM)',
+        hss: { speed: 120, feed: 0.18, sfm: 400 },
+        carbide: { speed: 350, feed: 0.25, sfm: 1150 },
+        coolant: 'Air blast',
+        notes: 'Good chip control, watch for heat'
+      },
+      nylon: { 
+        name: 'Nylon 6/6',
+        hss: { speed: 100, feed: 0.15, sfm: 330 },
+        carbide: { speed: 300, feed: 0.22, sfm: 1000 },
+        coolant: 'Air blast',
+        notes: 'Flexible, use sharp tools'
+      },
+      hdpe: { 
+        name: 'HDPE',
+        hss: { speed: 180, feed: 0.25, sfm: 600 },
+        carbide: { speed: 500, feed: 0.35, sfm: 1650 },
+        coolant: 'Air blast',
+        notes: 'Very soft, single flute tools work well'
+      }
     },
     milling: {
-      aluminum: { speed: 300, feed: 0.10 },
-      brass: { speed: 200, feed: 0.08 },
-      mildSteel: { speed: 80, feed: 0.06 },
-      stainlessSteel: { speed: 60, feed: 0.04 },
-      castIron: { speed: 70, feed: 0.08 },
-      plastic: { speed: 400, feed: 0.15 }
+      // Similar structure but with milling-specific parameters
+      aluminum6061: { 
+        name: 'Aluminum 6061-T6',
+        hss: { speed: 300, feed: 0.10, sfm: 1000, chipload: 0.003 },
+        carbide: { speed: 800, feed: 0.15, sfm: 2600, chipload: 0.005 },
+        coolant: 'Flood, mist, or MQL',
+        notes: 'High speed, light cuts for best finish'
+      },
+      mildSteel1018: { 
+        name: 'Mild Steel 1018',
+        hss: { speed: 80, feed: 0.06, sfm: 260, chipload: 0.002 },
+        carbide: { speed: 300, feed: 0.10, sfm: 1000, chipload: 0.004 },
+        coolant: 'Flood required',
+        notes: 'Watch for built-up edge at low speeds'
+      },
+      stainless304: { 
+        name: 'Stainless 304',
+        hss: { speed: 60, feed: 0.04, sfm: 200, chipload: 0.001 },
+        carbide: { speed: 180, feed: 0.06, sfm: 600, chipload: 0.003 },
+        coolant: 'Flood required',
+        notes: 'Climb milling preferred, maintain chip load'
+      },
+      titanium: { 
+        name: 'Titanium Grade 5',
+        hss: { speed: 40, feed: 0.02, sfm: 130, chipload: 0.001 },
+        carbide: { speed: 120, feed: 0.04, sfm: 400, chipload: 0.002 },
+        coolant: 'Flood (high pressure)',
+        notes: 'Use 5-7% radial engagement for best tool life'
+      }
     },
     turning: {
-      aluminum: { speed: 250, feed: 0.20 },
-      brass: { speed: 180, feed: 0.15 },
-      mildSteel: { speed: 100, feed: 0.12 },
-      stainlessSteel: { speed: 80, feed: 0.10 },
-      castIron: { speed: 90, feed: 0.15 },
-      plastic: { speed: 350, feed: 0.25 }
+      aluminum6061: { 
+        name: 'Aluminum 6061-T6',
+        hss: { speed: 250, feed: 0.20, sfm: 820, doc: 0.100 },
+        carbide: { speed: 600, feed: 0.25, sfm: 2000, doc: 0.150 },
+        coolant: 'Flood or dry',
+        notes: 'Use positive rake inserts'
+      },
+      mildSteel1018: { 
+        name: 'Mild Steel 1018',
+        hss: { speed: 100, feed: 0.12, sfm: 330, doc: 0.080 },
+        carbide: { speed: 350, feed: 0.18, sfm: 1150, doc: 0.125 },
+        coolant: 'Flood',
+        notes: 'CNMG inserts work well'
+      },
+      stainless304: { 
+        name: 'Stainless 304',
+        hss: { speed: 80, feed: 0.10, sfm: 260, doc: 0.060 },
+        carbide: { speed: 250, feed: 0.15, sfm: 820, doc: 0.100 },
+        coolant: 'Flood required',
+        notes: 'Use sharp inserts, constant DOC'
+      }
     }
   };
+
+  // Get current material data
+  const getMaterialData = () => {
+    const data = quickReferenceData[operation][material];
+    if (!data) {
+      // Return first available material if selected doesn't exist in operation
+      const firstKey = Object.keys(quickReferenceData[operation])[0];
+      return quickReferenceData[operation][firstKey];
+    }
+    return data;
+  };
+
+  const currentData = getMaterialData();
 
   return (
     <div>
@@ -243,9 +469,9 @@ function VariousTools() {
         )}
       </div>
       
-      {/* Quick Reference Table */}
+      {/* Enhanced Quick Reference Table */}
       <div className="calculator-section">
-        <h2>Quick Reference - Cutting Parameters</h2>
+        <h2>Professional Cutting Parameters Database</h2>
         
         <div className="form-row">
           <div className="form-group">
@@ -262,47 +488,134 @@ function VariousTools() {
           </div>
           
           <div className="form-group">
-            <label htmlFor="refMaterial">Material</label>
+            <label htmlFor="refMaterial">Material Grade</label>
             <select
               id="refMaterial"
               value={material}
               onChange={(e) => setMaterial(e.target.value)}
+              style={{ fontSize: '0.9rem' }}
             >
-              <option value="aluminum">Aluminum</option>
-              <option value="brass">Brass</option>
-              <option value="mildSteel">Mild Steel</option>
-              <option value="stainlessSteel">Stainless Steel</option>
-              <option value="castIron">Cast Iron</option>
-              <option value="plastic">Plastic</option>
+              <optgroup label="Aluminum Alloys">
+                <option value="aluminum6061">Aluminum 6061-T6</option>
+                <option value="aluminum7075">Aluminum 7075-T6</option>
+                <option value="aluminum2024">Aluminum 2024-T3</option>
+                <option value="aluminumCast">Cast Aluminum 356</option>
+              </optgroup>
+              <optgroup label="Carbon Steels">
+                <option value="mildSteel1018">Mild Steel 1018</option>
+                <option value="steel1045">Steel 1045</option>
+                <option value="steel4140">Steel 4140 (28-32 HRC)</option>
+                <option value="steel4140Hard">Steel 4140 (38-42 HRC)</option>
+                <option value="toolSteelD2">Tool Steel D2 (58-62 HRC)</option>
+              </optgroup>
+              <optgroup label="Stainless Steels">
+                <option value="stainless304">Stainless 304</option>
+                <option value="stainless316">Stainless 316</option>
+                <option value="stainless17_4">Stainless 17-4 PH</option>
+              </optgroup>
+              <optgroup label="Cast Iron">
+                <option value="castIronGray">Gray Cast Iron</option>
+                <option value="castIronDuctile">Ductile Cast Iron</option>
+              </optgroup>
+              <optgroup label="Exotic Materials">
+                <option value="titanium">Titanium Grade 5</option>
+                <option value="inconel718">Inconel 718</option>
+                <option value="hastelloy">Hastelloy C-276</option>
+              </optgroup>
+              <optgroup label="Non-Ferrous">
+                <option value="brass360">Brass 360</option>
+                <option value="copperC110">Copper C110</option>
+                <option value="bronze">Bronze 932</option>
+              </optgroup>
+              <optgroup label="Plastics">
+                <option value="acrylic">Acrylic (PMMA)</option>
+                <option value="delrin">Delrin (POM)</option>
+                <option value="nylon">Nylon 6/6</option>
+                <option value="hdpe">HDPE</option>
+              </optgroup>
             </select>
           </div>
         </div>
         
         <div className="result-box">
-          <h3>Recommended Parameters for {operation.charAt(0).toUpperCase() + operation.slice(1)}</h3>
+          <h3>{currentData.name} - {operation.charAt(0).toUpperCase() + operation.slice(1)} Parameters</h3>
           
-          <div className="result-item">
-            <span className="result-label">Material:</span>
-            <span className="result-value">{material.charAt(0).toUpperCase() + material.slice(1).replace(/([A-Z])/g, ' $1')}</span>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+            <div>
+              <h4 style={{ color: '#667eea', marginBottom: '10px' }}>HSS Tools</h4>
+              <div className="result-item">
+                <span className="result-label">Cutting Speed:</span>
+                <span className="result-value">{currentData.hss.speed} m/min</span>
+              </div>
+              <div className="result-item">
+                <span className="result-label">Feed Rate:</span>
+                <span className="result-value">{currentData.hss.feed} mm/rev</span>
+              </div>
+              {currentData.hss.sfm && (
+                <div className="result-item">
+                  <span className="result-label">SFM:</span>
+                  <span className="result-value">{currentData.hss.sfm}</span>
+                </div>
+              )}
+              {currentData.hss.chipload && (
+                <div className="result-item">
+                  <span className="result-label">Chip Load:</span>
+                  <span className="result-value">{currentData.hss.chipload}" per tooth</span>
+                </div>
+              )}
+              {currentData.hss.doc && (
+                <div className="result-item">
+                  <span className="result-label">Depth of Cut:</span>
+                  <span className="result-value">{currentData.hss.doc}"</span>
+                </div>
+              )}
+            </div>
+            
+            <div>
+              <h4 style={{ color: '#764ba2', marginBottom: '10px' }}>Carbide Tools</h4>
+              <div className="result-item">
+                <span className="result-label">Cutting Speed:</span>
+                <span className="result-value">{currentData.carbide.speed} m/min</span>
+              </div>
+              <div className="result-item">
+                <span className="result-label">Feed Rate:</span>
+                <span className="result-value">{currentData.carbide.feed} mm/rev</span>
+              </div>
+              {currentData.carbide.sfm && (
+                <div className="result-item">
+                  <span className="result-label">SFM:</span>
+                  <span className="result-value">{currentData.carbide.sfm}</span>
+                </div>
+              )}
+              {currentData.carbide.chipload && (
+                <div className="result-item">
+                  <span className="result-label">Chip Load:</span>
+                  <span className="result-value">{currentData.carbide.chipload}" per tooth</span>
+                </div>
+              )}
+              {currentData.carbide.doc && (
+                <div className="result-item">
+                  <span className="result-label">Depth of Cut:</span>
+                  <span className="result-value">{currentData.carbide.doc}"</span>
+                </div>
+              )}
+            </div>
           </div>
           
           <div className="result-item">
-            <span className="result-label">Cutting Speed (Carbide):</span>
-            <span className="result-value">
-              {quickReferenceData[operation][material].speed} m/min
-            </span>
+            <span className="result-label">Coolant:</span>
+            <span className="result-value">{currentData.coolant}</span>
           </div>
           
           <div className="result-item">
-            <span className="result-label">Feed Rate:</span>
-            <span className="result-value">
-              {quickReferenceData[operation][material].feed} mm/rev
-            </span>
+            <span className="result-label">Notes:</span>
+            <span className="result-value">{currentData.notes}</span>
           </div>
           
-          <p className="info-text">
-            Note: These are general recommendations. Adjust based on tool condition, 
-            machine capability, and specific requirements.
+          <p className="info-text" style={{ marginTop: '15px' }}>
+            ⚠️ These are starting point recommendations. Adjust based on:
+            machine rigidity, tool condition, workholding, required finish, and specific application.
+            Always start conservatively and increase parameters gradually.
           </p>
         </div>
       </div>
@@ -354,7 +667,7 @@ function VariousTools() {
           </div>
           
           <p className="info-text" style={{ marginTop: '15px' }}>
-            Formula: Tap Drill Size = Nominal Diameter - Pitch
+            Formula: Tap Drill Size = Nominal Diameter - Pitch (for ~75% thread engagement)
           </p>
         </div>
       </div>
