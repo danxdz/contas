@@ -556,7 +556,7 @@ M30 ; End`);
     canvas3DRef.current.addEventListener('mousedown', handle3DMouseDown);
     canvas3DRef.current.addEventListener('mousemove', handle3DMouseMove);
     canvas3DRef.current.addEventListener('mouseup', handle3DMouseUp);
-    canvas3DRef.current.addEventListener('wheel', handle3DWheel);
+    canvas3DRef.current.addEventListener('wheel', handle3DWheel, { passive: false });
     
     updateCamera();
     
@@ -565,7 +565,7 @@ M30 ; End`);
       canvas3DRef.current?.removeEventListener('mousedown', handle3DMouseDown);
       canvas3DRef.current?.removeEventListener('mousemove', handle3DMouseMove);
       canvas3DRef.current?.removeEventListener('mouseup', handle3DMouseUp);
-      canvas3DRef.current?.removeEventListener('wheel', handle3DWheel);
+      canvas3DRef.current?.removeEventListener('wheel', handle3DWheel, { passive: false });
     };
   };
   
