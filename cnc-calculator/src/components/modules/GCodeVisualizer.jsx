@@ -915,10 +915,13 @@ M30 ; End`);
         const cleanup = init3D();
         
         // Start render loop for 3D (only rendering, no state updates)
+        // Initial draw
+        draw3D();
+        
         let frameId;
         const render3DLoop = () => {
           if (viewMode === '3D' && rendererRef.current && sceneRef.current && cameraRef.current) {
-            draw3D();
+            // Don't redraw everything, just render the scene
             rendererRef.current.render(sceneRef.current, cameraRef.current);
             frameId = requestAnimationFrame(render3DLoop);
           }
