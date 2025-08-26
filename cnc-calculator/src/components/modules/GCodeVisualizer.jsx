@@ -681,8 +681,10 @@ M30 ; End`);
     }
   };
   
-  // Animation loop
+  // Animation loop for 2D only
   const animate = () => {
+    if (viewMode !== '2D') return;
+    
     if (playback.isPlaying && parsedData) {
       setPlayback(prev => ({
         ...prev,
@@ -694,15 +696,7 @@ M30 ; End`);
       }
     }
     
-    if (viewMode === '2D') {
-      draw();
-    } else {
-      draw3D();
-      if (rendererRef.current && sceneRef.current && cameraRef.current) {
-        rendererRef.current.render(sceneRef.current, cameraRef.current);
-      }
-    }
-    
+    draw();
     animationRef.current = requestAnimationFrame(animate);
   };
   
@@ -752,37 +746,36 @@ M30 ; End`);
     parseGCode();
   }, [gcode]);
   
+  // Handle 2D canvas and animation
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (canvas) {
+    if (viewMode === '2D' && canvasRef.current) {
+      const canvas = canvasRef.current;
+      
       // Set canvas size
       const updateCanvasSize = () => {
         const container = canvas.parentElement;
-        canvas.width = container.clientWidth;
-        canvas.height = 400;
+        if (container) {
+          canvas.width = container.clientWidth;
+          canvas.height = 400;
+        }
       };
       
       updateCanvasSize();
       window.addEventListener('resize', updateCanvasSize);
       
-      // Start animation loop only for 2D
-      if (viewMode === '2D') {
-        animationRef.current = requestAnimationFrame(animate);
-      }
+      // Start animation loop for 2D
+      const startAnimation = () => {
+        if (viewMode === '2D') {
+          animate();
+        }
+      };
+      startAnimation();
       
       return () => {
         window.removeEventListener('resize', updateCanvasSize);
         if (animationRef.current) {
           cancelAnimationFrame(animationRef.current);
-        }
-      };
-    } else if (viewMode === '3D') {
-      // Start animation loop for 3D
-      animationRef.current = requestAnimationFrame(animate);
-      
-      return () => {
-        if (animationRef.current) {
-          cancelAnimationFrame(animationRef.current);
+          animationRef.current = null;
         }
       };
     }
@@ -790,10 +783,27 @@ M30 ; End`);
   
   // Initialize 3D when switching to 3D mode
   useEffect(() => {
-    if (viewMode === '3D') {
-      const cleanup = init3D();
+    if (viewMode === '3D' && canvas3DRef.current) {
+      // Small delay to ensure canvas is ready
+      const timer = setTimeout(() => {
+        const cleanup = init3D();
+        
+        // Start render loop for 3D
+        const render3DLoop = () => {
+          if (viewMode === '3D' && rendererRef.current && sceneRef.current && cameraRef.current) {
+            draw3D();
+            rendererRef.current.render(sceneRef.current, cameraRef.current);
+            animationRef.current = requestAnimationFrame(render3DLoop);
+          }
+        };
+        render3DLoop();
+      }, 100);
+      
       return () => {
-        if (cleanup) cleanup();
+        clearTimeout(timer);
+        if (animationRef.current) {
+          cancelAnimationFrame(animationRef.current);
+        }
         // Additional cleanup
         if (rendererRef.current) {
           rendererRef.current.dispose();
@@ -807,7 +817,7 @@ M30 ; End`);
         }
       };
     }
-  }, [viewMode]);
+  }, [viewMode, parsedData, playback]);
   
   // Handle window resize for 3D
   useEffect(() => {
@@ -888,64 +898,64 @@ M30 ; End`);
         position: 'relative',
         backgroundColor: '#1a1a1a'
       }}>
-        {viewMode === '2D' ? (
-          <>
-            <canvas
-              ref={canvasRef}
-              onMouseDown={handleCanvasMouseDown}
-              onWheel={handleCanvasWheel}
-              style={{ 
-                display: 'block',
-                cursor: 'move',
-                width: '100%',
-                height: '400px'
-              }}
-            />
-            
-            <div style={{
-              position: 'absolute',
-              top: '10px',
-              right: '10px',
-              backgroundColor: 'rgba(0,0,0,0.7)',
-              padding: '10px',
-              borderRadius: '4px',
-              color: 'white',
-              fontSize: '12px'
-            }}>
-              <div>Zoom: {(viewSettings.zoom * 100).toFixed(0)}%</div>
-              <div>Click & drag to pan</div>
-              <div>Scroll to zoom</div>
-            </div>
-          </>
-        ) : (
-          <>
-            <canvas
-              ref={canvas3DRef}
-              style={{ 
-                display: 'block',
-                cursor: 'grab',
-                width: '100%',
-                height: '400px'
-              }}
-            />
-            
-            <div style={{
-              position: 'absolute',
-              top: '10px',
-              right: '10px',
-              backgroundColor: 'rgba(0,0,0,0.7)',
-              padding: '10px',
-              borderRadius: '4px',
-              color: 'white',
-              fontSize: '12px'
-            }}>
-              <div>3D View</div>
-              <div>Click & drag to rotate</div>
-              <div>Scroll to zoom</div>
-              <div>X: Red, Y: Green, Z: Blue</div>
-            </div>
-          </>
-        )}
+        <div style={{ display: viewMode === '2D' ? 'block' : 'none' }}>
+          <canvas
+            ref={canvasRef}
+            onMouseDown={handleCanvasMouseDown}
+            onWheel={handleCanvasWheel}
+            style={{ 
+              display: 'block',
+              cursor: 'move',
+              width: '100%',
+              height: '400px'
+            }}
+          />
+          
+          <div style={{
+            position: 'absolute',
+            top: '10px',
+            right: '10px',
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            padding: '10px',
+            borderRadius: '4px',
+            color: 'white',
+            fontSize: '12px'
+          }}>
+            <div>Zoom: {(viewSettings.zoom * 100).toFixed(0)}%</div>
+            <div>Click & drag to pan</div>
+            <div>Scroll to zoom</div>
+          </div>
+        </div>
+        
+        <div style={{ display: viewMode === '3D' ? 'block' : 'none' }}>
+          <canvas
+            ref={canvas3DRef}
+            width={800}
+            height={400}
+            style={{ 
+              display: 'block',
+              cursor: 'grab',
+              width: '100%',
+              height: '400px'
+            }}
+          />
+          
+          <div style={{
+            position: 'absolute',
+            top: '10px',
+            right: '10px',
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            padding: '10px',
+            borderRadius: '4px',
+            color: 'white',
+            fontSize: '12px'
+          }}>
+            <div>3D View</div>
+            <div>Click & drag to rotate</div>
+            <div>Scroll to zoom</div>
+            <div>X: Red, Y: Green, Z: Blue</div>
+          </div>
+        </div>
       </div>
       
       <div className="form-row" style={{ marginTop: '10px' }}>
