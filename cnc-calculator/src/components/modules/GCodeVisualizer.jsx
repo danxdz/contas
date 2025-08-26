@@ -431,6 +431,7 @@ M30 ; End`);
       0.1,
       10000
     );
+    camera.up.set(0, 0, 1); // Set Z as up direction for CNC convention
     camera.position.set(200, 200, 200);
     camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
@@ -464,10 +465,34 @@ M30 ; End`);
     directionalLight2.position.set(-50, -50, 100);
     scene.add(directionalLight2);
     
-    // Add axes helper
+    // Add axes helper with labels
     if (viewSettings.show3DAxes) {
       const axesHelper = new THREE.AxesHelper(100);
       scene.add(axesHelper);
+      
+      // Add axis labels using sprites
+      const addAxisLabel = (text, position, color) => {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.width = 64;
+        canvas.height = 64;
+        context.font = 'Bold 48px Arial';
+        context.fillStyle = color;
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(text, 32, 32);
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        const material = new THREE.SpriteMaterial({ map: texture });
+        const sprite = new THREE.Sprite(material);
+        sprite.position.copy(position);
+        sprite.scale.set(10, 10, 1);
+        scene.add(sprite);
+      };
+      
+      addAxisLabel('X', new THREE.Vector3(110, 0, 0), '#ff0000');
+      addAxisLabel('Y', new THREE.Vector3(0, 110, 0), '#00ff00');
+      addAxisLabel('Z', new THREE.Vector3(0, 0, 110), '#0000ff');
     }
     
     // Add grid
@@ -848,21 +873,10 @@ M30 ; End`);
       const timer = setTimeout(() => {
         const cleanup = init3D();
         
-        // Start render loop for 3D
+        // Start render loop for 3D (only rendering, no state updates)
         let frameId;
         const render3DLoop = () => {
           if (viewMode === '3D' && rendererRef.current && sceneRef.current && cameraRef.current) {
-            // Update playback state
-            if (playback.isPlaying && parsedData) {
-              setPlayback(prev => {
-                const newLine = Math.min(prev.currentLine + prev.speed, parsedData.commands.length);
-                if (newLine >= parsedData.commands.length) {
-                  return { ...prev, currentLine: newLine, isPlaying: false };
-                }
-                return { ...prev, currentLine: newLine };
-              });
-            }
-            
             draw3D();
             rendererRef.current.render(sceneRef.current, cameraRef.current);
             frameId = requestAnimationFrame(render3DLoop);
@@ -911,7 +925,29 @@ M30 ; End`);
     }
   }, [viewMode]);
   
-  // Handle 3D playback updates without reinitializing
+  // Handle 3D playback animation separately
+  useEffect(() => {
+    if (viewMode === '3D' && playback.isPlaying && parsedData) {
+      let animationId;
+      const animate = () => {
+        setPlayback(prev => {
+          const newLine = Math.min(prev.currentLine + prev.speed, parsedData.commands.length);
+          if (newLine >= parsedData.commands.length) {
+            return { ...prev, currentLine: newLine, isPlaying: false };
+          }
+          return { ...prev, currentLine: newLine };
+        });
+        animationId = requestAnimationFrame(animate);
+      };
+      animationId = requestAnimationFrame(animate);
+      
+      return () => {
+        if (animationId) cancelAnimationFrame(animationId);
+      };
+    }
+  }, [viewMode, playback.isPlaying, playback.speed, parsedData]);
+  
+  // Handle 3D scene updates when playback changes
   useEffect(() => {
     if (viewMode === '3D' && rendererRef.current && sceneRef.current && cameraRef.current) {
       // Just redraw the scene with current playback state
@@ -932,6 +968,93 @@ M30 ; End`);
             <option value="3D">3D View</option>
           </select>
         </div>
+        
+        {/* View Cube for 3D navigation */}
+        {viewMode === '3D' && (
+          <div className="form-group" style={{ width: '100%' }}>
+            <label>Quick Views</label>
+            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+              <button 
+                type="button"
+                className="small-button"
+                onClick={() => {
+                  if (cameraRef.current) {
+                    cameraRef.current.position.set(0, -300, 100);
+                    cameraRef.current.lookAt(0, 0, 0);
+                  }
+                }}
+                style={{ padding: '3px 8px', fontSize: '12px' }}
+              >
+                Front
+              </button>
+              <button 
+                type="button"
+                className="small-button"
+                onClick={() => {
+                  if (cameraRef.current) {
+                    cameraRef.current.position.set(0, 300, 100);
+                    cameraRef.current.lookAt(0, 0, 0);
+                  }
+                }}
+                style={{ padding: '3px 8px', fontSize: '12px' }}
+              >
+                Back
+              </button>
+              <button 
+                type="button"
+                className="small-button"
+                onClick={() => {
+                  if (cameraRef.current) {
+                    cameraRef.current.position.set(-300, 0, 100);
+                    cameraRef.current.lookAt(0, 0, 0);
+                  }
+                }}
+                style={{ padding: '3px 8px', fontSize: '12px' }}
+              >
+                Left
+              </button>
+              <button 
+                type="button"
+                className="small-button"
+                onClick={() => {
+                  if (cameraRef.current) {
+                    cameraRef.current.position.set(300, 0, 100);
+                    cameraRef.current.lookAt(0, 0, 0);
+                  }
+                }}
+                style={{ padding: '3px 8px', fontSize: '12px' }}
+              >
+                Right
+              </button>
+              <button 
+                type="button"
+                className="small-button"
+                onClick={() => {
+                  if (cameraRef.current) {
+                    cameraRef.current.position.set(0, 0, 400);
+                    cameraRef.current.lookAt(0, 0, 0);
+                  }
+                }}
+                style={{ padding: '3px 8px', fontSize: '12px' }}
+              >
+                Top
+              </button>
+              <button 
+                type="button"
+                className="small-button"
+                onClick={() => {
+                  if (cameraRef.current) {
+                    cameraRef.current.position.set(200, 200, 200);
+                    cameraRef.current.lookAt(0, 0, 0);
+                  }
+                }}
+                style={{ padding: '3px 8px', fontSize: '12px' }}
+              >
+                Iso
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       
       <div className="form-row">
