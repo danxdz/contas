@@ -43,7 +43,7 @@ M30 ; End`);
   const [playback, setPlayback] = useState({
     isPlaying: false,
     currentLine: 0,
-    speed: 1,
+    speed: 0.05,  // Much slower default speed (0.05 lines per frame)
     showToolpath: true,
     showTool: true,
     toolDiameter: 10
@@ -964,16 +964,28 @@ M30 ; End`);
   useEffect(() => {
     if (playback.isPlaying && parsedData) {
       let animationId;
-      const updatePlayback = () => {
+      let lastTime = performance.now();
+      
+      const updatePlayback = (currentTime) => {
+        const deltaTime = currentTime - lastTime;
+        lastTime = currentTime;
+        
+        // Update based on time elapsed (60fps = 16.67ms per frame)
+        // speed is lines per frame at 60fps, so adjust for actual frame time
+        const linesPerMs = playback.speed / 16.67;
+        const linesToAdvance = linesPerMs * deltaTime;
+        
         setPlayback(prev => {
-          const newLine = Math.min(prev.currentLine + prev.speed, parsedData.commands.length);
+          const newLine = Math.min(prev.currentLine + linesToAdvance, parsedData.commands.length);
           if (newLine >= parsedData.commands.length) {
-            return { ...prev, currentLine: newLine, isPlaying: false };
+            return { ...prev, currentLine: parsedData.commands.length, isPlaying: false };
           }
           return { ...prev, currentLine: newLine };
         });
+        
         animationId = requestAnimationFrame(updatePlayback);
       };
+      
       animationId = requestAnimationFrame(updatePlayback);
       
       return () => {
@@ -1302,6 +1314,13 @@ M30 ; End`);
         
         <button 
           className="btn"
+          onClick={() => setPlayback(prev => ({ ...prev, currentLine: 0, isPlaying: false }))}
+        >
+          ⏹ Reset
+        </button>
+        
+        <button 
+          className="btn"
           onClick={() => setPlayback(prev => ({ ...prev, currentLine: 0 }))}
         >
           ⏮ Reset
@@ -1328,16 +1347,21 @@ M30 ; End`);
         </button>
         
         <div className="form-group">
-          <label>Speed</label>
+          <label>Playback Speed</label>
           <input
             type="range"
-            min="0.1"
-            max="5"
-            step="0.1"
+            min="0.01"
+            max="2"
+            step="0.01"
             value={playback.speed}
             onChange={(e) => setPlayback(prev => ({ ...prev, speed: parseFloat(e.target.value) }))}
           />
-          <span>{playback.speed}x</span>
+          <span style={{ minWidth: '60px', display: 'inline-block' }}>
+            {playback.speed < 0.1 ? 'Slow' : 
+             playback.speed < 0.5 ? 'Normal' : 
+             playback.speed < 1 ? 'Fast' : 'Very Fast'} 
+            ({playback.speed.toFixed(2)}x)
+          </span>
         </div>
       </div>
       
