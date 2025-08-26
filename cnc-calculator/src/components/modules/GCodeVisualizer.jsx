@@ -1,6 +1,77 @@
 import React, { useState, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 
+// Machine configurations
+const MACHINE_CONFIGS = {
+  '3axis-mill': {
+    name: '3-Axis Milling',
+    description: 'XY table, Z spindle',
+    toolTypes: ['End Mill', 'Drill', 'Face Mill', 'Ball Nose'],
+    example: `; 3-Axis Milling Example
+G90 G21 ; Absolute, Metric
+G00 Z5 ; Safe height
+G00 X0 Y0 ; Rapid to origin
+G01 Z-1 F100 ; Plunge
+G01 X50 Y0 F500 ; Cut
+G02 X100 Y50 I50 J0 ; Arc CW
+G01 X100 Y100 ; Cut
+G01 X0 Y100 ; Cut
+G01 X0 Y0 ; Return
+G00 Z5 ; Retract
+M30 ; End`
+  },
+  '5axis-mill': {
+    name: '5-Axis Milling',
+    description: 'XYZ + A/B rotation',
+    toolTypes: ['End Mill', 'Ball Nose', 'Tapered Mill'],
+    example: `; 5-Axis Milling Example
+G90 G21 G94
+G00 X0 Y0 Z50 A0 B0
+G00 X50 Y50 
+G00 Z5
+G01 Z-10 F100
+G01 X100 Y50 A15 B0 F300
+G02 X150 Y100 I50 J0 A30 B0
+G01 X150 Y150 A45 B0
+G01 X50 Y150 A30 B0
+G01 X50 Y50 A0 B0
+G00 Z50
+M30`
+  },
+  'lathe': {
+    name: 'CNC Lathe/Turning',
+    description: 'X radial, Z axial',
+    toolTypes: ['Turning Tool', 'Boring Bar', 'Grooving', 'Threading'],
+    example: `; CNC Lathe Example
+G90 G21 G95 ; Absolute, Metric, Feed/Rev
+G00 X50 Z5 ; Safe position
+G00 X20 Z0 ; Start position
+G01 X20 Z-30 F0.2 ; Turn
+G01 X25 Z-30 ; Face
+G01 X25 Z-50 ; Turn
+G02 X30 Z-55 R5 ; Radius
+G01 X30 Z-80 ; Turn
+G01 X50 Z-80 ; Retract
+G00 X50 Z5 ; Safe position
+M30`
+  },
+  'swiss': {
+    name: 'Swiss-Type Lathe',
+    description: 'Guide bushing, live tools',
+    toolTypes: ['Turning', 'Live End Mill', 'Live Drill'],
+    example: `; Swiss Lathe Example
+G90 G21
+G00 X20 Z5
+G01 Z-10 F0.1
+G01 X15 F0.05
+G01 Z-25
+G01 X10
+G01 Z-40
+G00 X25 Z5
+M30`
+  }
+};
+
 function GCodeVisualizer() {
   const canvasRef = useRef(null);
   const canvas3DRef = useRef(null);
@@ -12,22 +83,11 @@ function GCodeVisualizer() {
   const toolpathRef = useRef(null);
   const toolRef = useRef(null);
   
-  const [gcode, setGcode] = useState(`; Sample G-Code
-G21 ; Metric
-G90 ; Absolute positioning
-G00 Z5 ; Safe height
-G00 X0 Y0 ; Home
-G01 Z-1 F100 ; Plunge
-G01 X50 Y0 F500 ; Cut
-G02 X100 Y50 I50 J0 ; Arc CW
-G01 X100 Y100 ; Cut
-G01 X0 Y100 ; Cut
-G01 X0 Y0 ; Return
-G00 Z5 ; Retract
-M30 ; End`);
+  const [gcode, setGcode] = useState(MACHINE_CONFIGS['3axis-mill'].example);
   
   const [parsedData, setParsedData] = useState(null);
   const [viewMode, setViewMode] = useState('2D'); // '2D' or '3D'
+  const [machineType, setMachineType] = useState('3axis-mill'); // Machine type
   const [viewSettings, setViewSettings] = useState({
     zoom: 2,
     offsetX: 50,
@@ -46,7 +106,8 @@ M30 ; End`);
     speed: 0.002,  // MUCH slower default speed
     showToolpath: true,
     showTool: true,
-    toolDiameter: 10
+    toolDiameter: 10,
+    toolType: 'End Mill'  // Tool type based on machine
   });
   
   const [statistics, setStatistics] = useState(null);
@@ -613,6 +674,9 @@ M30 ; End`);
   const draw3D = () => {
     if (!parsedData || !sceneRef.current) return;
     
+    // For lathe, we need to handle differently
+    const isLathe = machineType === 'lathe' || machineType === 'swiss';
+    
     // Remove old toolpath group
     if (toolpathRef.current) {
       // Dispose of all geometries and materials in the group
@@ -720,67 +784,105 @@ M30 ; End`);
     
     // Create tool (only if showing and doesn't exist)
     if (playback.showTool) {
-      // Create tool geometry - make it more visible
-      const toolLength = 40;
-      const toolGeometry = new THREE.CylinderGeometry(
-        playback.toolDiameter / 2,
-        playback.toolDiameter / 2,
-        toolLength,
-        16
-      );
-      
-      // Use brighter, more visible material
-      const toolMaterial = new THREE.MeshPhongMaterial({ 
-        color: 0xff0000,
-        emissive: 0xff0000,
-        emissiveIntensity: 0.3,
-        opacity: 0.8,
-        transparent: true,
-        shininess: 100
-      });
-      
-      const tool = new THREE.Mesh(toolGeometry, toolMaterial);
-      
-      // Rotate tool to align with Z-axis (cylinder is along Y by default)
-      tool.rotation.x = -Math.PI / 2;
-      
-      // Position relative to group origin
-      tool.position.set(0, 0, toolLength / 2);
-      
-      // Add a holder/shank for better visibility
-      const shankGeometry = new THREE.CylinderGeometry(
-        playback.toolDiameter / 2 + 1,
-        playback.toolDiameter / 2 + 1,
-        20,
-        16
-      );
-      const shankMaterial = new THREE.MeshStandardMaterial({ 
-        color: 0x888888,
-        metalness: 0.8,
-        roughness: 0.2
-      });
-      const shank = new THREE.Mesh(shankGeometry, shankMaterial);
-      
-      // Rotate shank to align with Z-axis
-      shank.rotation.x = -Math.PI / 2;
-      
-      shank.position.set(0, 0, toolLength + 10);
-      
-      // Add a small sphere at tool tip for better visibility
-      const tipGeometry = new THREE.SphereGeometry(playback.toolDiameter / 2 * 1.1, 16, 16);
-      const tipMaterial = new THREE.MeshPhongMaterial({ 
-        color: 0xffff00,
-        emissive: 0xffff00,
-        emissiveIntensity: 0.5
-      });
-      const tip = new THREE.Mesh(tipGeometry, tipMaterial);
-      tip.position.set(0, 0, 0);
-      
-      // Create a group for tool, shank, and tip
       const toolGroup = new THREE.Group();
-      toolGroup.add(tool);
-      toolGroup.add(shank);
-      toolGroup.add(tip);
+      
+      if (isLathe) {
+        // Create lathe turning tool
+        const toolLength = 20;
+        const toolWidth = 10;
+        const toolHeight = 10;
+        
+        // Tool insert (cutting tip)
+        const insertGeometry = new THREE.BoxGeometry(toolWidth, toolHeight, toolLength);
+        const insertMaterial = new THREE.MeshPhongMaterial({ 
+          color: 0xffff00,
+          emissive: 0xffff00,
+          emissiveIntensity: 0.3
+        });
+        const insert = new THREE.Mesh(insertGeometry, insertMaterial);
+        insert.position.set(0, 0, toolLength / 2);
+        
+        // Tool holder
+        const holderGeometry = new THREE.BoxGeometry(toolWidth * 1.5, toolHeight * 1.5, toolLength * 2);
+        const holderMaterial = new THREE.MeshPhongMaterial({ 
+          color: 0x444444,
+          metalness: 0.8
+        });
+        const holder = new THREE.Mesh(holderGeometry, holderMaterial);
+        holder.position.set(0, 0, toolLength * 1.5);
+        
+        toolGroup.add(insert);
+        toolGroup.add(holder);
+        
+        // Add workpiece (rotating cylinder for lathe)
+        const workpieceRadius = 30;
+        const workpieceLength = 100;
+        const workpieceGeometry = new THREE.CylinderGeometry(
+          workpieceRadius, workpieceRadius, workpieceLength, 32
+        );
+        const workpieceMaterial = new THREE.MeshPhongMaterial({ 
+          color: 0x8888ff,
+          opacity: 0.7,
+          transparent: true
+        });
+        const workpiece = new THREE.Mesh(workpieceGeometry, workpieceMaterial);
+        workpiece.rotation.z = Math.PI / 2; // Rotate to align with Z axis
+        workpiece.position.set(0, 0, -workpieceLength / 2);
+        sceneRef.current.add(workpiece);
+        
+      } else {
+        // Create milling tool
+        const toolLength = 40;
+        const toolGeometry = new THREE.CylinderGeometry(
+          playback.toolDiameter / 2,
+          playback.toolDiameter / 2,
+          toolLength,
+          16
+        );
+        
+        const toolMaterial = new THREE.MeshPhongMaterial({ 
+          color: 0xff0000,
+          emissive: 0xff0000,
+          emissiveIntensity: 0.3,
+          opacity: 0.8,
+          transparent: true,
+          shininess: 100
+        });
+        
+        const tool = new THREE.Mesh(toolGeometry, toolMaterial);
+        tool.rotation.x = -Math.PI / 2;
+        tool.position.set(0, 0, toolLength / 2);
+        
+        // Add holder/shank
+        const shankGeometry = new THREE.CylinderGeometry(
+          playback.toolDiameter / 2 + 1,
+          playback.toolDiameter / 2 + 1,
+          20,
+          16
+        );
+        const shankMaterial = new THREE.MeshStandardMaterial({ 
+          color: 0x888888,
+          metalness: 0.8,
+          roughness: 0.2
+        });
+        const shank = new THREE.Mesh(shankGeometry, shankMaterial);
+        shank.rotation.x = -Math.PI / 2;
+        shank.position.set(0, 0, toolLength + 10);
+        
+        // Add tip
+        const tipGeometry = new THREE.SphereGeometry(playback.toolDiameter / 2 * 1.1, 16, 16);
+        const tipMaterial = new THREE.MeshPhongMaterial({ 
+          color: 0xffff00,
+          emissive: 0xffff00,
+          emissiveIntensity: 0.5
+        });
+        const tip = new THREE.Mesh(tipGeometry, tipMaterial);
+        tip.position.set(0, 0, 0);
+        
+        toolGroup.add(tool);
+        toolGroup.add(shank);
+        toolGroup.add(tip);
+      }
       
       sceneRef.current.add(toolGroup);
       toolRef.current = toolGroup;
@@ -1014,6 +1116,28 @@ M30 ; End`);
       <h2>G-Code Simulator & Visualizer</h2>
       
       <div className="form-row">
+        <div className="form-group">
+          <label>Machine Type</label>
+          <select 
+            value={machineType} 
+            onChange={(e) => {
+              setMachineType(e.target.value);
+              setGcode(MACHINE_CONFIGS[e.target.value].example);
+              setPlayback(prev => ({ 
+                ...prev, 
+                toolType: MACHINE_CONFIGS[e.target.value].toolTypes[0] 
+              }));
+            }}
+          >
+            {Object.entries(MACHINE_CONFIGS).map(([key, config]) => (
+              <option key={key} value={key}>{config.name}</option>
+            ))}
+          </select>
+          <small style={{ display: 'block', marginTop: '4px', color: '#666' }}>
+            {MACHINE_CONFIGS[machineType].description}
+          </small>
+        </div>
+        
         <div className="form-group">
           <label>View Mode</label>
           <select value={viewMode} onChange={(e) => setViewMode(e.target.value)}>
@@ -1425,6 +1549,18 @@ M30 ; End`);
       </div>
       
       <div className="form-row">
+        <div className="form-group">
+          <label>Tool Type</label>
+          <select
+            value={playback.toolType}
+            onChange={(e) => setPlayback(prev => ({ ...prev, toolType: e.target.value }))}
+          >
+            {MACHINE_CONFIGS[machineType].toolTypes.map(tool => (
+              <option key={tool} value={tool}>{tool}</option>
+            ))}
+          </select>
+        </div>
+        
         <div className="form-group">
           <label>Tool Diameter (mm)</label>
           <input
