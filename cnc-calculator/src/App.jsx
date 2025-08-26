@@ -20,7 +20,7 @@ import {
   ToolDatabase,
   GCodeVisualizer,
   ShopFloorUtilities
-} from './components/modules';
+} from './components/modules/index.jsx';
 
 // Module Registry for easy expansion
 const moduleRegistry = {
