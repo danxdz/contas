@@ -43,7 +43,7 @@ M30 ; End`);
   const [playback, setPlayback] = useState({
     isPlaying: false,
     currentLine: 0,
-    speed: 0.05,  // Much slower default speed (0.05 lines per frame)
+    speed: 0.002,  // MUCH slower default speed
     showToolpath: true,
     showTool: true,
     toolDiameter: 10
@@ -582,22 +582,25 @@ M30 ; End`);
           toolPos = { ...parsedData.commands[0].startPos };
         }
       } else {
-        const lastCmdIndex = Math.min(playback.currentLine - 1, parsedData.commands.length - 1);
-        const lastCmd = parsedData.commands[lastCmdIndex];
+        // currentLine is the index in commands array, not line number
+        const cmdIndex = Math.floor(playback.currentLine - 1); // -1 because currentLine starts at 1 when playing
+        const progress = (playback.currentLine - 1) - cmdIndex; // Fractional part
         
-        if (lastCmd) {
-          const progress = (playback.currentLine % 1);
+        if (cmdIndex >= 0 && cmdIndex < parsedData.commands.length) {
+          const currentCmd = parsedData.commands[cmdIndex];
           
-          if (progress > 0 && lastCmdIndex < parsedData.commands.length - 1) {
-            const nextCmd = parsedData.commands[lastCmdIndex + 1];
+          if (currentCmd) {
+            // Interpolate within the current command based on progress
             toolPos = {
-              x: lastCmd.endPos.x + (nextCmd.endPos.x - lastCmd.endPos.x) * progress,
-              y: lastCmd.endPos.y + (nextCmd.endPos.y - lastCmd.endPos.y) * progress,
-              z: lastCmd.endPos.z + (nextCmd.endPos.z - lastCmd.endPos.z) * progress
+              x: currentCmd.startPos.x + (currentCmd.endPos.x - currentCmd.startPos.x) * progress,
+              y: currentCmd.startPos.y + (currentCmd.endPos.y - currentCmd.startPos.y) * progress,
+              z: currentCmd.startPos.z + (currentCmd.endPos.z - currentCmd.startPos.z) * progress
             };
-          } else {
-            toolPos = { ...lastCmd.endPos };
           }
+        } else if (cmdIndex >= parsedData.commands.length && parsedData.commands.length > 0) {
+          // Past the end, use last position
+          const lastCmd = parsedData.commands[parsedData.commands.length - 1];
+          toolPos = { ...lastCmd.endPos };
         }
       }
     }
@@ -1350,17 +1353,17 @@ M30 ; End`);
           <label>Playback Speed</label>
           <input
             type="range"
-            min="0.01"
-            max="2"
-            step="0.01"
+            min="0.001"
+            max="0.1"
+            step="0.001"
             value={playback.speed}
             onChange={(e) => setPlayback(prev => ({ ...prev, speed: parseFloat(e.target.value) }))}
           />
-          <span style={{ minWidth: '60px', display: 'inline-block' }}>
-            {playback.speed < 0.1 ? 'Slow' : 
-             playback.speed < 0.5 ? 'Normal' : 
-             playback.speed < 1 ? 'Fast' : 'Very Fast'} 
-            ({playback.speed.toFixed(2)}x)
+          <span style={{ minWidth: '100px', display: 'inline-block' }}>
+            {playback.speed < 0.005 ? 'Very Slow' : 
+             playback.speed < 0.02 ? 'Slow' : 
+             playback.speed < 0.05 ? 'Normal' : 'Fast'} 
+            ({(playback.speed * 60).toFixed(1)} lines/sec)
           </span>
         </div>
       </div>
