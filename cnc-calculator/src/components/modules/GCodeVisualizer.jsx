@@ -542,18 +542,29 @@ M30 ; End`);
   const draw3D = () => {
     if (!parsedData || !sceneRef.current) return;
     
-    // Remove old toolpath
+    // Remove old toolpath group
     if (toolpathRef.current) {
+      // Dispose of all geometries and materials in the group
+      toolpathRef.current.traverse((child) => {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach(m => m.dispose());
+          } else {
+            child.material.dispose();
+          }
+        }
+      });
       sceneRef.current.remove(toolpathRef.current);
-      toolpathRef.current.geometry.dispose();
-      toolpathRef.current.material.dispose();
+      toolpathRef.current = null;
     }
     
     // Remove old tool
     if (toolRef.current) {
+      if (toolRef.current.geometry) toolRef.current.geometry.dispose();
+      if (toolRef.current.material) toolRef.current.material.dispose();
       sceneRef.current.remove(toolRef.current);
-      toolRef.current.geometry.dispose();
-      toolRef.current.material.dispose();
+      toolRef.current = null;
     }
     
     const group = new THREE.Group();
@@ -789,14 +800,30 @@ M30 ; End`);
         const cleanup = init3D();
         
         // Start render loop for 3D
+        let frameId;
         const render3DLoop = () => {
           if (viewMode === '3D' && rendererRef.current && sceneRef.current && cameraRef.current) {
+            // Update playback state
+            if (playback.isPlaying && parsedData) {
+              setPlayback(prev => {
+                const newLine = Math.min(prev.currentLine + prev.speed, parsedData.commands.length);
+                if (newLine >= parsedData.commands.length) {
+                  return { ...prev, currentLine: newLine, isPlaying: false };
+                }
+                return { ...prev, currentLine: newLine };
+              });
+            }
+            
             draw3D();
             rendererRef.current.render(sceneRef.current, cameraRef.current);
-            animationRef.current = requestAnimationFrame(render3DLoop);
+            frameId = requestAnimationFrame(render3DLoop);
           }
         };
         render3DLoop();
+        
+        return () => {
+          if (frameId) cancelAnimationFrame(frameId);
+        };
       }, 100);
       
       return () => {
@@ -817,7 +844,7 @@ M30 ; End`);
         }
       };
     }
-  }, [viewMode, parsedData, playback]);
+  }, [viewMode, parsedData]);
   
   // Handle window resize for 3D
   useEffect(() => {
@@ -834,6 +861,15 @@ M30 ; End`);
       return () => window.removeEventListener('resize', handleResize);
     }
   }, [viewMode]);
+  
+  // Handle 3D playback updates without reinitializing
+  useEffect(() => {
+    if (viewMode === '3D' && rendererRef.current && sceneRef.current && cameraRef.current) {
+      // Just redraw the scene with current playback state
+      draw3D();
+      rendererRef.current.render(sceneRef.current, cameraRef.current);
+    }
+  }, [playback.currentLine, playback.showTool, playback.showToolpath, viewMode]);
 
   return (
     <div className="calculator-section">
