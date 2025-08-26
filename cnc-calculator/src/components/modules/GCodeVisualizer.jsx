@@ -1,8 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
+import * as THREE from 'three';
 
 function GCodeVisualizer() {
   const canvasRef = useRef(null);
+  const canvas3DRef = useRef(null);
   const animationRef = useRef(null);
+  const sceneRef = useRef(null);
+  const rendererRef = useRef(null);
+  const cameraRef = useRef(null);
+  const controlsRef = useRef(null);
+  const toolpathRef = useRef(null);
+  const toolRef = useRef(null);
   
   const [gcode, setGcode] = useState(`; Sample G-Code
 G21 ; Metric
@@ -19,6 +27,7 @@ G00 Z5 ; Retract
 M30 ; End`);
   
   const [parsedData, setParsedData] = useState(null);
+  const [viewMode, setViewMode] = useState('2D'); // '2D' or '3D'
   const [viewSettings, setViewSettings] = useState({
     zoom: 2,
     offsetX: 50,
@@ -26,7 +35,9 @@ M30 ; End`);
     showGrid: true,
     showCoords: true,
     showRapids: true,
-    colorBySpeed: false
+    colorBySpeed: false,
+    show3DAxes: true,
+    show3DGrid: true
   });
   
   const [playback, setPlayback] = useState({
@@ -398,6 +409,266 @@ M30 ; End`);
     }
   };
   
+  // Initialize 3D scene
+  const init3D = () => {
+    if (!canvas3DRef.current) return;
+    
+    // Scene setup
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1a1a1a);
+    sceneRef.current = scene;
+    
+    // Camera setup
+    const camera = new THREE.PerspectiveCamera(
+      45,
+      canvas3DRef.current.clientWidth / canvas3DRef.current.clientHeight,
+      0.1,
+      10000
+    );
+    camera.position.set(200, 200, 200);
+    camera.lookAt(0, 0, 0);
+    cameraRef.current = camera;
+    
+    // Renderer setup
+    const renderer = new THREE.WebGLRenderer({ 
+      canvas: canvas3DRef.current,
+      antialias: true 
+    });
+    renderer.setSize(canvas3DRef.current.clientWidth, canvas3DRef.current.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    rendererRef.current = renderer;
+    
+    // Lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+    
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.4);
+    directionalLight.position.set(100, 100, 50);
+    scene.add(directionalLight);
+    
+    // Add axes helper
+    if (viewSettings.show3DAxes) {
+      const axesHelper = new THREE.AxesHelper(100);
+      scene.add(axesHelper);
+    }
+    
+    // Add grid
+    if (viewSettings.show3DGrid) {
+      const gridHelper = new THREE.GridHelper(200, 20, 0x444444, 0x222222);
+      gridHelper.rotation.x = Math.PI / 2; // Rotate to XY plane
+      scene.add(gridHelper);
+    }
+    
+    // Simple orbit controls
+    const controls = {
+      mouseX: 0,
+      mouseY: 0,
+      isMouseDown: false,
+      rotationX: -Math.PI / 6,
+      rotationY: Math.PI / 4,
+      distance: 400
+    };
+    controlsRef.current = controls;
+    
+    // Mouse controls for 3D
+    const handle3DMouseDown = (e) => {
+      controls.isMouseDown = true;
+      controls.mouseX = e.clientX;
+      controls.mouseY = e.clientY;
+    };
+    
+    const handle3DMouseMove = (e) => {
+      if (!controls.isMouseDown) return;
+      
+      const deltaX = e.clientX - controls.mouseX;
+      const deltaY = e.clientY - controls.mouseY;
+      
+      controls.rotationY += deltaX * 0.01;
+      controls.rotationX += deltaY * 0.01;
+      
+      controls.mouseX = e.clientX;
+      controls.mouseY = e.clientY;
+      
+      updateCamera();
+    };
+    
+    const handle3DMouseUp = () => {
+      controls.isMouseDown = false;
+    };
+    
+    const handle3DWheel = (e) => {
+      e.preventDefault();
+      controls.distance *= e.deltaY > 0 ? 1.1 : 0.9;
+      controls.distance = Math.max(50, Math.min(2000, controls.distance));
+      updateCamera();
+    };
+    
+    const updateCamera = () => {
+      camera.position.x = controls.distance * Math.cos(controls.rotationX) * Math.cos(controls.rotationY);
+      camera.position.y = controls.distance * Math.cos(controls.rotationX) * Math.sin(controls.rotationY);
+      camera.position.z = controls.distance * Math.sin(controls.rotationX);
+      camera.lookAt(0, 0, 0);
+    };
+    
+    canvas3DRef.current.addEventListener('mousedown', handle3DMouseDown);
+    canvas3DRef.current.addEventListener('mousemove', handle3DMouseMove);
+    canvas3DRef.current.addEventListener('mouseup', handle3DMouseUp);
+    canvas3DRef.current.addEventListener('wheel', handle3DWheel);
+    
+    updateCamera();
+    
+    // Cleanup function
+    return () => {
+      canvas3DRef.current?.removeEventListener('mousedown', handle3DMouseDown);
+      canvas3DRef.current?.removeEventListener('mousemove', handle3DMouseMove);
+      canvas3DRef.current?.removeEventListener('mouseup', handle3DMouseUp);
+      canvas3DRef.current?.removeEventListener('wheel', handle3DWheel);
+    };
+  };
+  
+  // Draw 3D toolpath
+  const draw3D = () => {
+    if (!parsedData || !sceneRef.current) return;
+    
+    // Remove old toolpath
+    if (toolpathRef.current) {
+      sceneRef.current.remove(toolpathRef.current);
+      toolpathRef.current.geometry.dispose();
+      toolpathRef.current.material.dispose();
+    }
+    
+    // Remove old tool
+    if (toolRef.current) {
+      sceneRef.current.remove(toolRef.current);
+      toolRef.current.geometry.dispose();
+      toolRef.current.material.dispose();
+    }
+    
+    const group = new THREE.Group();
+    
+    // Draw toolpath lines
+    const linesToDraw = playback.showToolpath ? parsedData.commands.length : playback.currentLine;
+    
+    for (let i = 0; i < Math.min(linesToDraw, parsedData.commands.length); i++) {
+      const cmd = parsedData.commands[i];
+      
+      const points = [];
+      
+      if (cmd.type === 'arc_cw' || cmd.type === 'arc_ccw') {
+        // Draw arc as segments
+        if (cmd.centerOffset) {
+          const centerX = cmd.startPos.x + cmd.centerOffset.i;
+          const centerY = cmd.startPos.y + cmd.centerOffset.j;
+          const radius = Math.sqrt(cmd.centerOffset.i * cmd.centerOffset.i + cmd.centerOffset.j * cmd.centerOffset.j);
+          
+          const startAngle = Math.atan2(cmd.startPos.y - centerY, cmd.startPos.x - centerX);
+          const endAngle = Math.atan2(cmd.endPos.y - centerY, cmd.endPos.x - centerX);
+          
+          const segments = 32;
+          for (let j = 0; j <= segments; j++) {
+            const t = j / segments;
+            let angle = startAngle + (endAngle - startAngle) * t;
+            if (cmd.type === 'arc_cw' && endAngle > startAngle) {
+              angle = startAngle - (2 * Math.PI - (endAngle - startAngle)) * t;
+            }
+            
+            const x = centerX + radius * Math.cos(angle);
+            const y = centerY + radius * Math.sin(angle);
+            const z = cmd.startPos.z + (cmd.endPos.z - cmd.startPos.z) * t;
+            
+            points.push(new THREE.Vector3(x, y, z));
+          }
+        }
+      } else {
+        // Linear move
+        points.push(new THREE.Vector3(cmd.startPos.x, cmd.startPos.y, cmd.startPos.z));
+        points.push(new THREE.Vector3(cmd.endPos.x, cmd.endPos.y, cmd.endPos.z));
+      }
+      
+      if (points.length > 1) {
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        
+        let material;
+        if (cmd.type === 'rapid') {
+          material = new THREE.LineBasicMaterial({ 
+            color: viewSettings.showRapids ? 0xffa500 : 0x000000,
+            opacity: viewSettings.showRapids ? 0.5 : 0,
+            transparent: true
+          });
+        } else if (cmd.type === 'cut') {
+          const color = viewSettings.colorBySpeed 
+            ? new THREE.Color().setHSL((120 - (cmd.feedRate / 1000) * 120) / 360, 1, 0.5)
+            : 0x0064ff;
+          material = new THREE.LineBasicMaterial({ color, linewidth: 2 });
+        } else {
+          material = new THREE.LineBasicMaterial({ color: 0x00c864, linewidth: 2 });
+        }
+        
+        const line = new THREE.Line(geometry, material);
+        group.add(line);
+        
+        // Highlight current line
+        if (i === playback.currentLine - 1) {
+          const highlightMaterial = new THREE.LineBasicMaterial({ 
+            color: 0xff0000, 
+            linewidth: 3 
+          });
+          const highlightLine = new THREE.Line(geometry.clone(), highlightMaterial);
+          group.add(highlightLine);
+        }
+      }
+    }
+    
+    sceneRef.current.add(group);
+    toolpathRef.current = group;
+    
+    // Draw tool
+    if (playback.showTool && playback.currentLine > 0) {
+      const currentCmd = parsedData.commands[Math.min(playback.currentLine - 1, parsedData.commands.length - 1)];
+      
+      const toolGeometry = new THREE.CylinderGeometry(
+        playback.toolDiameter / 2,
+        playback.toolDiameter / 2,
+        30,
+        16
+      );
+      const toolMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0xff0000,
+        opacity: 0.7,
+        transparent: true
+      });
+      const tool = new THREE.Mesh(toolGeometry, toolMaterial);
+      
+      tool.position.set(currentCmd.endPos.x, currentCmd.endPos.y, currentCmd.endPos.z + 15);
+      tool.rotation.x = Math.PI / 2;
+      
+      sceneRef.current.add(tool);
+      toolRef.current = tool;
+    }
+    
+    // Add bounding box
+    if (parsedData.bounds) {
+      const boxGeometry = new THREE.BoxGeometry(
+        parsedData.bounds.maxX - parsedData.bounds.minX,
+        parsedData.bounds.maxY - parsedData.bounds.minY,
+        parsedData.bounds.maxZ - parsedData.bounds.minZ
+      );
+      const boxMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0x00ff00,
+        wireframe: true,
+        opacity: 0.2,
+        transparent: true
+      });
+      const box = new THREE.Mesh(boxGeometry, boxMaterial);
+      box.position.set(
+        (parsedData.bounds.maxX + parsedData.bounds.minX) / 2,
+        (parsedData.bounds.maxY + parsedData.bounds.minY) / 2,
+        (parsedData.bounds.maxZ + parsedData.bounds.minZ) / 2
+      );
+      group.add(box);
+    }
+  };
+  
   // Animation loop
   const animate = () => {
     if (playback.isPlaying && parsedData) {
@@ -411,7 +682,15 @@ M30 ; End`);
       }
     }
     
-    draw();
+    if (viewMode === '2D') {
+      draw();
+    } else {
+      draw3D();
+      if (rendererRef.current && sceneRef.current && cameraRef.current) {
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+      }
+    }
+    
     animationRef.current = requestAnimationFrame(animate);
   };
   
@@ -484,11 +763,45 @@ M30 ; End`);
         }
       };
     }
-  }, [parsedData, viewSettings, playback]);
+  }, [parsedData, viewSettings, playback, viewMode]);
+  
+  // Initialize 3D when switching to 3D mode
+  useEffect(() => {
+    if (viewMode === '3D') {
+      const cleanup = init3D();
+      return cleanup;
+    }
+  }, [viewMode]);
+  
+  // Handle window resize for 3D
+  useEffect(() => {
+    if (viewMode === '3D' && canvas3DRef.current) {
+      const handleResize = () => {
+        if (cameraRef.current && rendererRef.current) {
+          cameraRef.current.aspect = canvas3DRef.current.clientWidth / canvas3DRef.current.clientHeight;
+          cameraRef.current.updateProjectionMatrix();
+          rendererRef.current.setSize(canvas3DRef.current.clientWidth, canvas3DRef.current.clientHeight);
+        }
+      };
+      
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, [viewMode]);
 
   return (
     <div className="calculator-section">
       <h2>G-Code Simulator & Visualizer</h2>
+      
+      <div className="form-row">
+        <div className="form-group">
+          <label>View Mode</label>
+          <select value={viewMode} onChange={(e) => setViewMode(e.target.value)}>
+            <option value="2D">2D View</option>
+            <option value="3D">3D View</option>
+          </select>
+        </div>
+      </div>
       
       <div className="form-row">
         <div style={{ flex: 1 }}>
@@ -539,32 +852,64 @@ M30 ; End`);
         position: 'relative',
         backgroundColor: '#1a1a1a'
       }}>
-        <canvas
-          ref={canvasRef}
-          onMouseDown={handleCanvasMouseDown}
-          onWheel={handleCanvasWheel}
-          style={{ 
-            display: 'block',
-            cursor: 'move',
-            width: '100%',
-            height: '400px'
-          }}
-        />
-        
-        <div style={{
-          position: 'absolute',
-          top: '10px',
-          right: '10px',
-          backgroundColor: 'rgba(0,0,0,0.7)',
-          padding: '10px',
-          borderRadius: '4px',
-          color: 'white',
-          fontSize: '12px'
-        }}>
-          <div>Zoom: {(viewSettings.zoom * 100).toFixed(0)}%</div>
-          <div>Click & drag to pan</div>
-          <div>Scroll to zoom</div>
-        </div>
+        {viewMode === '2D' ? (
+          <>
+            <canvas
+              ref={canvasRef}
+              onMouseDown={handleCanvasMouseDown}
+              onWheel={handleCanvasWheel}
+              style={{ 
+                display: 'block',
+                cursor: 'move',
+                width: '100%',
+                height: '400px'
+              }}
+            />
+            
+            <div style={{
+              position: 'absolute',
+              top: '10px',
+              right: '10px',
+              backgroundColor: 'rgba(0,0,0,0.7)',
+              padding: '10px',
+              borderRadius: '4px',
+              color: 'white',
+              fontSize: '12px'
+            }}>
+              <div>Zoom: {(viewSettings.zoom * 100).toFixed(0)}%</div>
+              <div>Click & drag to pan</div>
+              <div>Scroll to zoom</div>
+            </div>
+          </>
+        ) : (
+          <>
+            <canvas
+              ref={canvas3DRef}
+              style={{ 
+                display: 'block',
+                cursor: 'grab',
+                width: '100%',
+                height: '400px'
+              }}
+            />
+            
+            <div style={{
+              position: 'absolute',
+              top: '10px',
+              right: '10px',
+              backgroundColor: 'rgba(0,0,0,0.7)',
+              padding: '10px',
+              borderRadius: '4px',
+              color: 'white',
+              fontSize: '12px'
+            }}>
+              <div>3D View</div>
+              <div>Click & drag to rotate</div>
+              <div>Scroll to zoom</div>
+              <div>X: Red, Y: Green, Z: Blue</div>
+            </div>
+          </>
+        )}
       </div>
       
       <div className="form-row" style={{ marginTop: '10px' }}>
