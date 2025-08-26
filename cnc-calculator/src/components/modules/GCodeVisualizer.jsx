@@ -159,6 +159,17 @@ function GCodeVisualizer() {
     toolType: 'End Mill'  // Tool type based on machine
   });
   
+  const [workpieceSetup, setWorkpieceSetup] = useState({
+    // Milling workpiece
+    stockWidth: 100,
+    stockDepth: 50,
+    stockHeight: 30,
+    // Lathe workpiece
+    diameter: 50,
+    length: 120,
+    showStock: true
+  });
+  
   const [statistics, setStatistics] = useState(null);
   const [errors, setErrors] = useState([]);
 
@@ -815,21 +826,23 @@ function GCodeVisualizer() {
       viseBase.name = 'vise';
       sceneRef.current.add(viseBase);
       
-      // Add workpiece stock
-      const stockWidth = 100;
-      const stockDepth = 40;
-      const stockHeight = 30;
-      
-      const stockGeometry = new THREE.BoxGeometry(stockWidth, stockDepth, stockHeight);
-      const stockMaterial = new THREE.MeshPhongMaterial({ 
-        color: 0xccaa88,
-        opacity: 0.9,
-        transparent: true
-      });
-      const workpiece = new THREE.Mesh(stockGeometry, stockMaterial);
-      workpiece.position.set(0, 0, stockHeight/2 + 10);
-      workpiece.name = 'workpiece';
-      sceneRef.current.add(workpiece);
+      // Add workpiece stock (only if enabled)
+      if (workpieceSetup.showStock) {
+        const stockGeometry = new THREE.BoxGeometry(
+          workpieceSetup.stockWidth, 
+          workpieceSetup.stockDepth, 
+          workpieceSetup.stockHeight
+        );
+        const stockMaterial = new THREE.MeshPhongMaterial({ 
+          color: 0xccaa88,
+          opacity: 0.9,
+          transparent: true
+        });
+        const workpiece = new THREE.Mesh(stockGeometry, stockMaterial);
+        workpiece.position.set(0, 0, workpieceSetup.stockHeight/2 + 10);
+        workpiece.name = 'workpiece';
+        sceneRef.current.add(workpiece);
+      }
       
       // Add clamps
       for (let i = -1; i <= 1; i += 2) {
@@ -842,8 +855,8 @@ function GCodeVisualizer() {
         sceneRef.current.add(clamp);
       }
     } else {
-      // Lathe chuck
-      const chuckRadius = 40;
+      // Lathe setup
+      const chuckRadius = 35;
       const chuckDepth = 30;
       
       // Chuck body
@@ -855,24 +868,63 @@ function GCodeVisualizer() {
       });
       const chuck = new THREE.Mesh(chuckGeometry, chuckMaterial);
       chuck.rotation.z = Math.PI / 2;
-      chuck.position.set(0, 0, -100);
+      chuck.position.set(0, 0, -(workpieceSetup.length/2 + chuckDepth/2 + 5));
       chuck.name = 'chuck';
       sceneRef.current.add(chuck);
       
-      // Chuck jaws (3-jaw chuck)
+      // Chuck jaws (3-jaw chuck) - positioned to hold workpiece
+      const jawOffset = workpieceSetup.diameter / 2 + 5;
       for (let i = 0; i < 3; i++) {
         const angle = (i * 120) * Math.PI / 180;
-        const jawGeometry = new THREE.BoxGeometry(10, 15, chuckDepth);
+        const jawGeometry = new THREE.BoxGeometry(8, 12, chuckDepth);
         const jawMaterial = new THREE.MeshPhongMaterial({ color: 0x444444 });
         const jaw = new THREE.Mesh(jawGeometry, jawMaterial);
         jaw.position.set(
-          Math.cos(angle) * (chuckRadius - 10),
-          Math.sin(angle) * (chuckRadius - 10),
-          -100
+          Math.cos(angle) * jawOffset,
+          Math.sin(angle) * jawOffset,
+          -(workpieceSetup.length/2 + chuckDepth/2 + 5)
         );
         jaw.rotation.z = angle;
         jaw.name = 'chuck';
         sceneRef.current.add(jaw);
+      }
+      
+      // Lathe workpiece (cylindrical stock)
+      if (workpieceSetup.showStock) {
+        const workpieceGeometry = new THREE.CylinderGeometry(
+          workpieceSetup.diameter / 2,
+          workpieceSetup.diameter / 2,
+          workpieceSetup.length,
+          32
+        );
+        const workpieceMaterial = new THREE.MeshPhongMaterial({ 
+          color: 0x8888cc,  // Blueish metal color
+          metalness: 0.7,
+          roughness: 0.3
+        });
+        const workpiece = new THREE.Mesh(workpieceGeometry, workpieceMaterial);
+        workpiece.rotation.z = Math.PI / 2; // Rotate to align with Z axis
+        workpiece.position.set(0, 0, 0);
+        workpiece.name = 'workpiece';
+        sceneRef.current.add(workpiece);
+        
+        // Add center drill marks (optional visual detail)
+        const centerMarkGeometry = new THREE.ConeGeometry(2, 5, 8);
+        const centerMarkMaterial = new THREE.MeshPhongMaterial({ color: 0x555555 });
+        
+        // Front center
+        const frontCenter = new THREE.Mesh(centerMarkGeometry, centerMarkMaterial);
+        frontCenter.rotation.z = -Math.PI / 2;
+        frontCenter.position.set(0, 0, workpieceSetup.length/2);
+        frontCenter.name = 'workpiece';
+        sceneRef.current.add(frontCenter);
+        
+        // Back center (in chuck)
+        const backCenter = new THREE.Mesh(centerMarkGeometry, centerMarkMaterial);
+        backCenter.rotation.z = Math.PI / 2;
+        backCenter.position.set(0, 0, -workpieceSetup.length/2);
+        backCenter.name = 'workpiece';
+        sceneRef.current.add(backCenter);
       }
       
       // Tailstock
@@ -883,12 +935,20 @@ function GCodeVisualizer() {
       });
       const tailstock = new THREE.Mesh(tailstockGeometry, tailstockMaterial);
       tailstock.rotation.z = -Math.PI / 2;
-      tailstock.position.set(0, 0, 80);
+      tailstock.position.set(0, 0, workpieceSetup.length/2 + 15);
       tailstock.name = 'tailstock';
       sceneRef.current.add(tailstock);
       
+      // Tailstock body
+      const tailstockBodyGeometry = new THREE.CylinderGeometry(15, 15, 30, 16);
+      const tailstockBody = new THREE.Mesh(tailstockBodyGeometry, tailstockMaterial);
+      tailstockBody.rotation.z = Math.PI / 2;
+      tailstockBody.position.set(0, 0, workpieceSetup.length/2 + 30);
+      tailstockBody.name = 'tailstock';
+      sceneRef.current.add(tailstockBody);
+      
       // Lathe bed/ways
-      const bedLength = 250;
+      const bedLength = workpieceSetup.length + 100;
       const bedWidth = 100;
       const bedHeight = 20;
       
@@ -898,7 +958,7 @@ function GCodeVisualizer() {
         metalness: 0.6
       });
       const bed = new THREE.Mesh(bedGeometry, bedMaterial);
-      bed.position.set(0, -50, 0);
+      bed.position.set(0, -60, 0);
       bed.name = 'bed';
       sceneRef.current.add(bed);
     }
@@ -1062,22 +1122,6 @@ function GCodeVisualizer() {
         
         toolGroup.add(insert);
         toolGroup.add(holder);
-        
-        // Add workpiece (rotating cylinder for lathe)
-        const workpieceRadius = 30;
-        const workpieceLength = 100;
-        const workpieceGeometry = new THREE.CylinderGeometry(
-          workpieceRadius, workpieceRadius, workpieceLength, 32
-        );
-        const workpieceMaterial = new THREE.MeshPhongMaterial({ 
-          color: 0x8888ff,
-          opacity: 0.7,
-          transparent: true
-        });
-        const workpiece = new THREE.Mesh(workpieceGeometry, workpieceMaterial);
-        workpiece.rotation.z = Math.PI / 2; // Rotate to align with Z axis
-        workpiece.position.set(0, 0, -workpieceLength / 2);
-        sceneRef.current.add(workpiece);
         
       } else {
         // Create milling tool
@@ -1828,6 +1872,85 @@ function GCodeVisualizer() {
           />
         </div>
         
+        <label className="checkbox-label">
+          <input
+            type="checkbox"
+            checked={workpieceSetup.showStock}
+            onChange={(e) => setWorkpieceSetup(prev => ({ ...prev, showStock: e.target.checked }))}
+          />
+          Show Workpiece
+        </label>
+      </div>
+      
+      {/* Workpiece Setup */}
+      {workpieceSetup.showStock && (
+        <div className="form-row">
+          {(machineType === 'lathe' || machineType === 'swiss') ? (
+            <>
+              <div className="form-group">
+                <label>Stock Diameter (mm)</label>
+                <input
+                  type="number"
+                  value={workpieceSetup.diameter}
+                  onChange={(e) => setWorkpieceSetup(prev => ({ ...prev, diameter: parseFloat(e.target.value) }))}
+                  step="1"
+                  min="10"
+                  max="200"
+                />
+              </div>
+              <div className="form-group">
+                <label>Stock Length (mm)</label>
+                <input
+                  type="number"
+                  value={workpieceSetup.length}
+                  onChange={(e) => setWorkpieceSetup(prev => ({ ...prev, length: parseFloat(e.target.value) }))}
+                  step="1"
+                  min="20"
+                  max="300"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="form-group">
+                <label>Width (X)</label>
+                <input
+                  type="number"
+                  value={workpieceSetup.stockWidth}
+                  onChange={(e) => setWorkpieceSetup(prev => ({ ...prev, stockWidth: parseFloat(e.target.value) }))}
+                  step="1"
+                  min="10"
+                  max="200"
+                />
+              </div>
+              <div className="form-group">
+                <label>Depth (Y)</label>
+                <input
+                  type="number"
+                  value={workpieceSetup.stockDepth}
+                  onChange={(e) => setWorkpieceSetup(prev => ({ ...prev, stockDepth: parseFloat(e.target.value) }))}
+                  step="1"
+                  min="10"
+                  max="200"
+                />
+              </div>
+              <div className="form-group">
+                <label>Height (Z)</label>
+                <input
+                  type="number"
+                  value={workpieceSetup.stockHeight}
+                  onChange={(e) => setWorkpieceSetup(prev => ({ ...prev, stockHeight: parseFloat(e.target.value) }))}
+                  step="1"
+                  min="10"
+                  max="100"
+                />
+              </div>
+            </>
+          )}
+        </div>
+      )}
+      
+      <div className="form-row">
         <button 
           className="btn"
           onClick={() => {
@@ -1844,14 +1967,13 @@ function GCodeVisualizer() {
         >
           Reset View
         </button>
-        
         <button 
           className="btn"
           onClick={() => {
             if (parsedData) {
               const bounds = parsedData.bounds;
-              const width = canvasRef.current.width;
-              const height = canvasRef.current.height;
+              const width = canvasRef.current?.width || 400;
+              const height = canvasRef.current?.height || 400;
               
               const scaleX = (width - 100) / (bounds.maxX - bounds.minX);
               const scaleY = (height - 100) / (bounds.maxY - bounds.minY);
