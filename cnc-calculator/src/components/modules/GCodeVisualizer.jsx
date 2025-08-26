@@ -24,19 +24,68 @@ M30 ; End`
     name: '5-Axis Milling',
     description: 'XYZ + A/B rotation',
     toolTypes: ['End Mill', 'Ball Nose', 'Tapered Mill'],
-    example: `; 5-Axis Milling Example
-G90 G21 G94
-G00 X0 Y0 Z50 A0 B0
-G00 X50 Y50 
-G00 Z5
-G01 Z-10 F100
-G01 X100 Y50 A15 B0 F300
-G02 X150 Y100 I50 J0 A30 B0
-G01 X150 Y150 A45 B0
-G01 X50 Y150 A30 B0
-G01 X50 Y50 A0 B0
+    example: `; 5-Axis Complex Turbine Blade Example
+; Simultaneous 5-axis contouring
+G90 G21 G94 ; Absolute, Metric, Feed/min
+G43 H1 ; Tool length comp
+G00 X0 Y0 Z100 A0 B0 ; Safe position
+
+; --- First blade surface ---
+G00 X20 Y0 Z50 A0 B0
+G00 Z10
+; Leading edge
+G01 X20 Y0 Z5 A-15 B0 F500
+G01 X25 Y5 Z4 A-20 B5 F300
+G01 X30 Y10 Z3 A-25 B10
+G01 X35 Y15 Z2 A-30 B15
+; Blade surface
+G01 X40 Y20 Z1 A-35 B20
+G01 X45 Y25 Z0 A-40 B25
+G01 X50 Y30 Z-1 A-45 B30
+G01 X55 Y35 Z-2 A-40 B25
+G01 X60 Y40 Z-3 A-35 B20
+; Trailing edge
+G01 X65 Y45 Z-2 A-30 B15
+G01 X70 Y50 Z-1 A-25 B10
+G01 X75 Y55 Z0 A-20 B5
+G01 X80 Y60 Z1 A-15 B0
+
+; --- Transition curve ---
+G00 Z20
+G00 X80 Y60 Z20 A0 B45
+G01 Z5 F200
+G02 X60 Y80 Z3 I-20 J0 A15 B45 F250
+G03 X40 Y60 Z1 I0 J-20 A30 B30
+G02 X60 Y40 Z-1 I20 J0 A45 B15
+
+; --- Second blade surface (opposite angle) ---
+G00 Z30
+G00 X20 Y80 A60 B-30
+G01 Z5 F300
+G01 X25 Y75 Z4 A55 B-25
+G01 X30 Y70 Z3 A50 B-20
+G01 X40 Y60 Z2 A45 B-15
+G01 X50 Y50 Z1 A40 B-10
+G01 X60 Y40 Z0 A35 B-5
+G01 X70 Y30 Z-1 A30 B0
+G01 X80 Y20 Z-2 A25 B5
+
+; --- Finishing pass with tool tilt ---
 G00 Z50
-M30`
+G00 X0 Y0 A0 B0
+G00 X30 Y30 A45 B45
+G01 Z0 F150
+; Spiral finishing
+G02 X40 Y30 Z-0.5 I5 J0 A43 B43
+G02 X30 Y40 Z-1 I-5 J5 A41 B41
+G02 X20 Y30 Z-1.5 I-5 J-5 A39 B39
+G02 X30 Y20 Z-2 I5 J-5 A37 B37
+G01 X40 Y30 Z-2.5 A35 B35
+
+; Return to safe position
+G00 Z100
+G00 X0 Y0 A0 B0
+M30 ; End program`
   },
   'lathe': {
     name: 'CNC Lathe/Turning',
@@ -119,7 +168,7 @@ function GCodeVisualizer() {
     const commands = [];
     const errors = [];
     
-    let currentPos = { x: 0, y: 0, z: 0 };
+    let currentPos = { x: 0, y: 0, z: 0, a: 0, b: 0 };
     let feedRate = 100;
     let rapidMode = true;
     let absoluteMode = true;
@@ -224,6 +273,12 @@ function GCodeVisualizer() {
       }
       if (params.Z !== undefined) {
         cmd.endPos.z = absoluteMode ? params.Z : currentPos.z + params.Z;
+      }
+      if (params.A !== undefined) {
+        cmd.endPos.a = absoluteMode ? params.A : currentPos.a + params.A;
+      }
+      if (params.B !== undefined) {
+        cmd.endPos.b = absoluteMode ? params.B : currentPos.b + params.B;
       }
       
       // Handle arcs
@@ -635,7 +690,7 @@ function GCodeVisualizer() {
     if (!parsedData || !toolRef.current) return;
     
     // Calculate current tool position based on playback
-    let toolPos = { x: 0, y: 0, z: 0 };
+    let toolPos = { x: 0, y: 0, z: 0, a: 0, b: 0 };
     
     if (parsedData.commands.length > 0) {
       if (playback.currentLine === 0) {
@@ -656,12 +711,14 @@ function GCodeVisualizer() {
           const currentCmd = parsedData.commands[cmdIndex];
           
           if (currentCmd) {
-            // If we have progress, interpolate
+            // If we have progress, interpolate all axes including rotations
             if (progress > 0) {
               toolPos = {
                 x: currentCmd.startPos.x + (currentCmd.endPos.x - currentCmd.startPos.x) * progress,
                 y: currentCmd.startPos.y + (currentCmd.endPos.y - currentCmd.startPos.y) * progress,
-                z: currentCmd.startPos.z + (currentCmd.endPos.z - currentCmd.startPos.z) * progress
+                z: currentCmd.startPos.z + (currentCmd.endPos.z - currentCmd.startPos.z) * progress,
+                a: (currentCmd.startPos.a || 0) + ((currentCmd.endPos.a || 0) - (currentCmd.startPos.a || 0)) * progress,
+                b: (currentCmd.startPos.b || 0) + ((currentCmd.endPos.b || 0) - (currentCmd.startPos.b || 0)) * progress
               };
             } else {
               // At the start of a command
@@ -678,6 +735,12 @@ function GCodeVisualizer() {
     
     // Update tool group position
     toolRef.current.position.set(toolPos.x, toolPos.y, toolPos.z);
+    
+    // Apply rotations for 5-axis (A rotates around X, B rotates around Y)
+    if (toolPos.a !== undefined || toolPos.b !== undefined) {
+      toolRef.current.rotation.x = (toolPos.a || 0) * Math.PI / 180; // Convert degrees to radians
+      toolRef.current.rotation.y = (toolPos.b || 0) * Math.PI / 180;
+    }
   };
   
   // Draw 3D toolpath and create tool
