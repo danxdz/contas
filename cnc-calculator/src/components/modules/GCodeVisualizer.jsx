@@ -680,9 +680,40 @@ M30 ; End`);
     toolpathRef.current = group;
     
     // Draw tool
-    if (playback.showTool && parsedData.commands.length > 0) {
-      const cmdIndex = playback.currentLine > 0 ? playback.currentLine - 1 : 0;
-      const currentCmd = parsedData.commands[Math.min(cmdIndex, parsedData.commands.length - 1)];
+    if (playback.showTool) {
+      // Calculate current tool position based on playback
+      let toolPos = { x: 0, y: 0, z: 0 };
+      
+      if (parsedData.commands.length > 0) {
+        if (playback.currentLine === 0) {
+          // At start, use initial position (usually 0,0,0 or first command's start)
+          if (parsedData.commands[0]) {
+            toolPos = { ...parsedData.commands[0].startPos };
+          }
+        } else {
+          // Get the position from the last executed command
+          const lastCmdIndex = Math.min(playback.currentLine - 1, parsedData.commands.length - 1);
+          const lastCmd = parsedData.commands[lastCmdIndex];
+          
+          if (lastCmd) {
+            // For partial progress through a command, interpolate position
+            const progress = (playback.currentLine % 1); // Fractional part for interpolation
+            
+            if (progress > 0 && lastCmdIndex < parsedData.commands.length - 1) {
+              // Interpolate between current and next command
+              const nextCmd = parsedData.commands[lastCmdIndex + 1];
+              toolPos = {
+                x: lastCmd.endPos.x + (nextCmd.endPos.x - lastCmd.endPos.x) * progress,
+                y: lastCmd.endPos.y + (nextCmd.endPos.y - lastCmd.endPos.y) * progress,
+                z: lastCmd.endPos.z + (nextCmd.endPos.z - lastCmd.endPos.z) * progress
+              };
+            } else {
+              // Use the end position of the last command
+              toolPos = { ...lastCmd.endPos };
+            }
+          }
+        }
+      }
       
       // Create tool geometry - make it more visible
       const toolLength = 40;
@@ -705,15 +736,13 @@ M30 ; End`);
       
       const tool = new THREE.Mesh(toolGeometry, toolMaterial);
       
-      // Position tool at current command position
-      // Z position: half tool length above the current Z position
+      // Position tool at calculated position
+      // Tool tip should be at the Z position, so offset by half tool length
       tool.position.set(
-        currentCmd.endPos.x, 
-        currentCmd.endPos.y, 
-        currentCmd.endPos.z + toolLength / 2
+        toolPos.x, 
+        toolPos.y, 
+        toolPos.z + toolLength / 2
       );
-      
-      // No rotation needed - cylinder is vertical by default in Three.js
       
       // Add a holder/shank for better visibility
       const shankGeometry = new THREE.CylinderGeometry(
@@ -729,15 +758,30 @@ M30 ; End`);
       });
       const shank = new THREE.Mesh(shankGeometry, shankMaterial);
       shank.position.set(
-        currentCmd.endPos.x,
-        currentCmd.endPos.y,
-        currentCmd.endPos.z + toolLength + 10
+        toolPos.x,
+        toolPos.y,
+        toolPos.z + toolLength + 10
       );
       
-      // Create a group for tool and shank
+      // Add a small sphere at tool tip for better visibility
+      const tipGeometry = new THREE.SphereGeometry(playback.toolDiameter / 2 * 1.1, 16, 16);
+      const tipMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0xffff00,
+        emissive: 0xffff00,
+        emissiveIntensity: 0.5
+      });
+      const tip = new THREE.Mesh(tipGeometry, tipMaterial);
+      tip.position.set(
+        toolPos.x,
+        toolPos.y,
+        toolPos.z
+      );
+      
+      // Create a group for tool, shank, and tip
       const toolGroup = new THREE.Group();
       toolGroup.add(tool);
       toolGroup.add(shank);
+      toolGroup.add(tip);
       
       sceneRef.current.add(toolGroup);
       toolRef.current = toolGroup;
