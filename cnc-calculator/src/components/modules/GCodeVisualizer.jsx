@@ -639,29 +639,39 @@ function GCodeVisualizer() {
     
     if (parsedData.commands.length > 0) {
       if (playback.currentLine === 0) {
+        // At start, use the first command's start position
         if (parsedData.commands[0]) {
           toolPos = { ...parsedData.commands[0].startPos };
         }
+      } else if (playback.currentLine >= parsedData.commands.length) {
+        // At end, use last command's end position
+        const lastCmd = parsedData.commands[parsedData.commands.length - 1];
+        toolPos = { ...lastCmd.endPos };
       } else {
-        // currentLine is the index in commands array, not line number
-        const cmdIndex = Math.floor(playback.currentLine - 1); // -1 because currentLine starts at 1 when playing
-        const progress = (playback.currentLine - 1) - cmdIndex; // Fractional part
+        // During playback, interpolate position
+        const cmdIndex = Math.floor(playback.currentLine) - 1;
+        const progress = playback.currentLine - Math.floor(playback.currentLine);
         
         if (cmdIndex >= 0 && cmdIndex < parsedData.commands.length) {
           const currentCmd = parsedData.commands[cmdIndex];
           
           if (currentCmd) {
-            // Interpolate within the current command based on progress
-            toolPos = {
-              x: currentCmd.startPos.x + (currentCmd.endPos.x - currentCmd.startPos.x) * progress,
-              y: currentCmd.startPos.y + (currentCmd.endPos.y - currentCmd.startPos.y) * progress,
-              z: currentCmd.startPos.z + (currentCmd.endPos.z - currentCmd.startPos.z) * progress
-            };
+            // If we have progress, interpolate
+            if (progress > 0) {
+              toolPos = {
+                x: currentCmd.startPos.x + (currentCmd.endPos.x - currentCmd.startPos.x) * progress,
+                y: currentCmd.startPos.y + (currentCmd.endPos.y - currentCmd.startPos.y) * progress,
+                z: currentCmd.startPos.z + (currentCmd.endPos.z - currentCmd.startPos.z) * progress
+              };
+            } else {
+              // At the start of a command
+              toolPos = { ...currentCmd.startPos };
+            }
           }
-        } else if (cmdIndex >= parsedData.commands.length && parsedData.commands.length > 0) {
-          // Past the end, use last position
-          const lastCmd = parsedData.commands[parsedData.commands.length - 1];
-          toolPos = { ...lastCmd.endPos };
+        } else if (cmdIndex === -1 && parsedData.commands[0]) {
+          // Special case: currentLine is between 0 and 1
+          const firstCmd = parsedData.commands[0];
+          toolPos = { ...firstCmd.startPos };
         }
       }
     }
@@ -966,6 +976,8 @@ function GCodeVisualizer() {
   // Effects
   useEffect(() => {
     parseGCode();
+    // Reset playback when G-code changes
+    setPlayback(prev => ({ ...prev, currentLine: 0, isPlaying: false }));
   }, [gcode]);
   
   // Handle 2D canvas and animation
@@ -1441,16 +1453,17 @@ function GCodeVisualizer() {
         
         <button 
           className="btn"
-          onClick={() => setPlayback(prev => ({ ...prev, currentLine: 0, isPlaying: false }))}
+          onClick={() => {
+            setPlayback(prev => ({ ...prev, currentLine: 0, isPlaying: false }));
+            // Force tool position update after reset
+            setTimeout(() => {
+              if (toolRef.current) {
+                updateToolPosition();
+              }
+            }, 50);
+          }}
         >
           ⏹ Reset
-        </button>
-        
-        <button 
-          className="btn"
-          onClick={() => setPlayback(prev => ({ ...prev, currentLine: 0 }))}
-        >
-          ⏮ Reset
         </button>
         
         <button 
