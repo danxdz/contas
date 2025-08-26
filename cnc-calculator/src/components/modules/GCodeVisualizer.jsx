@@ -743,6 +743,167 @@ function GCodeVisualizer() {
     }
   };
   
+  // Add machine fixtures and table
+  const addMachineFixtures = () => {
+    if (!sceneRef.current) return;
+    
+    const isLathe = machineType === 'lathe' || machineType === 'swiss';
+    
+    if (!isLathe) {
+      // Add milling machine table
+      const tableWidth = 300;
+      const tableDepth = 200;
+      const tableHeight = 20;
+      
+      // Main table
+      const tableGeometry = new THREE.BoxGeometry(tableWidth, tableDepth, tableHeight);
+      const tableMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x555555,
+        metalness: 0.7,
+        roughness: 0.3
+      });
+      const table = new THREE.Mesh(tableGeometry, tableMaterial);
+      table.position.set(0, 0, -tableHeight/2 - 5);
+      table.name = 'table';
+      sceneRef.current.add(table);
+      
+      // T-slots on table
+      const slotWidth = 2;
+      const slotDepth = 5;
+      const slotSpacing = 50;
+      for (let i = -2; i <= 2; i++) {
+        const slotGeometry = new THREE.BoxGeometry(tableWidth, slotWidth, slotDepth);
+        const slotMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+        const slot = new THREE.Mesh(slotGeometry, slotMaterial);
+        slot.position.set(0, i * slotSpacing, -2);
+        slot.name = 'slot';
+        sceneRef.current.add(slot);
+      }
+      
+      // Add vise/fixture
+      const viseWidth = 80;
+      const viseDepth = 60;
+      const viseHeight = 40;
+      
+      // Fixed jaw
+      const fixedJawGeometry = new THREE.BoxGeometry(viseWidth, 15, viseHeight);
+      const viseMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x4444ff,
+        metalness: 0.8,
+        roughness: 0.2
+      });
+      const fixedJaw = new THREE.Mesh(fixedJawGeometry, viseMaterial);
+      fixedJaw.position.set(0, -viseDepth/2, viseHeight/2);
+      fixedJaw.name = 'vise';
+      sceneRef.current.add(fixedJaw);
+      
+      // Movable jaw
+      const movableJawGeometry = new THREE.BoxGeometry(viseWidth, 12, viseHeight);
+      const movableJaw = new THREE.Mesh(movableJawGeometry, viseMaterial);
+      movableJaw.position.set(0, viseDepth/2 - 10, viseHeight/2);
+      movableJaw.name = 'vise';
+      sceneRef.current.add(movableJaw);
+      
+      // Vise base
+      const viseBaseGeometry = new THREE.BoxGeometry(viseWidth + 20, viseDepth + 20, 10);
+      const viseBaseMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x666666,
+        metalness: 0.6
+      });
+      const viseBase = new THREE.Mesh(viseBaseGeometry, viseBaseMaterial);
+      viseBase.position.set(0, 0, 5);
+      viseBase.name = 'vise';
+      sceneRef.current.add(viseBase);
+      
+      // Add workpiece stock
+      const stockWidth = 100;
+      const stockDepth = 40;
+      const stockHeight = 30;
+      
+      const stockGeometry = new THREE.BoxGeometry(stockWidth, stockDepth, stockHeight);
+      const stockMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0xccaa88,
+        opacity: 0.9,
+        transparent: true
+      });
+      const workpiece = new THREE.Mesh(stockGeometry, stockMaterial);
+      workpiece.position.set(0, 0, stockHeight/2 + 10);
+      workpiece.name = 'workpiece';
+      sceneRef.current.add(workpiece);
+      
+      // Add clamps
+      for (let i = -1; i <= 1; i += 2) {
+        const clampGeometry = new THREE.CylinderGeometry(3, 3, 40, 8);
+        const clampMaterial = new THREE.MeshPhongMaterial({ color: 0xff8800 });
+        const clamp = new THREE.Mesh(clampGeometry, clampMaterial);
+        clamp.rotation.x = -Math.PI / 2;
+        clamp.position.set(i * 55, 0, 20);
+        clamp.name = 'clamp';
+        sceneRef.current.add(clamp);
+      }
+    } else {
+      // Lathe chuck
+      const chuckRadius = 40;
+      const chuckDepth = 30;
+      
+      // Chuck body
+      const chuckGeometry = new THREE.CylinderGeometry(chuckRadius, chuckRadius * 1.2, chuckDepth, 32);
+      const chuckMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x666666,
+        metalness: 0.8,
+        roughness: 0.2
+      });
+      const chuck = new THREE.Mesh(chuckGeometry, chuckMaterial);
+      chuck.rotation.z = Math.PI / 2;
+      chuck.position.set(0, 0, -100);
+      chuck.name = 'chuck';
+      sceneRef.current.add(chuck);
+      
+      // Chuck jaws (3-jaw chuck)
+      for (let i = 0; i < 3; i++) {
+        const angle = (i * 120) * Math.PI / 180;
+        const jawGeometry = new THREE.BoxGeometry(10, 15, chuckDepth);
+        const jawMaterial = new THREE.MeshPhongMaterial({ color: 0x444444 });
+        const jaw = new THREE.Mesh(jawGeometry, jawMaterial);
+        jaw.position.set(
+          Math.cos(angle) * (chuckRadius - 10),
+          Math.sin(angle) * (chuckRadius - 10),
+          -100
+        );
+        jaw.rotation.z = angle;
+        jaw.name = 'chuck';
+        sceneRef.current.add(jaw);
+      }
+      
+      // Tailstock
+      const tailstockGeometry = new THREE.ConeGeometry(5, 20, 16);
+      const tailstockMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x888888,
+        metalness: 0.7
+      });
+      const tailstock = new THREE.Mesh(tailstockGeometry, tailstockMaterial);
+      tailstock.rotation.z = -Math.PI / 2;
+      tailstock.position.set(0, 0, 80);
+      tailstock.name = 'tailstock';
+      sceneRef.current.add(tailstock);
+      
+      // Lathe bed/ways
+      const bedLength = 250;
+      const bedWidth = 100;
+      const bedHeight = 20;
+      
+      const bedGeometry = new THREE.BoxGeometry(bedWidth, bedHeight, bedLength);
+      const bedMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x444444,
+        metalness: 0.6
+      });
+      const bed = new THREE.Mesh(bedGeometry, bedMaterial);
+      bed.position.set(0, -50, 0);
+      bed.name = 'bed';
+      sceneRef.current.add(bed);
+    }
+  };
+  
   // Draw 3D toolpath and create tool
   const draw3D = () => {
     if (!parsedData || !sceneRef.current) return;
@@ -776,6 +937,21 @@ function GCodeVisualizer() {
       sceneRef.current.remove(toolRef.current);
       toolRef.current = null;
     }
+    
+    // Remove old fixtures (table, vise, chuck, etc.)
+    const fixturesToRemove = [];
+    sceneRef.current.traverse((child) => {
+      if (child.name === 'table' || child.name === 'slot' || child.name === 'vise' || 
+          child.name === 'workpiece' || child.name === 'clamp' || child.name === 'chuck' || 
+          child.name === 'tailstock' || child.name === 'bed') {
+        fixturesToRemove.push(child);
+      }
+    });
+    fixturesToRemove.forEach(fixture => {
+      if (fixture.geometry) fixture.geometry.dispose();
+      if (fixture.material) fixture.material.dispose();
+      sceneRef.current.remove(fixture);
+    });
     
     const group = new THREE.Group();
     
@@ -985,6 +1161,9 @@ function GCodeVisualizer() {
       );
       group.add(box);
     }
+    
+    // Add machine table and fixtures
+    addMachineFixtures();
   };
   
   // Animation loop for 2D only (rendering only, no state updates)
