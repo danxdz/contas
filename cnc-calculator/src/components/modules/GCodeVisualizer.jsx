@@ -1101,17 +1101,105 @@ M30 ; End`);
       <div className="form-row">
         <div style={{ flex: 1 }}>
           <label>G-Code Input</label>
-          <textarea
-            value={gcode}
-            onChange={(e) => setGcode(e.target.value)}
-            style={{ 
-              width: '100%', 
-              height: '200px', 
-              fontFamily: 'monospace',
-              fontSize: '12px'
-            }}
-            placeholder="Paste your G-code here..."
-          />
+          <div style={{ 
+            position: 'relative',
+            width: '100%',
+            height: '200px',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            overflow: 'hidden'
+          }}>
+            {/* Line numbers and highlighting overlay */}
+            {parsedData && (
+              <div style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: '40px',
+                height: '100%',
+                backgroundColor: '#f0f0f0',
+                borderRight: '1px solid #ddd',
+                overflow: 'hidden',
+                pointerEvents: 'none',
+                zIndex: 1
+              }}>
+                {gcode.split('\n').map((_, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      height: '1.2em',
+                      lineHeight: '1.2em',
+                      fontSize: '12px',
+                      fontFamily: 'monospace',
+                      paddingRight: '5px',
+                      textAlign: 'right',
+                      color: parsedData && playback.currentLine > 0 && 
+                             parsedData.commands[Math.min(playback.currentLine - 1, parsedData.commands.length - 1)]?.line === index + 1 
+                             ? '#ff0000' : '#666',
+                      backgroundColor: parsedData && playback.currentLine > 0 && 
+                                     parsedData.commands[Math.min(playback.currentLine - 1, parsedData.commands.length - 1)]?.line === index + 1 
+                                     ? '#ffeeee' : 'transparent',
+                      fontWeight: parsedData && playback.currentLine > 0 && 
+                                parsedData.commands[Math.min(playback.currentLine - 1, parsedData.commands.length - 1)]?.line === index + 1 
+                                ? 'bold' : 'normal'
+                    }}
+                  >
+                    {index + 1}
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* G-code textarea */}
+            <textarea
+              value={gcode}
+              onChange={(e) => setGcode(e.target.value)}
+              ref={(el) => {
+                if (el && parsedData && playback.isPlaying && playback.currentLine > 0) {
+                  // Auto-scroll to current line
+                  const currentCmd = parsedData.commands[Math.min(playback.currentLine - 1, parsedData.commands.length - 1)];
+                  if (currentCmd) {
+                    const lineHeight = 14.4; // 1.2em * 12px
+                    const scrollTop = Math.max(0, (currentCmd.line - 6) * lineHeight);
+                    if (Math.abs(el.scrollTop - scrollTop) > lineHeight * 2) {
+                      el.scrollTop = scrollTop;
+                    }
+                  }
+                }
+              }}
+              style={{ 
+                position: 'absolute',
+                left: parsedData ? '40px' : '0',
+                top: 0,
+                width: parsedData ? 'calc(100% - 40px)' : '100%',
+                height: '100%',
+                fontFamily: 'monospace',
+                fontSize: '12px',
+                lineHeight: '1.2em',
+                padding: '0 5px',
+                border: 'none',
+                outline: 'none',
+                resize: 'none',
+                backgroundColor: 'transparent'
+              }}
+              placeholder="Paste your G-code here..."
+            />
+            
+            {/* Current line highlight */}
+            {parsedData && playback.currentLine > 0 && parsedData.commands[Math.min(playback.currentLine - 1, parsedData.commands.length - 1)] && (
+              <div style={{
+                position: 'absolute',
+                left: '40px',
+                top: `${(parsedData.commands[Math.min(playback.currentLine - 1, parsedData.commands.length - 1)].line - 1) * 14.4}px`,
+                width: 'calc(100% - 40px)',
+                height: '14.4px',
+                backgroundColor: 'rgba(255, 255, 0, 0.3)',
+                pointerEvents: 'none',
+                zIndex: 0,
+                transition: 'top 0.1s ease-out'
+              }} />
+            )}
+          </div>
           
           <div className="form-row" style={{ marginTop: '10px' }}>
             <button className="btn" onClick={parseGCode}>
