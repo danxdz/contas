@@ -4,6 +4,9 @@ import React from 'react';
 // Import existing modules
 export { default as ToolLifeCalculator } from './ToolLifeCalculator';
 export { default as CircularInterpolation } from './CircularInterpolation';
+export { default as PowerTorqueCalculator } from './PowerTorqueCalculator';
+export { default as GeometryTools } from './GeometryTools';
+export { default as PocketMillingWizard } from './PocketMillingWizard';
 
 // Placeholder component generator
 const createPlaceholder = (name, description) => {
@@ -23,22 +26,6 @@ const createPlaceholder = (name, description) => {
     );
   };
 };
-
-// Export placeholder modules
-export const PowerTorqueCalculator = createPlaceholder(
-  'Power & Torque Calculator',
-  'Calculate required spindle power, torque requirements, and machine capability checks.'
-);
-
-export const GeometryTools = createPlaceholder(
-  'Advanced Geometry Tools',
-  'Bolt circle calculator, chamfer/countersink calculator, compound angles, and ball nose calculations.'
-);
-
-export const PocketMillingWizard = createPlaceholder(
-  'Pocket Milling Wizard',
-  'Calculate optimal toolpaths for rectangular and circular pockets with trochoidal strategies.'
-);
 
 export const FeedsSpeedsOptimizer = createPlaceholder(
   'Feeds & Speeds Optimizer',
