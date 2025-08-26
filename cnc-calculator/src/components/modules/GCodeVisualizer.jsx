@@ -413,6 +413,12 @@ M30 ; End`);
   const init3D = () => {
     if (!canvas3DRef.current) return;
     
+    // Clean up any existing renderer
+    if (rendererRef.current) {
+      rendererRef.current.dispose();
+      rendererRef.current = null;
+    }
+    
     // Scene setup
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1a1a1a);
@@ -429,14 +435,20 @@ M30 ; End`);
     camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
     
-    // Renderer setup
-    const renderer = new THREE.WebGLRenderer({ 
-      canvas: canvas3DRef.current,
-      antialias: true 
-    });
-    renderer.setSize(canvas3DRef.current.clientWidth, canvas3DRef.current.clientHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    rendererRef.current = renderer;
+    // Renderer setup - create new renderer each time
+    try {
+      const renderer = new THREE.WebGLRenderer({ 
+        canvas: canvas3DRef.current,
+        antialias: true,
+        alpha: true
+      });
+      renderer.setSize(canvas3DRef.current.clientWidth, canvas3DRef.current.clientHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      rendererRef.current = renderer;
+    } catch (error) {
+      console.error('Failed to create WebGL renderer:', error);
+      return;
+    }
     
     // Lights
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -753,11 +765,22 @@ M30 ; End`);
       updateCanvasSize();
       window.addEventListener('resize', updateCanvasSize);
       
-      // Start animation loop
-      animationRef.current = requestAnimationFrame(animate);
+      // Start animation loop only for 2D
+      if (viewMode === '2D') {
+        animationRef.current = requestAnimationFrame(animate);
+      }
       
       return () => {
         window.removeEventListener('resize', updateCanvasSize);
+        if (animationRef.current) {
+          cancelAnimationFrame(animationRef.current);
+        }
+      };
+    } else if (viewMode === '3D') {
+      // Start animation loop for 3D
+      animationRef.current = requestAnimationFrame(animate);
+      
+      return () => {
         if (animationRef.current) {
           cancelAnimationFrame(animationRef.current);
         }
@@ -769,7 +792,20 @@ M30 ; End`);
   useEffect(() => {
     if (viewMode === '3D') {
       const cleanup = init3D();
-      return cleanup;
+      return () => {
+        if (cleanup) cleanup();
+        // Additional cleanup
+        if (rendererRef.current) {
+          rendererRef.current.dispose();
+          rendererRef.current = null;
+        }
+        if (sceneRef.current) {
+          sceneRef.current = null;
+        }
+        if (cameraRef.current) {
+          cameraRef.current = null;
+        }
+      };
     }
   }, [viewMode]);
   

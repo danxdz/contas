@@ -8,6 +8,8 @@ export { default as PowerTorqueCalculator } from './PowerTorqueCalculator';
 export { default as GeometryTools } from './GeometryTools';
 export { default as PocketMillingWizard } from './PocketMillingWizard';
 export { default as GCodeVisualizer } from './GCodeVisualizer';
+export { default as FeedsSpeedsOptimizer } from './FeedsSpeedsOptimizer';
+export { default as ToolDatabase } from './ToolDatabase';
 
 // Placeholder component generator
 const createPlaceholder = (name, description) => {
@@ -27,16 +29,6 @@ const createPlaceholder = (name, description) => {
     );
   };
 };
-
-export const FeedsSpeedsOptimizer = createPlaceholder(
-  'Feeds & Speeds Optimizer',
-  'Advanced optimization with stability lobes, sweet spot finder, and chip thinning calculations.'
-);
-
-export const ToolDatabase = createPlaceholder(
-  'Tool Database',
-  'Save and manage your cutting tools with all parameters. Import/export tool libraries.'
-);
 
 export const ShopFloorUtilities = createPlaceholder(
   'Shop Floor Utilities',
