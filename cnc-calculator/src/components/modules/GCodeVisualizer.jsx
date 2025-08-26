@@ -736,8 +736,12 @@ M30 ; End`);
       
       const tool = new THREE.Mesh(toolGeometry, toolMaterial);
       
+      // Rotate tool to align with Z-axis (cylinder is along Y by default)
+      tool.rotation.x = -Math.PI / 2;
+      
       // Position tool at calculated position
-      // Tool tip should be at the Z position, so offset by half tool length
+      // When rotated, the tool extends along Z-axis
+      // Bottom of tool should be at toolPos.z
       tool.position.set(
         toolPos.x, 
         toolPos.y, 
@@ -757,6 +761,10 @@ M30 ; End`);
         roughness: 0.2
       });
       const shank = new THREE.Mesh(shankGeometry, shankMaterial);
+      
+      // Rotate shank to align with Z-axis
+      shank.rotation.x = -Math.PI / 2;
+      
       shank.position.set(
         toolPos.x,
         toolPos.y,
@@ -810,20 +818,9 @@ M30 ; End`);
     }
   };
   
-  // Animation loop for 2D only
+  // Animation loop for 2D only (rendering only, no state updates)
   const animate = () => {
     if (viewMode !== '2D') return;
-    
-    if (playback.isPlaying && parsedData) {
-      setPlayback(prev => ({
-        ...prev,
-        currentLine: Math.min(prev.currentLine + prev.speed, parsedData.commands.length)
-      }));
-      
-      if (playback.currentLine >= parsedData.commands.length) {
-        setPlayback(prev => ({ ...prev, isPlaying: false }));
-      }
-    }
     
     draw();
     animationRef.current = requestAnimationFrame(animate);
@@ -969,11 +966,11 @@ M30 ; End`);
     }
   }, [viewMode]);
   
-  // Handle 3D playback animation separately
+  // Handle playback animation for both 2D and 3D
   useEffect(() => {
-    if (viewMode === '3D' && playback.isPlaying && parsedData) {
+    if (playback.isPlaying && parsedData) {
       let animationId;
-      const animate = () => {
+      const updatePlayback = () => {
         setPlayback(prev => {
           const newLine = Math.min(prev.currentLine + prev.speed, parsedData.commands.length);
           if (newLine >= parsedData.commands.length) {
@@ -981,15 +978,15 @@ M30 ; End`);
           }
           return { ...prev, currentLine: newLine };
         });
-        animationId = requestAnimationFrame(animate);
+        animationId = requestAnimationFrame(updatePlayback);
       };
-      animationId = requestAnimationFrame(animate);
+      animationId = requestAnimationFrame(updatePlayback);
       
       return () => {
         if (animationId) cancelAnimationFrame(animationId);
       };
     }
-  }, [viewMode, playback.isPlaying, playback.speed, parsedData]);
+  }, [playback.isPlaying, playback.speed, parsedData]);
   
   // Handle 3D scene updates when playback changes
   useEffect(() => {
