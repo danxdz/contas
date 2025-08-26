@@ -873,20 +873,53 @@ function GCodeVisualizer() {
       sceneRef.current.add(chuck);
       
       // Chuck jaws (3-jaw chuck) - positioned to hold workpiece
-      const jawOffset = workpieceSetup.diameter / 2 + 5;
+      const jawRadius = workpieceSetup.diameter / 2 - 1; // Jaws grip tightly
       for (let i = 0; i < 3; i++) {
         const angle = (i * 120) * Math.PI / 180;
-        const jawGeometry = new THREE.BoxGeometry(8, 12, chuckDepth);
-        const jawMaterial = new THREE.MeshPhongMaterial({ color: 0x444444 });
+        
+        // Create wedge-shaped jaw
+        const jawGeometry = new THREE.BoxGeometry(12, 8, chuckDepth + 10);
+        const jawMaterial = new THREE.MeshPhongMaterial({ 
+          color: 0x333333,
+          metalness: 0.9,
+          roughness: 0.2
+        });
         const jaw = new THREE.Mesh(jawGeometry, jawMaterial);
+        
+        // Position jaw to grip the workpiece
+        const jawX = Math.cos(angle) * (jawRadius + 6);
+        const jawY = Math.sin(angle) * (jawRadius + 6);
+        
         jaw.position.set(
-          Math.cos(angle) * jawOffset,
-          Math.sin(angle) * jawOffset,
-          -(workpieceSetup.length/2 + chuckDepth/2 + 5)
+          jawX,
+          jawY,
+          -(workpieceSetup.length/2 + chuckDepth/2)
         );
+        
+        // Rotate jaw to point toward center
         jaw.rotation.z = angle;
         jaw.name = 'chuck';
         sceneRef.current.add(jaw);
+        
+        // Add jaw face that contacts workpiece (smaller piece)
+        const jawFaceGeometry = new THREE.BoxGeometry(6, 4, 15);
+        const jawFaceMaterial = new THREE.MeshPhongMaterial({ 
+          color: 0x555555,
+          metalness: 0.7
+        });
+        const jawFace = new THREE.Mesh(jawFaceGeometry, jawFaceMaterial);
+        
+        const faceX = Math.cos(angle) * (jawRadius + 2);
+        const faceY = Math.sin(angle) * (jawRadius + 2);
+        
+        jawFace.position.set(
+          faceX,
+          faceY,
+          -(workpieceSetup.length/2 + 10)
+        );
+        jawFace.rotation.z = angle;
+        jawFace.name = 'chuck';
+        sceneRef.current.add(jawFace);
       }
       
       // Lathe workpiece (cylindrical stock)
@@ -897,10 +930,10 @@ function GCodeVisualizer() {
           workpieceSetup.length,
           32
         );
-        const workpieceMaterial = new THREE.MeshPhongMaterial({ 
-          color: 0x8888cc,  // Blueish metal color
-          metalness: 0.7,
-          roughness: 0.3
+        const workpieceMaterial = new THREE.MeshStandardMaterial({ 
+          color: 0xaaaaaa,  // Raw aluminum/steel color
+          metalness: 0.9,
+          roughness: 0.4
         });
         const workpiece = new THREE.Mesh(workpieceGeometry, workpieceMaterial);
         workpiece.rotation.z = Math.PI / 2; // Rotate to align with Z axis
