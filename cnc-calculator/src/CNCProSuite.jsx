@@ -339,8 +339,9 @@ M30 ; End`
     
     lines.forEach(line => {
       const trimmed = line.trim();
-      if (trimmed === '' || trimmed.startsWith(';')) {
-        positions.push({ ...current, comment: true });
+      // Check for empty lines or comments (both ; and parentheses style)
+      if (trimmed === '' || trimmed.startsWith(';') || trimmed.startsWith('(')) {
+        positions.push({ ...current, comment: true, line: trimmed });
         return;
       }
       
@@ -356,7 +357,7 @@ M30 ; End`
       if (f) current.f = parseFloat(f[1]);
       if (s) current.s = parseInt(s[1]);
       
-      positions.push({ ...current, comment: false });
+      positions.push({ ...current, comment: false, line: trimmed });
     });
     
     return positions;
@@ -617,7 +618,8 @@ M30 ; End`
     const safeCurrentLine = Math.min(Math.max(0, simulation.currentLine), positions.length - 1);
     const currentPos = positions[safeCurrentLine];
     
-    if (currentPos && !currentPos.comment) {
+    // Always update position to the last known coordinates (even on comment lines)
+    if (currentPos) {
       toolRef.current.position.set(currentPos.x, currentPos.y, currentPos.z + 50);
       
       // Update spindle speed from G-code
@@ -644,6 +646,7 @@ M30 ; End`
         let nextLine = prev.currentLine + 1;
         while (nextLine < lines.length && 
                (lines[nextLine].trim().startsWith(';') || 
+                lines[nextLine].trim().startsWith('(') ||
                 lines[nextLine].trim() === '')) {
           nextLine++;
         }
@@ -1158,7 +1161,9 @@ M30 ; End`
       let nextLine = prev.currentLine + 1;
       // Skip comments and empty lines
       while (nextLine < lines.length && 
-             (lines[nextLine].trim().startsWith(';') || lines[nextLine].trim() === '')) {
+             (lines[nextLine].trim().startsWith(';') || 
+              lines[nextLine].trim().startsWith('(') ||
+              lines[nextLine].trim() === '')) {
         nextLine++;
       }
       nextLine = Math.min(nextLine, lines.length - 1);
@@ -1181,7 +1186,9 @@ M30 ; End`
       let prevLine = prev.currentLine - 1;
       // Skip comments and empty lines
       while (prevLine >= 0 && 
-             (lines[prevLine].trim().startsWith(';') || lines[prevLine].trim() === '')) {
+             (lines[prevLine].trim().startsWith(';') || 
+              lines[prevLine].trim().startsWith('(') ||
+              lines[prevLine].trim() === '')) {
         prevLine--;
       }
       prevLine = Math.max(prevLine, 0);
