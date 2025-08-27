@@ -46,12 +46,15 @@
   border: 1px solid #d1d1d1;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   min-width: 200px;
-  display: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
   z-index: 1000;
 }
 
 .menu-item:hover .menu-dropdown {
-  display: block;
+  opacity: 1;
+  visibility: visible;
 }
 
 .menu-option {
