@@ -546,9 +546,9 @@
   margin-right: 4px;
 }
 
-/* G-Code Editor - Compact */
+/* G-Code Editor - Expanded */
 .gcode-editor {
-  height: 120px;
+  height: 200px;
   margin: 6px;
   background: var(--bg-primary);
   border-radius: var(--border-radius);
@@ -604,18 +604,24 @@
 }
 
 .line-numbers {
-  width: 40px;
+  width: 45px;
   background: var(--bg-tertiary);
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 1.4;
+  font-size: 11px;
+  line-height: 1.4em;
   padding: 6px 4px;
   text-align: right;
   user-select: none;
   overflow-y: auto;
   overflow-x: hidden;
   flex-shrink: 0;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.line-numbers::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 .gcode-textarea {
@@ -625,11 +631,15 @@
   background: var(--bg-secondary);
   color: var(--text-primary);
   font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 1.4;
+  font-size: 11px;
+  line-height: 1.4em;
   resize: none;
   outline: none;
   min-width: 0;
+  overflow-y: auto;
+  overflow-x: auto;
+  white-space: pre;
+  scroll-behavior: smooth;
 }
 
 .gcode-textarea:focus {
@@ -772,7 +782,7 @@
   }
   
   .gcode-editor {
-    height: 80px;
+    height: 150px;
     margin: 4px;
   }
   

@@ -276,6 +276,10 @@ M30 ; Program end`);
   const toolpathRef = useRef(null);
   const animationRef = useRef(null);
   
+  // Editor refs
+  const textareaRef = useRef(null);
+  const lineNumbersRef = useRef(null);
+  
   // Initialize Three.js scene
   useEffect(() => {
     if (!mountRef.current) return;
@@ -444,6 +448,18 @@ M30 ; Program end`);
     
     return () => clearInterval(interval);
   }, [simulation.isRunning, simulation.isPaused, simulation.speed, simulation.currentLine]);
+  
+  // Auto-scroll to current line
+  useEffect(() => {
+    if (textareaRef.current && lineNumbersRef.current && simulation.currentLine >= 0) {
+      const lineHeight = parseFloat(getComputedStyle(textareaRef.current).lineHeight) || 15.4;
+      const scrollPosition = simulation.currentLine * lineHeight - textareaRef.current.clientHeight / 2;
+      
+      // Smooth scroll to current line
+      textareaRef.current.scrollTop = Math.max(0, scrollPosition);
+      lineNumbersRef.current.scrollTop = Math.max(0, scrollPosition);
+    }
+  }, [simulation.currentLine]);
   
   // Add scene helpers (grid, axes)
   const addSceneHelpers = () => {
@@ -1839,25 +1855,39 @@ M30 ; Program end`);
             <button className="btn btn-small" onClick={optimizeGCode}>Optimize</button>
           </div>
         </div>
-        <div className="gcode-content" style={{ position: 'relative', height: '100%', display: 'flex' }}>
-          <div className="line-numbers" style={{ 
-            width: '40px', 
-            backgroundColor: 'var(--bg-tertiary)', 
-            overflow: 'hidden',
-            fontSize: '10px',
-            lineHeight: '1.4',
-            padding: '6px 4px',
-            textAlign: 'right',
-            userSelect: 'none'
-          }}>
+        <div className="gcode-content" style={{ position: 'relative', height: '100%', display: 'flex', overflow: 'hidden' }}>
+          <div 
+            ref={lineNumbersRef}
+            className="line-numbers" 
+            style={{ 
+              width: '45px', 
+              backgroundColor: 'var(--bg-tertiary)', 
+              overflowY: 'hidden',
+              overflowX: 'hidden',
+              fontSize: '11px',
+              lineHeight: '1.4em',
+              padding: '6px 4px',
+              textAlign: 'right',
+              userSelect: 'none',
+              fontFamily: 'var(--font-mono)'
+            }}
+            onScroll={(e) => {
+              // Sync textarea scroll with line numbers
+              if (textareaRef.current) {
+                textareaRef.current.scrollTop = e.target.scrollTop;
+              }
+            }}
+          >
             {gcode.split('\n').map((_, i) => (
               <div 
                 key={i} 
                 style={{
+                  height: '1.4em',
                   backgroundColor: simulation.currentLine === i ? '#ffeb3b' : 'transparent',
                   color: simulation.currentLine === i ? '#000' : 'var(--text-muted)',
                   fontWeight: simulation.currentLine === i ? 'bold' : 'normal',
-                  padding: '0 2px'
+                  padding: '0 4px',
+                  borderRadius: simulation.currentLine === i ? '2px' : '0'
                 }}
               >
                 {i + 1}
@@ -1865,10 +1895,17 @@ M30 ; Program end`);
             ))}
           </div>
           <textarea
+            ref={textareaRef}
             value={gcode}
             onChange={(e) => {
               setGcode(e.target.value);
               setParsedProgram(null);
+            }}
+            onScroll={(e) => {
+              // Sync line numbers scroll with textarea
+              if (lineNumbersRef.current) {
+                lineNumbersRef.current.scrollTop = e.target.scrollTop;
+              }
             }}
             placeholder="Paste G-Code here or load from file..."
             className="gcode-textarea"
@@ -1876,11 +1913,11 @@ M30 ; Program end`);
             style={{
               flex: 1,
               paddingLeft: '8px',
-              lineHeight: '1.4',
-              fontSize: '10px',
+              lineHeight: '1.4em',
+              fontSize: '11px',
               fontFamily: 'var(--font-mono)',
               backgroundImage: simulation.currentLine >= 0 ? 
-                `linear-gradient(transparent ${simulation.currentLine * 14}px, rgba(255, 235, 59, 0.2) ${simulation.currentLine * 14}px, rgba(255, 235, 59, 0.2) ${(simulation.currentLine + 1) * 14}px, transparent ${(simulation.currentLine + 1) * 14}px)` : 
+                `linear-gradient(transparent ${simulation.currentLine * 1.4}em, rgba(255, 235, 59, 0.2) ${simulation.currentLine * 1.4}em, rgba(255, 235, 59, 0.2) ${(simulation.currentLine + 1) * 1.4}em, transparent ${(simulation.currentLine + 1) * 1.4}em)` : 
                 'none'
             }}
           />
