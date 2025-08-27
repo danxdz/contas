@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
 const StepProcessor = ({ stepFile, onGenerateCode }) => {
   const [selectedFeatures, setSelectedFeatures] = useState([]);
   const [toolAssignments, setToolAssignments] = useState({});
+  const [viewMode, setViewMode] = useState('shaded');
   const [parameters, setParameters] = useState({
     feedRate: 500,
     spindleSpeed: 3000,
@@ -202,28 +205,12 @@ const StepProcessor = ({ stepFile, onGenerateCode }) => {
       </div>
       
       <div className="step-viewer">
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          height: '100%',
-          color: '#666'
-        }}>
-          <div style={{ textAlign: 'center' }}>
-            <h3>3D Preview</h3>
-            <p>STEP file visualization will appear here</p>
-            <p style={{ marginTop: '10px', fontSize: '11px' }}>
-              Feature detection and toolpath generation based on geometry
-            </p>
-          </div>
-        </div>
-        
-        <div className="step-controls">
-          <button>Wireframe</button>
-          <button>Shaded</button>
-          <button>Features</button>
-          <button>Toolpaths</button>
-        </div>
+        <StepViewer3D 
+          stepFile={stepFile}
+          selectedFeatures={selectedFeatures}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+        />
       </div>
     </div>
   );
