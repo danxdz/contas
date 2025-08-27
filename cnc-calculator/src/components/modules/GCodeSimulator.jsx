@@ -181,6 +181,57 @@ const GCodeSimulator = () => {
     removed: [] // Track removed material
   });
   
+  // Fixture Management
+  const [fixture, setFixture] = useState({
+    type: 'vise', // vise, chuck, fixture-plate, custom
+    specs: {
+      jawOpening: 150,
+      jawHeight: 50,
+      clampForce: 30
+    },
+    position: { x: 0, y: 0, z: 0 },
+    rotation: { x: 0, y: 0, z: 0 }
+  });
+  
+  const [fixtureLibrary, setFixtureLibrary] = useState(() => {
+    const saved = localStorage.getItem('fixtureLibrary');
+    return saved ? JSON.parse(saved) : {
+      'kurt-vise-6': {
+        id: 'kurt-vise-6',
+        name: 'Kurt Vise 6"',
+        type: 'vise',
+        specs: {
+          jawWidth: 150,
+          jawHeight: 50,
+          jawOpening: 200,
+          clampForce: 30
+        }
+      },
+      '3jaw-chuck-200': {
+        id: '3jaw-chuck-200',
+        name: '3-Jaw Chuck 200mm',
+        type: 'chuck',
+        specs: {
+          size: 200,
+          jawCount: 3,
+          throughHole: 52,
+          maxGrip: 50
+        }
+      },
+      'fixture-plate-300': {
+        id: 'fixture-plate-300',
+        name: 'Fixture Plate 300x300',
+        type: 'plate',
+        specs: {
+          width: 300,
+          depth: 300,
+          thickness: 25,
+          holePattern: 'M12x50mm'
+        }
+      }
+    };
+  });
+  
   const [cuttingData, setCuttingData] = useState({
     chipLoad: 0,
     materialRemovalRate: 0,
@@ -265,6 +316,9 @@ const GCodeSimulator = () => {
     
     // Add machine table
     addMachineTable();
+    
+    // Add fixture
+    addFixture();
     
     // Add initial workpiece
     addWorkpiece();
@@ -355,6 +409,7 @@ const GCodeSimulator = () => {
     const table = new THREE.Mesh(tableGeometry, tableMaterial);
     table.position.z = -20;
     table.receiveShadow = true;
+    table.name = 'table';
     sceneRef.current.add(table);
     
     // T-slots
@@ -363,8 +418,149 @@ const GCodeSimulator = () => {
       const slotMaterial = new THREE.MeshPhongMaterial({ color: 0x202020 });
       const slot = new THREE.Mesh(slotGeometry, slotMaterial);
       slot.position.set(0, i * 50, -8);
+      slot.name = 'table';
       sceneRef.current.add(slot);
     }
+  };
+  
+  // Add fixture to scene
+  const addFixture = () => {
+    if (!sceneRef.current) return;
+    
+    // Remove old fixture
+    const oldFixtures = [];
+    sceneRef.current.traverse(child => {
+      if (child.name === 'fixture') {
+        oldFixtures.push(child);
+      }
+    });
+    oldFixtures.forEach(child => sceneRef.current.remove(child));
+    
+    const fixtureGroup = new THREE.Group();
+    fixtureGroup.name = 'fixture';
+    
+    switch (fixture.type) {
+      case 'vise':
+        // Fixed jaw
+        const fixedJawGeometry = new THREE.BoxGeometry(
+          fixture.specs.jawWidth || 150,
+          15,
+          fixture.specs.jawHeight || 50
+        );
+        const viseMaterial = new THREE.MeshPhongMaterial({
+          color: 0x4444ff,
+          metalness: 0.8,
+          roughness: 0.2
+        });
+        const fixedJaw = new THREE.Mesh(fixedJawGeometry, viseMaterial);
+        fixedJaw.position.set(0, -30, 25);
+        fixtureGroup.add(fixedJaw);
+        
+        // Movable jaw
+        const movableJawGeometry = new THREE.BoxGeometry(
+          fixture.specs.jawWidth || 150,
+          12,
+          fixture.specs.jawHeight || 50
+        );
+        const movableJaw = new THREE.Mesh(movableJawGeometry, viseMaterial);
+        movableJaw.position.set(0, 30, 25);
+        fixtureGroup.add(movableJaw);
+        
+        // Vise base
+        const baseGeometry = new THREE.BoxGeometry(
+          (fixture.specs.jawWidth || 150) + 40,
+          80,
+          10
+        );
+        const baseMaterial = new THREE.MeshPhongMaterial({
+          color: 0x666666,
+          metalness: 0.6
+        });
+        const base = new THREE.Mesh(baseGeometry, baseMaterial);
+        base.position.set(0, 0, 5);
+        fixtureGroup.add(base);
+        break;
+        
+      case 'chuck':
+        // Chuck body
+        const chuckRadius = (fixture.specs.size || 200) / 2;
+        const chuckGeometry = new THREE.CylinderGeometry(
+          chuckRadius,
+          chuckRadius * 1.2,
+          30,
+          32
+        );
+        const chuckMaterial = new THREE.MeshPhongMaterial({
+          color: 0x666666,
+          metalness: 0.8,
+          roughness: 0.2
+        });
+        const chuck = new THREE.Mesh(chuckGeometry, chuckMaterial);
+        chuck.rotation.x = Math.PI / 2;
+        fixtureGroup.add(chuck);
+        
+        // Chuck jaws
+        const jawCount = fixture.specs.jawCount || 3;
+        for (let i = 0; i < jawCount; i++) {
+          const angle = (i * 360 / jawCount) * Math.PI / 180;
+          const jawGeometry = new THREE.BoxGeometry(10, 15, 30);
+          const jawMaterial = new THREE.MeshPhongMaterial({ color: 0x444444 });
+          const jaw = new THREE.Mesh(jawGeometry, jawMaterial);
+          jaw.position.set(
+            Math.cos(angle) * (chuckRadius - 10),
+            Math.sin(angle) * (chuckRadius - 10),
+            0
+          );
+          jaw.rotation.z = angle;
+          fixtureGroup.add(jaw);
+        }
+        break;
+        
+      case 'plate':
+        // Fixture plate
+        const plateGeometry = new THREE.BoxGeometry(
+          fixture.specs.width || 300,
+          fixture.specs.depth || 300,
+          fixture.specs.thickness || 25
+        );
+        const plateMaterial = new THREE.MeshPhongMaterial({
+          color: 0x888888,
+          metalness: 0.7,
+          roughness: 0.3
+        });
+        const plate = new THREE.Mesh(plateGeometry, plateMaterial);
+        plate.position.z = (fixture.specs.thickness || 25) / 2;
+        fixtureGroup.add(plate);
+        
+        // Add hole pattern visualization
+        const holeRadius = 3;
+        const holeSpacing = 50;
+        for (let x = -2; x <= 2; x++) {
+          for (let y = -2; y <= 2; y++) {
+            const holeGeometry = new THREE.CylinderGeometry(holeRadius, holeRadius, fixture.specs.thickness || 25, 16);
+            const holeMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+            const hole = new THREE.Mesh(holeGeometry, holeMaterial);
+            hole.position.set(x * holeSpacing, y * holeSpacing, (fixture.specs.thickness || 25) / 2);
+            hole.rotation.x = Math.PI / 2;
+            fixtureGroup.add(hole);
+          }
+        }
+        break;
+    }
+    
+    // Apply position and rotation
+    fixtureGroup.position.set(
+      fixture.position.x,
+      fixture.position.y,
+      fixture.position.z
+    );
+    fixtureGroup.rotation.set(
+      fixture.rotation.x,
+      fixture.rotation.y,
+      fixture.rotation.z
+    );
+    
+    sceneRef.current.add(fixtureGroup);
   };
   
   // Add workpiece
@@ -857,9 +1053,106 @@ const GCodeSimulator = () => {
       </div>
 
       <div className="simulator-layout">
-        {/* Tool Panel */}
+        {/* Tool & Fixture Panel */}
         <div className="tool-panel">
-          <h3>Tool Setup</h3>
+          <h3>Setup</h3>
+          
+          {/* Fixture Section */}
+          <div className="fixture-section">
+            <h4>Fixture Setup</h4>
+            <div className="fixture-selector">
+              <select
+                value={fixture.type}
+                onChange={(e) => {
+                  setFixture(prev => ({ ...prev, type: e.target.value }));
+                  setTimeout(() => addFixture(), 100);
+                }}
+                className="fixture-select"
+              >
+                <option value="vise">Vise</option>
+                <option value="chuck">Chuck</option>
+                <option value="plate">Fixture Plate</option>
+              </select>
+            </div>
+            
+            <div className="fixture-library">
+              <h5>Fixture Library</h5>
+              {Object.values(fixtureLibrary).map(fix => (
+                <div 
+                  key={fix.id}
+                  className="fixture-item"
+                  onClick={() => {
+                    setFixture(prev => ({
+                      ...prev,
+                      type: fix.type,
+                      specs: fix.specs
+                    }));
+                    setTimeout(() => addFixture(), 100);
+                  }}
+                >
+                  <span>{fix.name}</span>
+                  <span className="fixture-type">{fix.type}</span>
+                </div>
+              ))}
+            </div>
+            
+            {/* Fixture Position Controls */}
+            <div className="position-controls">
+              <h5>Position</h5>
+              <div className="control-row">
+                <label>X:</label>
+                <input
+                  type="number"
+                  value={fixture.position.x}
+                  onChange={(e) => {
+                    setFixture(prev => ({
+                      ...prev,
+                      position: { ...prev.position, x: parseFloat(e.target.value) }
+                    }));
+                    setTimeout(() => addFixture(), 100);
+                  }}
+                  step="1"
+                  className="position-input"
+                />
+              </div>
+              <div className="control-row">
+                <label>Y:</label>
+                <input
+                  type="number"
+                  value={fixture.position.y}
+                  onChange={(e) => {
+                    setFixture(prev => ({
+                      ...prev,
+                      position: { ...prev.position, y: parseFloat(e.target.value) }
+                    }));
+                    setTimeout(() => addFixture(), 100);
+                  }}
+                  step="1"
+                  className="position-input"
+                />
+              </div>
+              <div className="control-row">
+                <label>Z:</label>
+                <input
+                  type="number"
+                  value={fixture.position.z}
+                  onChange={(e) => {
+                    setFixture(prev => ({
+                      ...prev,
+                      position: { ...prev.position, z: parseFloat(e.target.value) }
+                    }));
+                    setTimeout(() => addFixture(), 100);
+                  }}
+                  step="1"
+                  className="position-input"
+                />
+              </div>
+            </div>
+          </div>
+          
+          <hr style={{ margin: '15px 0', borderColor: 'var(--border-color)' }} />
+          
+          <h4>Tool Setup</h4>
           <div className="active-tools">
             <h4>Active Tools</h4>
             {Object.entries(activeTools).map(([toolNum, tool]) => (
@@ -975,6 +1268,17 @@ const GCodeSimulator = () => {
                 }))}
               />
               Workpiece
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={simulation.showFixture}
+                onChange={(e) => setSimulation(prev => ({ 
+                  ...prev, 
+                  showFixture: e.target.checked 
+                }))}
+              />
+              Fixture
             </label>
             <label>
               <input

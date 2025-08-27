@@ -68,7 +68,7 @@
 
 /* Tool Panel */
 .tool-panel {
-  width: 250px;
+  width: 280px;
   background: var(--bg-primary);
   border-radius: var(--border-radius);
   padding: 20px;
@@ -89,6 +89,98 @@
   color: var(--text-secondary);
   font-size: 0.9rem;
   font-weight: 600;
+}
+
+.tool-panel h5 {
+  margin: 10px 0 8px 0;
+  color: var(--text-tertiary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Fixture Section */
+.fixture-section {
+  margin-bottom: 20px;
+}
+
+.fixture-selector {
+  margin-bottom: 15px;
+}
+
+.fixture-select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.fixture-library {
+  background: var(--bg-secondary);
+  border-radius: var(--border-radius-sm);
+  padding: 10px;
+  margin-bottom: 15px;
+}
+
+.fixture-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  background: var(--bg-primary);
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-size: 12px;
+}
+
+.fixture-item:hover {
+  background: var(--primary-light);
+  transform: translateX(3px);
+}
+
+.fixture-type {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: var(--bg-tertiary);
+  border-radius: 10px;
+  color: var(--text-secondary);
+}
+
+/* Position Controls */
+.position-controls {
+  background: var(--bg-secondary);
+  border-radius: var(--border-radius-sm);
+  padding: 10px;
+}
+
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.control-row label {
+  min-width: 20px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.position-input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 12px;
 }
 
 .active-tools {
