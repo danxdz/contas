@@ -609,7 +609,7 @@
   color: var(--text-muted);
   font-family: var(--font-mono);
   font-size: 11px;
-  line-height: 1.4em;
+  line-height: 15.4px;
   padding: 6px 4px;
   text-align: right;
   user-select: none;
@@ -632,14 +632,14 @@
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 11px;
-  line-height: 1.4em;
+  line-height: 15.4px;
   resize: none;
   outline: none;
   min-width: 0;
   overflow-y: auto;
   overflow-x: auto;
   white-space: pre;
-  scroll-behavior: smooth;
+  scroll-behavior: auto; /* Instant scroll for programmatic changes */
 }
 
 .gcode-textarea:focus {

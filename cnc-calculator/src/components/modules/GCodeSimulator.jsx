@@ -460,12 +460,19 @@ M30 ; Program end`);
   // Auto-scroll to current line
   useEffect(() => {
     if (textareaRef.current && lineNumbersRef.current && simulation.currentLine >= 0) {
-      const lineHeight = parseFloat(getComputedStyle(textareaRef.current).lineHeight) || 15.4;
-      const scrollPosition = simulation.currentLine * lineHeight - textareaRef.current.clientHeight / 2;
+      // Use exact line height from CSS (1.4em at 11px = 15.4px)
+      const lineHeight = 15.4; // 1.4em * 11px
+      const containerHeight = textareaRef.current.clientHeight;
       
-      // Smooth scroll to current line
-      textareaRef.current.scrollTop = Math.max(0, scrollPosition);
-      lineNumbersRef.current.scrollTop = Math.max(0, scrollPosition);
+      // Calculate scroll position to center the current line
+      const targetScroll = (simulation.currentLine * lineHeight) - (containerHeight / 2) + (lineHeight / 2);
+      
+      // Apply scroll with bounds checking
+      const finalScroll = Math.max(0, Math.min(targetScroll, textareaRef.current.scrollHeight - containerHeight));
+      
+      // Sync both elements
+      textareaRef.current.scrollTop = finalScroll;
+      lineNumbersRef.current.scrollTop = finalScroll;
     }
   }, [simulation.currentLine]);
   
@@ -1925,14 +1932,16 @@ M30 ; Program end`);
             style={{ 
               width: '45px', 
               backgroundColor: 'var(--bg-tertiary)', 
-              overflowY: 'hidden',
+              overflowY: 'auto',
               overflowX: 'hidden',
               fontSize: '11px',
-              lineHeight: '1.4em',
+              lineHeight: '15.4px', // Fixed pixel value matching textarea
               padding: '6px 4px',
               textAlign: 'right',
               userSelect: 'none',
-              fontFamily: 'var(--font-mono)'
+              fontFamily: 'var(--font-mono)',
+              scrollbarWidth: 'none', // Hide scrollbar
+              msOverflowStyle: 'none' // Hide scrollbar IE/Edge
             }}
             onScroll={(e) => {
               // Sync textarea scroll with line numbers
@@ -1945,12 +1954,14 @@ M30 ; Program end`);
               <div 
                 key={i} 
                 style={{
-                  height: '1.4em',
+                  height: '15.4px', // Fixed pixel height matching line-height
+                  lineHeight: '15.4px',
                   backgroundColor: simulation.currentLine === i ? '#ffeb3b' : 'transparent',
                   color: simulation.currentLine === i ? '#000' : 'var(--text-muted)',
                   fontWeight: simulation.currentLine === i ? 'bold' : 'normal',
                   padding: '0 4px',
-                  borderRadius: simulation.currentLine === i ? '2px' : '0'
+                  borderRadius: simulation.currentLine === i ? '2px' : '0',
+                  boxSizing: 'border-box'
                 }}
               >
                 {i + 1}
@@ -1976,12 +1987,13 @@ M30 ; Program end`);
             style={{
               flex: 1,
               paddingLeft: '8px',
-              lineHeight: '1.4em',
+              lineHeight: '15.4px', // Fixed pixel value for consistency
               fontSize: '11px',
               fontFamily: 'var(--font-mono)',
               backgroundImage: simulation.currentLine >= 0 ? 
-                `linear-gradient(transparent ${simulation.currentLine * 1.4}em, rgba(255, 235, 59, 0.2) ${simulation.currentLine * 1.4}em, rgba(255, 235, 59, 0.2) ${(simulation.currentLine + 1) * 1.4}em, transparent ${(simulation.currentLine + 1) * 1.4}em)` : 
-                'none'
+                `linear-gradient(transparent ${simulation.currentLine * 15.4}px, rgba(255, 235, 59, 0.2) ${simulation.currentLine * 15.4}px, rgba(255, 235, 59, 0.2) ${(simulation.currentLine + 1) * 15.4}px, transparent ${(simulation.currentLine + 1) * 15.4}px)` : 
+                'none',
+              backgroundAttachment: 'local' // Make background scroll with content
             }}
           />
         </div>
