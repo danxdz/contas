@@ -334,6 +334,12 @@ M30 ; End`
   // Initialize 3D scene
   useEffect(() => {
     if (!mountRef.current) return;
+    
+    // Store refs for animation
+    const simulationRef = { current: simulation };
+    
+    // Update simulation ref when it changes
+    simulationRef.current = simulation;
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0a0e1a);
@@ -390,7 +396,7 @@ M30 ; End`
     
     // Main stock
     const stockGeometry = new THREE.BoxGeometry(150, 100, 50);
-    const stockMaterial = new THREE.MeshPhongMaterial({ 
+    const stockMaterial = new THREE.MeshStandardMaterial({ 
       color: 0x888888,
       metalness: 0.7,
       roughness: 0.3
@@ -403,7 +409,7 @@ M30 ; End`
     
     // Machined pocket
     const pocketGeometry = new THREE.BoxGeometry(100, 60, 20);
-    const pocketMaterial = new THREE.MeshPhongMaterial({ 
+    const pocketMaterial = new THREE.MeshStandardMaterial({ 
       color: 0x666666,
       metalness: 0.8,
       roughness: 0.2
@@ -439,9 +445,10 @@ M30 ; End`
     
     // Tool holder (along Z-axis)
     const holderGeometry = new THREE.CylinderGeometry(12, 12, 40, 32);
-    const holderMaterial = new THREE.MeshPhongMaterial({ 
+    const holderMaterial = new THREE.MeshStandardMaterial({ 
       color: 0x333333,
-      metalness: 0.9
+      metalness: 0.9,
+      roughness: 0.1
     });
     const holder = new THREE.Mesh(holderGeometry, holderMaterial);
     holder.rotation.x = Math.PI / 2; // Rotate to align with Z-axis
@@ -536,10 +543,44 @@ M30 ; End`
     addAxisLabel('Y', new THREE.Vector3(0, 220, 0), '#00ff00');
     addAxisLabel('Z', new THREE.Vector3(0, 0, 220), '#0088ff');
 
+    // Tool animation along toolpath
+    let animationTime = 0;
+    const animateToolPath = () => {
+      if (simulationRef.current.isPlaying && toolpathPoints.length > 0 && toolRef.current) {
+        // Calculate position along toolpath
+        const totalPoints = toolpathPoints.length;
+        const currentIndex = Math.floor((animationTime * simulationRef.current.speed) % totalPoints);
+        const nextIndex = (currentIndex + 1) % totalPoints;
+        const t = ((animationTime * simulationRef.current.speed) % totalPoints) - currentIndex;
+        
+        // Interpolate between points
+        const currentPoint = toolpathPoints[currentIndex];
+        const nextPoint = toolpathPoints[nextIndex];
+        
+        if (currentPoint && nextPoint) {
+          const x = currentPoint.x + (nextPoint.x - currentPoint.x) * t;
+          const y = currentPoint.y + (nextPoint.y - currentPoint.y) * t;
+          const z = currentPoint.z + (nextPoint.z - currentPoint.z) * t + 20; // Add tool length offset
+          
+          toolRef.current.position.set(x, y, z);
+          
+          // Rotate tool (spindle rotation)
+          toolRef.current.children.forEach(child => {
+            if (child.geometry && child.geometry.type === 'CylinderGeometry') {
+              child.rotation.z += 0.5 * simulationRef.current.speed;
+            }
+          });
+        }
+        
+        animationTime += 0.016; // 60 FPS
+      }
+    };
+    
     // Animation loop
     const animate = () => {
       requestAnimationFrame(animate);
       controls.update();
+      animateToolPath();
       renderer.render(scene, camera);
     };
     animate();
@@ -559,7 +600,7 @@ M30 ; End`
       }
       renderer.dispose();
     };
-  }, []);
+  }, [simulation]);
 
   // Panel management functions
   const togglePanel = (panelId) => {
@@ -766,7 +807,8 @@ M30 ; End`
           {simulation.isPlaying ? '⏸️' : '▶️'}
         </button>
         <button onClick={() => stopSimulation()} title="Stop">⏹️</button>
-        <button onClick={() => stepForward()} title="Step">⏭️</button>
+        <button onClick={() => stepBackward()} title="Step Back">⏮️</button>
+        <button onClick={() => stepForward()} title="Step Forward">⏭️</button>
         <input 
           type="range"
           min="0.1"
@@ -1041,7 +1083,14 @@ M30 ; End`
   const stepForward = () => {
     setSimulation(prev => ({
       ...prev,
-      currentLine: prev.currentLine + 1
+      currentLine: Math.min(prev.currentLine + 1, 1000)
+    }));
+  };
+  
+  const stepBackward = () => {
+    setSimulation(prev => ({
+      ...prev,
+      currentLine: Math.max(prev.currentLine - 1, 0)
     }));
   };
 
@@ -1101,7 +1150,8 @@ M30 ; End`
       items: [
         { id: 'play', label: simulation.isPlaying ? 'Pause' : 'Play', shortcut: 'Space', action: () => setSimulation(prev => ({ ...prev, isPlaying: !prev.isPlaying })) },
         { id: 'stop', label: 'Stop', action: stopSimulation },
-        { id: 'step', label: 'Step Forward', shortcut: 'F10', action: stepForward },
+        { id: 'stepForward', label: 'Step Forward', shortcut: 'F10', action: stepForward },
+        { id: 'stepBackward', label: 'Step Backward', shortcut: 'F9', action: stepBackward },
         { divider: true },
         { id: 'speed', label: `Speed: ${simulation.speed}x`, submenu: true },
         { divider: true },
