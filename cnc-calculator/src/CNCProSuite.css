@@ -426,12 +426,13 @@
   background: #0a0e1a;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
-  color: #00ff88;
+  color: #00ffaa;  /* Brighter green for better readability */
   font-family: 'Consolas', monospace;
-  font-size: 12px;
+  font-size: 13px;  /* Slightly larger */
   line-height: 1.5;
   padding: 10px;
   resize: none;
+  text-shadow: 0 0 1px rgba(0, 255, 170, 0.3);  /* Subtle glow for better contrast */
   outline: none;
 }
 
