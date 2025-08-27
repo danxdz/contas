@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
-function ToolDatabase() {
-  const [tools, setTools] = useState([]);
+function ToolDatabase({ tools: initialTools = [], onUpdate }) {
+  const [tools, setTools] = useState(initialTools);
   const [editingTool, setEditingTool] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -59,8 +59,12 @@ function ToolDatabase() {
   useEffect(() => {
     if (tools.length > 0) {
       localStorage.setItem('cncToolDatabase', JSON.stringify(tools));
+      // Call onUpdate if provided
+      if (onUpdate) {
+        onUpdate(tools);
+      }
     }
-  }, [tools]);
+  }, [tools, onUpdate]);
 
   const loadSampleTools = () => {
     const sampleTools = [
