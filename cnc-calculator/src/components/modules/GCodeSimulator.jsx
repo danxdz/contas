@@ -1142,6 +1142,138 @@ M30 ; Program end`);
     }
   };
   
+  // Verify G-Code
+  const verifyGCode = () => {
+    const errors = [];
+    const warnings = [];
+    const lines = gcode.split('\n');
+    
+    let hasSpindleOn = false;
+    let hasCoolant = false;
+    let currentZ = 0;
+    let rapidInMaterial = false;
+    
+    lines.forEach((line, index) => {
+      const cleanLine = line.split(/[;(]/)[0].trim();
+      if (!cleanLine) return;
+      
+      // Check for spindle on before cutting
+      if (cleanLine.includes('M03') || cleanLine.includes('M04')) {
+        hasSpindleOn = true;
+      }
+      
+      // Check for coolant
+      if (cleanLine.includes('M08')) {
+        hasCoolant = true;
+      }
+      
+      // Check for G01/G02/G03 without spindle on
+      if ((cleanLine.includes('G01') || cleanLine.includes('G02') || cleanLine.includes('G03')) && !hasSpindleOn) {
+        errors.push(`Line ${index + 1}: Cutting move without spindle on`);
+      }
+      
+      // Check for rapid moves below Z0
+      if (cleanLine.includes('G00')) {
+        const zMatch = cleanLine.match(/Z([-\d.]+)/);
+        if (zMatch && parseFloat(zMatch[1]) < 0) {
+          warnings.push(`Line ${index + 1}: Rapid move below Z0 - verify clearance`);
+        }
+      }
+      
+      // Check for missing feedrate
+      if (cleanLine.includes('G01') && !cleanLine.includes('F') && index > 0) {
+        const prevHasFeed = lines.slice(0, index).some(l => l.includes('F'));
+        if (!prevHasFeed) {
+          errors.push(`Line ${index + 1}: Feed move without feedrate`);
+        }
+      }
+    });
+    
+    // Program-level checks
+    if (!hasSpindleOn) {
+      warnings.push('No spindle start command (M03/M04) found');
+    }
+    
+    if (!hasCoolant) {
+      warnings.push('No coolant command (M08) found - verify if needed');
+    }
+    
+    // Update error state
+    setErrors(errors.length > 0 ? errors : warnings.length > 0 ? warnings : ['✓ G-Code verified successfully']);
+    
+    // Show alert with results
+    if (errors.length > 0) {
+      alert(`Verification Failed!\n\nErrors:\n${errors.join('\n')}`);
+    } else if (warnings.length > 0) {
+      alert(`Verification Complete with Warnings:\n\n${warnings.join('\n')}`);
+    } else {
+      alert('✓ G-Code verified successfully! No issues found.');
+    }
+  };
+  
+  // Optimize G-Code
+  const optimizeGCode = () => {
+    const lines = gcode.split('\n');
+    const optimized = [];
+    let lastG = null;
+    let lastF = null;
+    let lastS = null;
+    let changes = 0;
+    
+    lines.forEach((line, index) => {
+      let optimizedLine = line;
+      const cleanLine = line.split(/[;(]/)[0].trim();
+      
+      if (cleanLine) {
+        // Remove redundant G commands
+        if (cleanLine.includes('G00') || cleanLine.includes('G01')) {
+          const g = cleanLine.includes('G00') ? 'G00' : 'G01';
+          if (g === lastG && index > 0) {
+            optimizedLine = optimizedLine.replace(g + ' ', '').replace(g, '');
+            changes++;
+          }
+          lastG = g;
+        }
+        
+        // Remove redundant F commands
+        const fMatch = cleanLine.match(/F([\d.]+)/);
+        if (fMatch) {
+          if (fMatch[1] === lastF) {
+            optimizedLine = optimizedLine.replace(/F[\d.]+\s?/, '');
+            changes++;
+          }
+          lastF = fMatch[1];
+        }
+        
+        // Remove redundant S commands
+        const sMatch = cleanLine.match(/S([\d.]+)/);
+        if (sMatch) {
+          if (sMatch[1] === lastS) {
+            optimizedLine = optimizedLine.replace(/S[\d.]+\s?/, '');
+            changes++;
+          }
+          lastS = sMatch[1];
+        }
+        
+        // Remove trailing spaces
+        optimizedLine = optimizedLine.trimEnd();
+      }
+      
+      optimized.push(optimizedLine);
+    });
+    
+    // Remove empty lines at end
+    while (optimized.length > 0 && optimized[optimized.length - 1].trim() === '') {
+      optimized.pop();
+      changes++;
+    }
+    
+    setGcode(optimized.join('\n'));
+    setParsedProgram(parseGCode(optimized.join('\n')));
+    
+    alert(`✓ Optimization complete!\n\n${changes} redundant commands removed.\nProgram size reduced by ${((gcode.length - optimized.join('\n').length) / gcode.length * 100).toFixed(1)}%`);
+  };
+  
   // Control functions
   const startSimulation = () => {
     if (!parsedProgram) {
@@ -1703,8 +1835,8 @@ M30 ; Program end`);
         <div className="editor-header">
           <h3>G-Code Program</h3>
           <div className="editor-actions">
-            <button className="btn btn-small">Verify</button>
-            <button className="btn btn-small">Optimize</button>
+            <button className="btn btn-small" onClick={verifyGCode}>Verify</button>
+            <button className="btn btn-small" onClick={optimizeGCode}>Optimize</button>
           </div>
         </div>
         <div className="gcode-content" style={{ position: 'relative', height: '100%', display: 'flex' }}>
