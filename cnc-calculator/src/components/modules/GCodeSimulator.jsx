@@ -1585,6 +1585,93 @@ M30 ; Program end`);
           
           <hr style={{ margin: '15px 0', borderColor: 'var(--border-color)' }} />
           
+          {/* Workpiece Section */}
+          <div className="workpiece-section">
+            <h4>Workpiece Setup</h4>
+            <div className="workpiece-type">
+              <select
+                value={workpiece.type}
+                onChange={(e) => {
+                  setWorkpiece(prev => ({ ...prev, type: e.target.value }));
+                  setTimeout(() => addWorkpiece(), 100);
+                }}
+                className="workpiece-select"
+              >
+                <option value="block">Block</option>
+                <option value="cylinder">Cylinder</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            
+            <div className="workpiece-dimensions">
+              <div className="dimension-input">
+                <label>X/⌀</label>
+                <input
+                  type="number"
+                  value={workpiece.dimensions.x}
+                  onChange={(e) => {
+                    setWorkpiece(prev => ({
+                      ...prev,
+                      dimensions: { ...prev.dimensions, x: parseFloat(e.target.value) || 100 }
+                    }));
+                    setTimeout(() => addWorkpiece(), 100);
+                  }}
+                  step="1"
+                />
+              </div>
+              <div className="dimension-input">
+                <label>Y</label>
+                <input
+                  type="number"
+                  value={workpiece.dimensions.y}
+                  onChange={(e) => {
+                    setWorkpiece(prev => ({
+                      ...prev,
+                      dimensions: { ...prev.dimensions, y: parseFloat(e.target.value) || 100 }
+                    }));
+                    setTimeout(() => addWorkpiece(), 100);
+                  }}
+                  step="1"
+                  disabled={workpiece.type === 'cylinder'}
+                />
+              </div>
+              <div className="dimension-input">
+                <label>Z</label>
+                <input
+                  type="number"
+                  value={workpiece.dimensions.z}
+                  onChange={(e) => {
+                    setWorkpiece(prev => ({
+                      ...prev,
+                      dimensions: { ...prev.dimensions, z: parseFloat(e.target.value) || 50 }
+                    }));
+                    setTimeout(() => addWorkpiece(), 100);
+                  }}
+                  step="1"
+                />
+              </div>
+            </div>
+            
+            <div className="workpiece-material">
+              <label>Material</label>
+              <select
+                value={workpiece.material}
+                onChange={(e) => {
+                  setWorkpiece(prev => ({ ...prev, material: e.target.value }));
+                  setTimeout(() => addWorkpiece(), 100);
+                }}
+                className="material-select"
+              >
+                <option value="aluminum">Aluminum</option>
+                <option value="steel">Steel</option>
+                <option value="plastic">Plastic</option>
+                <option value="wood">Wood</option>
+              </select>
+            </div>
+          </div>
+          
+          <hr style={{ margin: '15px 0', borderColor: 'var(--border-color)' }} />
+          
           <h4>Tool Setup</h4>
           <div className="active-tools">
             <h4>Active Tools</h4>
@@ -1895,8 +1982,8 @@ M30 ; Program end`);
                   <span>{parsedProgram.lines.length}</span>
                 </div>
                 <div className="info-item">
-                  <label>Current:</label>
-                  <span>{simulation.currentLine + 1}</span>
+                  <label>Current Line:</label>
+                  <span>{simulation.currentLine + 1} / {parsedProgram.lines.length}</span>
                 </div>
                 <div className="info-item">
                   <label>Est. Time:</label>
@@ -1991,7 +2078,7 @@ M30 ; Program end`);
               fontSize: '11px',
               fontFamily: 'var(--font-mono)',
               backgroundImage: simulation.currentLine >= 0 ? 
-                `linear-gradient(transparent ${simulation.currentLine * 15.4}px, rgba(255, 235, 59, 0.2) ${simulation.currentLine * 15.4}px, rgba(255, 235, 59, 0.2) ${(simulation.currentLine + 1) * 15.4}px, transparent ${(simulation.currentLine + 1) * 15.4}px)` : 
+                `linear-gradient(transparent ${(simulation.currentLine) * 15.4}px, rgba(255, 235, 59, 0.2) ${(simulation.currentLine) * 15.4}px, rgba(255, 235, 59, 0.2) ${(simulation.currentLine + 1) * 15.4}px, transparent ${(simulation.currentLine + 1) * 15.4}px)` : 
                 'none',
               backgroundAttachment: 'local' // Make background scroll with content
             }}
