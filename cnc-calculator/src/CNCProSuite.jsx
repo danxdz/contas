@@ -331,15 +331,40 @@ M30 ; End`
   const toolRef = useRef(null);
   const toolpathRef = useRef(null);
 
+  // Simple G-code parser
+  const parseGCodePositions = (gcode) => {
+    const lines = gcode.split('\n');
+    const positions = [];
+    let current = { x: 0, y: 0, z: 5, f: 500, s: 0 };
+    
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (trimmed === '' || trimmed.startsWith(';')) {
+        positions.push({ ...current, comment: true });
+        return;
+      }
+      
+      const x = line.match(/X([-\d.]+)/i);
+      const y = line.match(/Y([-\d.]+)/i);
+      const z = line.match(/Z([-\d.]+)/i);
+      const f = line.match(/F([\d.]+)/i);
+      const s = line.match(/S([\d]+)/i);
+      
+      if (x) current.x = parseFloat(x[1]);
+      if (y) current.y = parseFloat(y[1]);
+      if (z) current.z = parseFloat(z[1]);
+      if (f) current.f = parseFloat(f[1]);
+      if (s) current.s = parseInt(s[1]);
+      
+      positions.push({ ...current, comment: false });
+    });
+    
+    return positions;
+  };
+  
   // Initialize 3D scene
   useEffect(() => {
     if (!mountRef.current) return;
-    
-    // Store refs for animation
-    const simulationRef = { current: simulation };
-    
-    // Update simulation ref when it changes
-    simulationRef.current = simulation;
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0a0e1a);
@@ -543,178 +568,28 @@ M30 ; End`
     addAxisLabel('Y', new THREE.Vector3(0, 220, 0), '#00ff00');
     addAxisLabel('Z', new THREE.Vector3(0, 0, 220), '#0088ff');
 
-    // Parse G-code to extract positions
-    const parseGCodeLine = (line) => {
-      const coords = { x: null, y: null, z: null, f: null };
-      const parts = line.toUpperCase().split(/\s+/);
-      
-      parts.forEach(part => {
-        if (part.startsWith('X')) coords.x = parseFloat(part.slice(1));
-        if (part.startsWith('Y')) coords.y = parseFloat(part.slice(1));
-        if (part.startsWith('Z')) coords.z = parseFloat(part.slice(1));
-        if (part.startsWith('F')) coords.f = parseFloat(part.slice(1));
-      });
-      
-      return coords;
-    };
-    
-    // Parse all G-code lines at startup
-    const gcodeLinesRef = { current: [] };
-    const projectRef = { current: project };
-    projectRef.current = project;
-    
-    const parseAllGCode = () => {
-      const lines = projectRef.current.gcode.channel1.split('\n');
-      const positions = [];
-      let currentPos = { x: 0, y: 0, z: 5 };
-      
-      lines.forEach((line, index) => {
-        // Skip comments and empty lines
-        if (line.trim().startsWith(';') || line.trim() === '') {
-          positions.push({ ...currentPos, comment: true });
-          return;
-        }
-        
-        const coords = parseGCodeLine(line);
-        if (coords.x !== null) currentPos.x = coords.x;
-        if (coords.y !== null) currentPos.y = coords.y;
-        if (coords.z !== null) currentPos.z = coords.z;
-        
-        positions.push({ ...currentPos, feedrate: coords.f });
-      });
-      
-      return positions;
-    };
-    
-    gcodeLinesRef.current = parseAllGCode();
-    
-    // Tool animation following G-code
-    let lastUpdateTime = Date.now();
-    let interpolationProgress = 0;
-    let lastProcessedLine = -1;
-    let lastPositionUpdate = 0;
-    
-    const animateToolPath = () => {
-      const currentTime = Date.now();
-      const deltaTime = (currentTime - lastUpdateTime) / 1000; // Convert to seconds
-      lastUpdateTime = currentTime;
-      
-      // Always update tool position based on current line (for step-by-step)
-      if (gcodeLinesRef.current.length > 0 && toolRef.current) {
-        const currentLine = simulationRef.current.currentLine;
-        
-        // If line changed (step mode or reset), reset interpolation
-        if (currentLine !== lastProcessedLine) {
-          interpolationProgress = 0;
-          lastProcessedLine = currentLine;
-        }
-        
-        // Find actual line (skip comments)
-        let actualCurrentLine = currentLine;
-        while (actualCurrentLine < gcodeLinesRef.current.length && 
-               gcodeLinesRef.current[actualCurrentLine].comment) {
-          actualCurrentLine++;
-        }
-        
-        if (actualCurrentLine < gcodeLinesRef.current.length) {
-          const targetPos = gcodeLinesRef.current[actualCurrentLine];
-          
-          if (simulationRef.current.isPlaying) {
-            // Playing - animate to next line
-            const nextLine = Math.min(currentLine + 1, gcodeLinesRef.current.length - 1);
-            let actualNextLine = nextLine;
-            while (actualNextLine < gcodeLinesRef.current.length && 
-                   gcodeLinesRef.current[actualNextLine].comment) {
-              actualNextLine++;
-            }
-            
-            if (actualNextLine < gcodeLinesRef.current.length) {
-              const nextPos = gcodeLinesRef.current[actualNextLine];
-              
-              // Calculate interpolation speed based on feedrate
-              const feedrate = targetPos.feedrate || 500; // mm/min default
-              const distance = Math.sqrt(
-                Math.pow(nextPos.x - targetPos.x, 2) +
-                Math.pow(nextPos.y - targetPos.y, 2) +
-                Math.pow(nextPos.z - targetPos.z, 2)
-              );
-              
-              const moveTime = distance > 0 ? (distance / (feedrate / 60)) : 0.1; // seconds
-              interpolationProgress += (deltaTime * simulationRef.current.speed) / moveTime;
-              
-              if (interpolationProgress >= 1) {
-                // Move to next line
-                interpolationProgress = 0;
-                const lines = projectRef.current.gcode.channel1.split('\n');
-                let nextLineToProcess = currentLine + 1;
-                
-                // Skip comments
-                while (nextLineToProcess < lines.length && 
-                       (lines[nextLineToProcess].trim().startsWith(';') || 
-                        lines[nextLineToProcess].trim() === '')) {
-                  nextLineToProcess++;
-                }
-                
-                if (nextLineToProcess < lines.length) {
-                  // Update state
-                  setSimulation(prev => ({
-                    ...prev,
-                    currentLine: nextLineToProcess
-                  }));
-                  simulationRef.current.currentLine = nextLineToProcess;
-                } else {
-                  // End of program
-                  setSimulation(prev => ({
-                    ...prev,
-                    isPlaying: false,
-                    currentLine: lines.length - 1
-                  }));
-                  simulationRef.current.isPlaying = false;
-                }
-              }
-              
-              // Interpolate position
-              const t = Math.min(interpolationProgress, 1);
-              const x = targetPos.x + (nextPos.x - targetPos.x) * t;
-              const y = targetPos.y + (nextPos.y - targetPos.y) * t;
-              const z = targetPos.z + (nextPos.z - targetPos.z) * t;
-              
-              // Update tool position
-              toolRef.current.position.set(x, y, z + 50);
-              
-              // Update simulation position state (throttled to 10Hz)
-              if (currentTime - lastPositionUpdate > 100) {
-                lastPositionUpdate = currentTime;
-                setSimulation(prev => ({
-                  ...prev,
-                  position: { ...prev.position, x, y, z }
-                }));
-              }
-            }
-          } else {
-            // Not playing - just position at current line
-            toolRef.current.position.set(targetPos.x, targetPos.y, targetPos.z + 50);
-            
-            // Update simulation position state for step mode
-            setSimulation(prev => ({
-              ...prev,
-              position: { ...prev.position, x: targetPos.x, y: targetPos.y, z: targetPos.z }
-            }));
-          }
-          
-          // Always rotate spindle if speed > 0
-          if (simulationRef.current.spindleSpeed > 0) {
-            toolRef.current.rotation.z += (simulationRef.current.spindleSpeed / 1000) * deltaTime;
-          }
-        }
-      }
-    };
+    // Parse G-code positions
+    const positions = parseGCodePositions(project.gcode.channel1);
     
     // Animation loop
     const animate = () => {
+      // Update tool position based on current line
+      if (toolRef.current && positions.length > 0) {
+        const safeCurrentLine = Math.min(Math.max(0, simulation.currentLine), positions.length - 1);
+        const currentPos = positions[safeCurrentLine];
+        
+        if (currentPos && !currentPos.comment) {
+          toolRef.current.position.set(currentPos.x, currentPos.y, currentPos.z + 50);
+          
+          // Rotate spindle
+          if (simulation.spindleSpeed > 0) {
+            toolRef.current.rotation.z += 0.05;
+          }
+        }
+      }
+      
       requestAnimationFrame(animate);
       controls.update();
-      animateToolPath();
       renderer.render(scene, camera);
     };
     animate();
@@ -735,6 +610,44 @@ M30 ; End`
       renderer.dispose();
     };
   }, [simulation, project.gcode.channel1]);
+  
+  // Simple playback timer
+  useEffect(() => {
+    if (!simulation.isPlaying) return;
+    
+    const interval = setInterval(() => {
+      const lines = project.gcode.channel1.split('\n');
+      const positions = parseGCodePositions(project.gcode.channel1);
+      
+      setSimulation(prev => {
+        if (prev.currentLine >= lines.length - 1) {
+          return { ...prev, isPlaying: false };
+        }
+        
+        // Find next non-comment line
+        let nextLine = prev.currentLine + 1;
+        while (nextLine < lines.length && 
+               (lines[nextLine].trim().startsWith(';') || 
+                lines[nextLine].trim() === '')) {
+          nextLine++;
+        }
+        
+        if (nextLine >= lines.length) {
+          return { ...prev, isPlaying: false };
+        }
+        
+        // Update position from parsed data
+        const pos = positions[nextLine] || prev.position;
+        return { 
+          ...prev, 
+          currentLine: nextLine,
+          position: { x: pos.x, y: pos.y, z: pos.z, a: 0, b: 0, c: 0 }
+        };
+      });
+    }, 100 / simulation.speed); // Adjust speed
+    
+    return () => clearInterval(interval);
+  }, [simulation.isPlaying, simulation.speed, project.gcode.channel1]);
 
   // Panel management functions
   const togglePanel = (panelId) => {
@@ -1223,6 +1136,8 @@ M30 ; End`
 
   const stepForward = () => {
     const lines = project.gcode.channel1.split('\n');
+    const positions = parseGCodePositions(project.gcode.channel1);
+    
     setSimulation(prev => {
       let nextLine = prev.currentLine + 1;
       // Skip comments and empty lines
@@ -1230,9 +1145,13 @@ M30 ; End`
              (lines[nextLine].trim().startsWith(';') || lines[nextLine].trim() === '')) {
         nextLine++;
       }
+      nextLine = Math.min(nextLine, lines.length - 1);
+      const pos = positions[nextLine] || prev.position;
+      
       return {
         ...prev,
-        currentLine: Math.min(nextLine, lines.length - 1),
+        currentLine: nextLine,
+        position: { x: pos.x, y: pos.y, z: pos.z, a: 0, b: 0, c: 0 },
         isPlaying: false
       };
     });
@@ -1240,6 +1159,8 @@ M30 ; End`
   
   const stepBackward = () => {
     const lines = project.gcode.channel1.split('\n');
+    const positions = parseGCodePositions(project.gcode.channel1);
+    
     setSimulation(prev => {
       let prevLine = prev.currentLine - 1;
       // Skip comments and empty lines
@@ -1247,9 +1168,13 @@ M30 ; End`
              (lines[prevLine].trim().startsWith(';') || lines[prevLine].trim() === '')) {
         prevLine--;
       }
+      prevLine = Math.max(prevLine, 0);
+      const pos = positions[prevLine] || prev.position;
+      
       return {
         ...prev,
-        currentLine: Math.max(prevLine, 0),
+        currentLine: prevLine,
+        position: { x: pos.x, y: pos.y, z: pos.z, a: 0, b: 0, c: 0 },
         isPlaying: false
       };
     });
