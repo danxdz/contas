@@ -269,7 +269,9 @@ export const MonitoringWindow = ({ data, title = "Live Monitoring" }) => {
         {data && Object.entries(data).map(([key, value]) => (
           <div key={key} className="monitor-item">
             <span className="monitor-label">{key}:</span>
-            <span className="monitor-value">{value}</span>
+            <span className="monitor-value">
+              {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+            </span>
           </div>
         ))}
       </div>

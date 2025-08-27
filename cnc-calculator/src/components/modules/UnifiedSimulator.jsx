@@ -806,7 +806,11 @@ G90
                   </div>
                   <div className="info-item">
                     <span>Position:</span>
-                    <span>X{simulation.currentPosition.x.toFixed(2)} Y{simulation.currentPosition.y.toFixed(2)} Z{simulation.currentPosition.z.toFixed(2)}</span>
+                    <span>
+                      X{(simulation.currentPosition?.x || 0).toFixed(2)} 
+                      Y{(simulation.currentPosition?.y || 0).toFixed(2)} 
+                      Z{(simulation.currentPosition?.z || 0).toFixed(2)}
+                    </span>
                   </div>
                   <div className="info-item">
                     <span>Feed:</span>
@@ -974,17 +978,17 @@ G90
                     <div className="analysis-item">
                       <span>Min Position:</span>
                       <span>
-                        X{parsedGcode.boundingBox.min.x.toFixed(2)} 
-                        Y{parsedGcode.boundingBox.min.y.toFixed(2)} 
-                        Z{parsedGcode.boundingBox.min.z.toFixed(2)}
+                        X{(parsedGcode.boundingBox.min?.x || 0).toFixed(2)} 
+                        Y{(parsedGcode.boundingBox.min?.y || 0).toFixed(2)} 
+                        Z{(parsedGcode.boundingBox.min?.z || 0).toFixed(2)}
                       </span>
                     </div>
                     <div className="analysis-item">
                       <span>Max Position:</span>
                       <span>
-                        X{parsedGcode.boundingBox.max.x.toFixed(2)} 
-                        Y{parsedGcode.boundingBox.max.y.toFixed(2)} 
-                        Z{parsedGcode.boundingBox.max.z.toFixed(2)}
+                        X{(parsedGcode.boundingBox.max?.x || 0).toFixed(2)} 
+                        Y{(parsedGcode.boundingBox.max?.y || 0).toFixed(2)} 
+                        Z{(parsedGcode.boundingBox.max?.z || 0).toFixed(2)}
                       </span>
                     </div>
                   </>
