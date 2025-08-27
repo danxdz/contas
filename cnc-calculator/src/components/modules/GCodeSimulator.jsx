@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import './GCodeSimulator.css';
 
-// OrbitControls implementation
+// Custom OrbitControls implementation (commented out - using Three.js version)
+/*
 class OrbitControls {
   constructor(camera, domElement) {
     this.camera = camera;
@@ -123,6 +125,7 @@ class OrbitControls {
     }
   }
 }
+*/
 
 // Enhanced G-Code Simulator with full Tool Database integration
 const GCodeSimulator = () => {
@@ -306,11 +309,24 @@ M30 ; Program end`);
     mountRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
     
-    // Controls
+    // Professional OrbitControls setup
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
+    controls.screenSpacePanning = true; // Pan parallel to screen
+    controls.minDistance = 20;
+    controls.maxDistance = 800;
+    controls.maxPolarAngle = Math.PI * 0.9; // Prevent going under ground
     controls.target.set(0, 0, 0);
+    controls.mouseButtons = {
+      LEFT: THREE.MOUSE.ROTATE,
+      MIDDLE: THREE.MOUSE.DOLLY,
+      RIGHT: THREE.MOUSE.PAN
+    };
+    controls.touches = {
+      ONE: THREE.TOUCH.ROTATE,
+      TWO: THREE.TOUCH.DOLLY_PAN
+    };
     controlsRef.current = controls;
     
     // Enhanced Lighting
@@ -1131,6 +1147,9 @@ M30 ; Program end`);
     if (!parsedProgram) {
       const parsed = parseGCode(gcode);
       setParsedProgram(parsed);
+      if (parsed && parsed.commands) {
+        drawToolpath(parsed);
+      }
     }
     setSimulation(prev => ({ ...prev, isRunning: true, isPaused: false }));
   };
@@ -1146,12 +1165,49 @@ M30 ; Program end`);
       isPaused: false, 
       currentLine: 0 
     }));
+    // Reset tool position
+    if (toolRef.current) {
+      toolRef.current.position.set(0, 0, 20);
+    }
   };
   
   const resetSimulation = () => {
-    stopSimulation();
-    // Clear toolpaths
-    if (sceneRef.current) {
+    setSimulation(prev => ({
+      ...prev,
+      isRunning: false,
+      isPaused: false,
+      currentLine: 0
+    }));
+    // Reset tool to origin
+    if (toolRef.current) {
+      toolRef.current.position.set(0, 0, 20);
+    }
+  };
+  
+  const stepForward = () => {
+    if (parsedProgram && simulation.currentLine < parsedProgram.lines.length - 1) {
+      setSimulation(prev => ({
+        ...prev,
+        currentLine: prev.currentLine + 1
+      }));
+    }
+  };
+  
+  const stepBackward = () => {
+    if (simulation.currentLine > 0) {
+      setSimulation(prev => ({
+        ...prev,
+        currentLine: prev.currentLine - 1
+      }));
+    }
+  };
+  
+  const resetView = () => {
+    // Reset camera to default position
+    if (cameraRef.current && controlsRef.current) {
+      cameraRef.current.position.set(200, 150, 200);
+      controlsRef.current.target.set(0, 0, 0);
+      controlsRef.current.update();
       const toRemove = [];
       sceneRef.current.traverse(child => {
         if (child instanceof THREE.Line) {
@@ -1375,6 +1431,20 @@ M30 ; Program end`);
             >
               ↺ Reset
             </button>
+            <button 
+              className="btn btn-step-back"
+              onClick={stepBackward}
+              disabled={simulation.isRunning || simulation.currentLine === 0}
+            >
+              ⏮ Step-
+            </button>
+            <button 
+              className="btn btn-step-forward"
+              onClick={stepForward}
+              disabled={simulation.isRunning || !parsedProgram || simulation.currentLine >= parsedProgram.lines.length - 1}
+            >
+              ⏭ Step+
+            </button>
             
             <div className="speed-control">
               <label>Speed:</label>
@@ -1450,6 +1520,65 @@ M30 ; Program end`);
               />
               Material Removal
             </label>
+          </div>
+          
+          {/* Camera Views */}
+          <div style={{ marginTop: '10px', borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: '10px' }}>
+            <h5 style={{ color: 'white', fontSize: '10px', marginBottom: '6px' }}>Quick Views</h5>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px' }}>
+              <button 
+                className="btn btn-small"
+                onClick={() => {
+                  if (cameraRef.current && controlsRef.current) {
+                    cameraRef.current.position.set(0, 0, 300);
+                    controlsRef.current.target.set(0, 0, 0);
+                    controlsRef.current.update();
+                  }
+                }}
+                style={{ fontSize: '9px', padding: '2px' }}
+              >
+                Top
+              </button>
+              <button 
+                className="btn btn-small"
+                onClick={() => {
+                  if (cameraRef.current && controlsRef.current) {
+                    cameraRef.current.position.set(300, 0, 0);
+                    controlsRef.current.target.set(0, 0, 0);
+                    controlsRef.current.update();
+                  }
+                }}
+                style={{ fontSize: '9px', padding: '2px' }}
+              >
+                Front
+              </button>
+              <button 
+                className="btn btn-small"
+                onClick={() => {
+                  if (cameraRef.current && controlsRef.current) {
+                    cameraRef.current.position.set(0, 300, 0);
+                    controlsRef.current.target.set(0, 0, 0);
+                    controlsRef.current.update();
+                  }
+                }}
+                style={{ fontSize: '9px', padding: '2px' }}
+              >
+                Side
+              </button>
+              <button 
+                className="btn btn-small"
+                onClick={() => {
+                  if (cameraRef.current && controlsRef.current) {
+                    cameraRef.current.position.set(200, 150, 200);
+                    controlsRef.current.target.set(0, 0, 0);
+                    controlsRef.current.update();
+                  }
+                }}
+                style={{ fontSize: '9px', padding: '2px', gridColumn: 'span 3' }}
+              >
+                Isometric
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1578,13 +1707,52 @@ M30 ; Program end`);
             <button className="btn btn-small">Optimize</button>
           </div>
         </div>
-        <textarea
-          value={gcode}
-          onChange={(e) => setGcode(e.target.value)}
-          placeholder="Paste G-Code here or load from file..."
-          className="gcode-textarea"
-          spellCheck={false}
-        />
+        <div className="gcode-content" style={{ position: 'relative', height: '100%', display: 'flex' }}>
+          <div className="line-numbers" style={{ 
+            width: '40px', 
+            backgroundColor: 'var(--bg-tertiary)', 
+            overflow: 'hidden',
+            fontSize: '10px',
+            lineHeight: '1.4',
+            padding: '6px 4px',
+            textAlign: 'right',
+            userSelect: 'none'
+          }}>
+            {gcode.split('\n').map((_, i) => (
+              <div 
+                key={i} 
+                style={{
+                  backgroundColor: simulation.currentLine === i ? '#ffeb3b' : 'transparent',
+                  color: simulation.currentLine === i ? '#000' : 'var(--text-muted)',
+                  fontWeight: simulation.currentLine === i ? 'bold' : 'normal',
+                  padding: '0 2px'
+                }}
+              >
+                {i + 1}
+              </div>
+            ))}
+          </div>
+          <textarea
+            value={gcode}
+            onChange={(e) => {
+              setGcode(e.target.value);
+              setParsedProgram(null);
+            }}
+            placeholder="Paste G-Code here or load from file..."
+            className="gcode-textarea"
+            spellCheck={false}
+            style={{
+              flex: 1,
+              paddingLeft: '8px',
+              lineHeight: '1.4',
+              fontSize: '10px',
+              fontFamily: 'var(--font-mono)',
+              backgroundImage: simulation.currentLine >= 0 ? 
+                `linear-gradient(transparent ${simulation.currentLine * 14}px, rgba(255, 235, 59, 0.2) ${simulation.currentLine * 14}px, rgba(255, 235, 59, 0.2) ${(simulation.currentLine + 1) * 14}px, transparent ${(simulation.currentLine + 1) * 14}px)` : 
+                'none'
+            }}
+          />
+        </div>
       </div>
     </div>
   );
