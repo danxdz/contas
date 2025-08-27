@@ -426,19 +426,35 @@
   background: #0a0e1a;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
-  color: #00ffaa;  /* Brighter green for better readability */
+  color: #e8e8e8;  /* Almost white for maximum readability */
   font-family: 'Consolas', monospace;
-  font-size: 13px;  /* Slightly larger */
-  line-height: 1.5;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 18px;  /* Fixed line height for proper highlighting */
   padding: 10px;
   resize: none;
-  text-shadow: 0 0 1px rgba(0, 255, 170, 0.3);  /* Subtle glow for better contrast */
   outline: none;
 }
 
 .gcode-textarea:focus {
   border-color: #00d4ff;
   box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.1);
+}
+
+/* Current line highlight overlay */
+.gcode-editor-content {
+  position: relative;
+}
+
+.gcode-highlight-line {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  height: 18px;
+  background: rgba(0, 212, 255, 0.15);
+  border-left: 3px solid #00d4ff;
+  pointer-events: none;
+  transition: top 0.2s ease;
 }
 
 /* Tool Manager Specific */
