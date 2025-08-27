@@ -19,6 +19,7 @@ import {
   ToolDatabase,
   GCodeVisualizer,
   GCodeSimulator,
+  ProfessionalSimulator,
   ShopFloorUtilities
 } from './components/modules/index.jsx';
 
@@ -45,6 +46,7 @@ const moduleRegistry = {
   'Simulation': [
     { id: 'visualizer', name: 'G-Code Visualizer', icon: '🎬', component: GCodeVisualizer },
     { id: 'simulator', name: 'Advanced Simulator', icon: '🚀', component: GCodeSimulator },
+    { id: 'professional', name: 'Professional CAM', icon: '🏆', component: ProfessionalSimulator },
   ],
   'Shop Management': [
     { id: 'shopfloor', name: 'Shop Floor Utils', icon: '🏭', component: ShopFloorUtilities },

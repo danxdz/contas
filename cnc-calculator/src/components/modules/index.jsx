@@ -9,6 +9,7 @@ export { default as GeometryTools } from './GeometryTools';
 export { default as PocketMillingWizard } from './PocketMillingWizard';
 export { default as GCodeVisualizer } from './GCodeVisualizer';
 export { default as GCodeSimulator } from './GCodeSimulator';
+export { default as ProfessionalSimulator } from './ProfessionalSimulator';
 export { default as FeedsSpeedsOptimizer } from './FeedsSpeedsOptimizer';
 export { default as ToolDatabase } from './ToolDatabase';
 export { default as ShopFloorUtilities } from './ShopFloorUtilities';
