@@ -362,6 +362,12 @@ M30 ; End`
     return positions;
   };
   
+  // Store simulation in ref for animation loop
+  const simulationRef = useRef(simulation);
+  useEffect(() => {
+    simulationRef.current = simulation;
+  }, [simulation]);
+  
   // Initialize 3D scene
   useEffect(() => {
     if (!mountRef.current) return;
@@ -573,19 +579,9 @@ M30 ; End`
     
     // Animation loop
     const animate = () => {
-      // Update tool position based on current line
-      if (toolRef.current && positions.length > 0) {
-        const safeCurrentLine = Math.min(Math.max(0, simulation.currentLine), positions.length - 1);
-        const currentPos = positions[safeCurrentLine];
-        
-        if (currentPos && !currentPos.comment) {
-          toolRef.current.position.set(currentPos.x, currentPos.y, currentPos.z + 50);
-          
-          // Rotate spindle
-          if (simulation.spindleSpeed > 0) {
-            toolRef.current.rotation.z += 0.05;
-          }
-        }
+      // Rotate spindle if speed > 0
+      if (toolRef.current && simulationRef.current.spindleSpeed > 0) {
+        toolRef.current.rotation.z += 0.05;
       }
       
       requestAnimationFrame(animate);
@@ -609,7 +605,27 @@ M30 ; End`
       }
       renderer.dispose();
     };
-  }, [simulation, project.gcode.channel1]);
+  }, []); // Only initialize once
+  
+  // Update tool position when simulation changes
+  useEffect(() => {
+    if (!toolRef.current) return;
+    
+    const positions = parseGCodePositions(project.gcode.channel1);
+    if (positions.length === 0) return;
+    
+    const safeCurrentLine = Math.min(Math.max(0, simulation.currentLine), positions.length - 1);
+    const currentPos = positions[safeCurrentLine];
+    
+    if (currentPos && !currentPos.comment) {
+      toolRef.current.position.set(currentPos.x, currentPos.y, currentPos.z + 50);
+      
+      // Update spindle speed from G-code
+      if (currentPos.s !== undefined && currentPos.s !== simulation.spindleSpeed) {
+        setSimulation(prev => ({ ...prev, spindleSpeed: currentPos.s }));
+      }
+    }
+  }, [simulation.currentLine, project.gcode.channel1]);
   
   // Simple playback timer
   useEffect(() => {
@@ -1085,7 +1101,7 @@ M30 ; End`
       top: [0, 0, 800],      // Looking down Z-axis
       front: [0, -800, 0],   // Looking along Y-axis
       side: [800, 0, 0],     // Looking along X-axis
-      iso: [600, -400, 400]  // Rotated 90° CCW so Y points up-right
+      iso: [400, 600, 400]   // Rotated 90° CCW so Y points up-right (was 600, -400, now 400, 600)
     };
     const pos = positions[view];
     if (pos) {
