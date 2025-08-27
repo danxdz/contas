@@ -98,65 +98,242 @@ const DualChannelEditor = ({ program, setProgram, simulation }) => {
     };
   }, []);
   
-  // Add machine visualization
+  // Add Swiss/Multi-spindle lathe visualization (DMG CTX1250 style)
   const addMachineVisualization = (scene) => {
-    // Main spindle (Channel 1)
-    const mainSpindleGeom = new THREE.CylinderGeometry(30, 30, 60, 32);
-    const mainSpindleMat = new THREE.MeshPhongMaterial({ color: 0x4444ff });
-    const mainSpindle = new THREE.Mesh(mainSpindleGeom, mainSpindleMat);
-    mainSpindle.position.set(-150, 0, 50);
-    mainSpindle.rotateX(Math.PI / 2);
-    scene.add(mainSpindle);
-    
-    // Sub spindle (Channel 2)
-    const subSpindleGeom = new THREE.CylinderGeometry(30, 30, 60, 32);
-    const subSpindleMat = new THREE.MeshPhongMaterial({ color: 0xff4444 });
-    const subSpindle = new THREE.Mesh(subSpindleGeom, subSpindleMat);
-    subSpindle.position.set(150, 0, 50);
-    subSpindle.rotateX(Math.PI / 2);
-    scene.add(subSpindle);
-    
-    // Tool 1
-    const tool1Group = new THREE.Group();
-    const tool1Geom = new THREE.CylinderGeometry(5, 5, 40, 16);
-    const tool1Mat = new THREE.MeshPhongMaterial({ 
-      color: 0x00ff00,
-      emissive: 0x00ff00,
-      emissiveIntensity: 0.2
+    // Machine bed/base
+    const bedGeometry = new THREE.BoxGeometry(400, 20, 200);
+    const bedMaterial = new THREE.MeshPhongMaterial({ 
+      color: 0x3a3a3a,
+      metalness: 0.8,
+      roughness: 0.3
     });
-    const tool1 = new THREE.Mesh(tool1Geom, tool1Mat);
-    tool1.rotateX(-Math.PI / 2);
-    tool1Group.add(tool1);
-    tool1Group.position.set(-150, 0, 100);
-    tool1Ref.current = tool1Group;
-    scene.add(tool1Group);
+    const bed = new THREE.Mesh(bedGeometry, bedMaterial);
+    bed.position.set(0, 0, -10);
+    scene.add(bed);
     
-    // Tool 2
-    const tool2Group = new THREE.Group();
-    const tool2Geom = new THREE.CylinderGeometry(5, 5, 40, 16);
-    const tool2Mat = new THREE.MeshPhongMaterial({ 
-      color: 0xffaa00,
-      emissive: 0xffaa00,
-      emissiveIntensity: 0.2
+    // Main spindle chuck (Channel 1 - Left)
+    const mainChuckGroup = new THREE.Group();
+    
+    // Chuck body
+    const chuckBodyGeom = new THREE.CylinderGeometry(45, 50, 40, 32);
+    const chuckMaterial = new THREE.MeshPhongMaterial({ 
+      color: 0x666666,
+      metalness: 0.9,
+      roughness: 0.2
     });
-    const tool2 = new THREE.Mesh(tool2Geom, tool2Mat);
-    tool2.rotateX(-Math.PI / 2);
-    tool2Group.add(tool2);
-    tool2Group.position.set(150, 0, 100);
-    tool2Ref.current = tool2Group;
-    scene.add(tool2Group);
+    const mainChuckBody = new THREE.Mesh(chuckBodyGeom, chuckMaterial);
+    mainChuckBody.rotateZ(Math.PI / 2);
+    mainChuckGroup.add(mainChuckBody);
     
-    // Workpiece
-    const workpieceGeom = new THREE.CylinderGeometry(40, 40, 200, 32);
+    // Chuck jaws (3-jaw chuck)
+    for (let i = 0; i < 3; i++) {
+      const angle = (i * Math.PI * 2) / 3;
+      const jawGeom = new THREE.BoxGeometry(12, 20, 35);
+      const jawMat = new THREE.MeshPhongMaterial({ 
+        color: 0x555555,
+        metalness: 0.8
+      });
+      const jaw = new THREE.Mesh(jawGeom, jawMat);
+      jaw.position.x = Math.cos(angle) * 30;
+      jaw.position.y = Math.sin(angle) * 30;
+      jaw.rotation.z = angle;
+      mainChuckGroup.add(jaw);
+    }
+    
+    mainChuckGroup.position.set(-150, 0, 50);
+    scene.add(mainChuckGroup);
+    
+    // Sub spindle chuck (Channel 2 - Right)
+    const subChuckGroup = new THREE.Group();
+    
+    const subChuckBody = new THREE.Mesh(chuckBodyGeom, chuckMaterial);
+    subChuckBody.rotateZ(Math.PI / 2);
+    subChuckGroup.add(subChuckBody);
+    
+    // Sub chuck jaws
+    for (let i = 0; i < 3; i++) {
+      const angle = (i * Math.PI * 2) / 3;
+      const jawGeom = new THREE.BoxGeometry(12, 20, 35);
+      const jawMat = new THREE.MeshPhongMaterial({ 
+        color: 0x555555,
+        metalness: 0.8
+      });
+      const jaw = new THREE.Mesh(jawGeom, jawMat);
+      jaw.position.x = Math.cos(angle) * 30;
+      jaw.position.y = Math.sin(angle) * 30;
+      jaw.rotation.z = angle;
+      subChuckGroup.add(jaw);
+    }
+    
+    subChuckGroup.position.set(150, 0, 50);
+    subChuckGroup.rotation.y = Math.PI; // Face opposite direction
+    scene.add(subChuckGroup);
+    
+    // Guide bushing for Swiss-type (critical for Swiss lathes)
+    const guideBushingGroup = new THREE.Group();
+    
+    // Outer bushing
+    const bushingOuterGeom = new THREE.CylinderGeometry(35, 35, 25, 32);
+    const bushingMat = new THREE.MeshPhongMaterial({ 
+      color: 0x888888,
+      metalness: 0.95,
+      roughness: 0.1
+    });
+    const bushingOuter = new THREE.Mesh(bushingOuterGeom, bushingMat);
+    bushingOuter.rotateZ(Math.PI / 2);
+    guideBushingGroup.add(bushingOuter);
+    
+    // Inner bushing hole
+    const bushingInnerGeom = new THREE.CylinderGeometry(22, 22, 27, 32);
+    const bushingInnerMat = new THREE.MeshPhongMaterial({ 
+      color: 0x222222
+    });
+    const bushingInner = new THREE.Mesh(bushingInnerGeom, bushingInnerMat);
+    bushingInner.rotateZ(Math.PI / 2);
+    guideBushingGroup.add(bushingInner);
+    
+    guideBushingGroup.position.set(-80, 0, 50);
+    scene.add(guideBushingGroup);
+    
+    // Main turret (12-station for Channel 1)
+    const mainTurretGroup = new THREE.Group();
+    const turretBaseGeom = new THREE.CylinderGeometry(35, 35, 15, 32);
+    const turretMat = new THREE.MeshPhongMaterial({ 
+      color: 0x4a4a4a,
+      metalness: 0.7
+    });
+    const mainTurretBase = new THREE.Mesh(turretBaseGeom, turretMat);
+    mainTurretGroup.add(mainTurretBase);
+    
+    // Add tools to main turret (12 stations)
+    const toolColors = [0x00ff00, 0x00ffff, 0xff00ff, 0xffff00, 0x0088ff, 0xff8800];
+    for (let i = 0; i < 6; i++) {
+      const angle = (i * Math.PI * 2) / 12;
+      const toolHolderGroup = new THREE.Group();
+      
+      // Tool holder
+      const holderGeom = new THREE.BoxGeometry(10, 25, 10);
+      const holderMat = new THREE.MeshPhongMaterial({ color: 0x333333 });
+      const holder = new THREE.Mesh(holderGeom, holderMat);
+      holder.position.y = 12;
+      toolHolderGroup.add(holder);
+      
+      // Cutting tool
+      const toolGeom = new THREE.CylinderGeometry(2, 3, 30, 16);
+      const toolMat = new THREE.MeshPhongMaterial({ 
+        color: toolColors[i % toolColors.length],
+        emissive: toolColors[i % toolColors.length],
+        emissiveIntensity: 0.2
+      });
+      const tool = new THREE.Mesh(toolGeom, toolMat);
+      tool.position.y = 25;
+      tool.rotateX(-Math.PI / 2);
+      toolHolderGroup.add(tool);
+      
+      toolHolderGroup.position.x = Math.cos(angle) * 28;
+      toolHolderGroup.position.z = Math.sin(angle) * 28;
+      toolHolderGroup.rotation.y = -angle;
+      
+      mainTurretGroup.add(toolHolderGroup);
+    }
+    
+    mainTurretGroup.position.set(-50, 30, 50);
+    tool1Ref.current = mainTurretGroup; // Reference for animation
+    scene.add(mainTurretGroup);
+    
+    // Back working turret (8-station for Channel 2)
+    const backTurretGroup = new THREE.Group();
+    const backTurretBase = new THREE.Mesh(
+      new THREE.CylinderGeometry(28, 28, 12, 32),
+      turretMat
+    );
+    backTurretGroup.add(backTurretBase);
+    
+    // Add tools to back turret
+    for (let i = 0; i < 4; i++) {
+      const angle = (i * Math.PI * 2) / 8;
+      const toolHolderGroup = new THREE.Group();
+      
+      const holderGeom = new THREE.BoxGeometry(8, 20, 8);
+      const holderMat = new THREE.MeshPhongMaterial({ color: 0x333333 });
+      const holder = new THREE.Mesh(holderGeom, holderMat);
+      holder.position.y = 10;
+      toolHolderGroup.add(holder);
+      
+      const toolGeom = new THREE.CylinderGeometry(1.5, 2.5, 25, 16);
+      const toolMat = new THREE.MeshPhongMaterial({ 
+        color: 0xff8800,
+        emissive: 0xff8800,
+        emissiveIntensity: 0.2
+      });
+      const tool = new THREE.Mesh(toolGeom, toolMat);
+      tool.position.y = 20;
+      tool.rotateX(-Math.PI / 2);
+      toolHolderGroup.add(tool);
+      
+      toolHolderGroup.position.x = Math.cos(angle) * 22;
+      toolHolderGroup.position.z = Math.sin(angle) * 22;
+      toolHolderGroup.rotation.y = -angle;
+      
+      backTurretGroup.add(toolHolderGroup);
+    }
+    
+    backTurretGroup.position.set(50, 30, -50);
+    tool2Ref.current = backTurretGroup; // Reference for animation
+    scene.add(backTurretGroup);
+    
+    // Workpiece (bar stock through guide bushing)
+    const workpieceGroup = new THREE.Group();
+    
+    // Main bar stock
+    const barStockGeom = new THREE.CylinderGeometry(20, 20, 250, 32);
     const workpieceMat = new THREE.MeshPhongMaterial({ 
-      color: 0x8888ff,
-      transparent: true,
-      opacity: 0.7
+      color: 0xaa8866,
+      metalness: 0.3,
+      roughness: 0.7
     });
-    const workpiece = new THREE.Mesh(workpieceGeom, workpieceMat);
-    workpiece.rotateZ(Math.PI / 2);
-    workpiece.position.set(0, 0, 50);
-    scene.add(workpiece);
+    const barStock = new THREE.Mesh(barStockGeom, workpieceMat);
+    barStock.rotateZ(Math.PI / 2);
+    workpieceGroup.add(barStock);
+    
+    // Machined section (after guide bushing)
+    const machinedGeom = new THREE.CylinderGeometry(15, 15, 80, 32);
+    const machinedMat = new THREE.MeshPhongMaterial({ 
+      color: 0xccaa88,
+      metalness: 0.5,
+      roughness: 0.3
+    });
+    const machinedSection = new THREE.Mesh(machinedGeom, machinedMat);
+    machinedSection.rotateZ(Math.PI / 2);
+    machinedSection.position.x = -30;
+    workpieceGroup.add(machinedSection);
+    
+    workpieceGroup.position.set(0, 0, 50);
+    scene.add(workpieceGroup);
+    
+    // Add spindle indicators
+    const addSpindleIndicator = (position, label, color) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = color;
+      ctx.font = 'bold 20px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(label, 64, 40);
+      
+      const texture = new THREE.CanvasTexture(canvas);
+      const spriteMat = new THREE.SpriteMaterial({ map: texture });
+      const sprite = new THREE.Sprite(spriteMat);
+      sprite.scale.set(40, 20, 1);
+      sprite.position.copy(position);
+      sprite.position.z += 100;
+      scene.add(sprite);
+    };
+    
+    addSpindleIndicator(new THREE.Vector3(-150, 0, 0), 'MAIN', '#00ff00');
+    addSpindleIndicator(new THREE.Vector3(150, 0, 0), 'SUB', '#ff8800');
+    addSpindleIndicator(new THREE.Vector3(-80, 0, 0), 'GUIDE', '#00ffff');
   };
   
   // Update tool positions based on parsed G-code
