@@ -48,9 +48,9 @@
   --shadow-focus: 0 0 0 3px rgba(0, 102, 204, 0.15);
   
   /* Layout */
-  --header-height: 64px;
-  --sidebar-width: 280px;
-  --sidebar-collapsed: 64px;
+  --header-height: 48px;
+  --sidebar-width: 220px;
+  --sidebar-collapsed: 48px;
   --border-radius: 8px;
   --border-radius-sm: 4px;
   --border-radius-lg: 12px;
