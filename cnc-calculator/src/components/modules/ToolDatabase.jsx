@@ -307,7 +307,7 @@ function ToolDatabase({ tools: initialTools = [], onUpdate }) {
         case 'recent':
           return (b.usageStats.lastUsed || '').localeCompare(a.usageStats.lastUsed || '');
         case 'usage':
-          return b.usageStats.totalTime - a.usageStats.totalTime;
+          return (b.usageStats?.totalTime || 0) - (a.usageStats?.totalTime || 0);
         default:
           return 0;
       }
@@ -655,8 +655,8 @@ function ToolDatabase({ tools: initialTools = [], onUpdate }) {
                       </div>
                     )}
                     <div style={{ fontSize: '0.8rem', marginTop: '5px', color: 'var(--info)' }}>
-                      Usage: {tool.usageStats.totalTime} min • {tool.usageStats.partsCount} parts
-                      {tool.usageStats.lastUsed && ` • Last: ${tool.usageStats.lastUsed}`}
+                      Usage: {tool.usageStats?.totalTime || 0} min • {tool.usageStats?.partsCount || 0} parts
+                      {tool.usageStats?.lastUsed && ` • Last: ${tool.usageStats.lastUsed}`}
                     </div>
                   </div>
                   

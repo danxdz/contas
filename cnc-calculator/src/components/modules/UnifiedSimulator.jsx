@@ -5,8 +5,40 @@ import FloatingWindow, { ToolInfoWindow, ResultsWindow, MonitoringWindow } from 
 import './UnifiedSimulator.css';
 
 const UnifiedSimulator = ({ toolDatabase = [] }) => {
+  // Default sample G-code
+  const defaultGcode = `; Sample G-Code Program
+G90 G94 G17 ; Absolute, mm/min, XY plane
+G21 ; Metric
+G28 G91 Z0 ; Home Z
+G90
+
+; Tool Change
+T1 M06
+S12000 M03 ; Spindle on
+M08 ; Coolant on
+
+; Square Pattern
+G00 X0 Y0 Z5 ; Start position
+G01 Z-5 F500 ; Plunge
+G01 X50 Y0 F2500 ; Line 1
+G01 X50 Y50 ; Line 2
+G01 X0 Y50 ; Line 3
+G01 X0 Y0 ; Line 4
+G00 Z5 ; Retract
+
+; Circle
+G00 X75 Y25
+G01 Z-5 F500
+G02 X75 Y25 I25 J0 F2000
+G00 Z5
+
+; End
+M05 ; Spindle off
+M09 ; Coolant off
+M30 ; Program end`;
+
   // Core States
-  const [gcode, setGcode] = useState('');
+  const [gcode, setGcode] = useState(defaultGcode);
   const [parsedGcode, setParsedGcode] = useState(null);
   const [simulation, setSimulation] = useState({
     isPlaying: false,
@@ -80,6 +112,10 @@ const UnifiedSimulator = ({ toolDatabase = [] }) => {
   const toolRef = useRef(null);
   const stockRef = useRef(null);
 
+  // Time-based animation
+  const lastTimeRef = useRef(0);
+  const playbackSpeedRef = useRef(1.0);
+
   // Initialize 3D Scene
   useEffect(() => {
     if (!mountRef.current) return;
@@ -148,17 +184,15 @@ const UnifiedSimulator = ({ toolDatabase = [] }) => {
     addTool(scene);
 
     // Animation loop
-    const animate = () => {
+    const animate = (time) => {
       animationRef.current = requestAnimationFrame(animate);
       controls.update();
-      
-      if (simulation.isPlaying && !simulation.isPaused) {
-        updateSimulation();
-      }
-      
       renderer.render(scene, camera);
+      
+      // Store time for playback updates
+      lastTimeRef.current = time;
     };
-    animate();
+    animate(0);
 
     // Handle resize
     const handleResize = () => {
@@ -180,6 +214,30 @@ const UnifiedSimulator = ({ toolDatabase = [] }) => {
       renderer.dispose();
     };
   }, []);
+
+  // Parse default G-code on mount
+  useEffect(() => {
+    const parsed = parseGcode(defaultGcode);
+    setParsedGcode(parsed);
+    if (sceneRef.current) {
+      drawToolpath(parsed.commands);
+    }
+  }, []);
+
+  // Handle playback animation
+  useEffect(() => {
+    if (!simulation.isPlaying || simulation.isPaused) return;
+    
+    const interval = setInterval(() => {
+      if (parsedGcode && simulation.currentLine < parsedGcode.commands.length) {
+        updateSimulation();
+      } else {
+        setSimulation(prev => ({ ...prev, isPlaying: false }));
+      }
+    }, 100 / simulation.speed); // Adjust speed
+    
+    return () => clearInterval(interval);
+  }, [simulation.isPlaying, simulation.isPaused, simulation.currentLine, simulation.speed, parsedGcode]);
 
   // Add machine table
   const addMachineTable = (scene) => {
