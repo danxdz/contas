@@ -208,9 +208,9 @@ const CNCProSuite = () => {
     speed: 1.0,
     currentLine: 0,
     position: { x: 0, y: 0, z: 0, a: 0, b: 0, c: 0 },
-    feedRate: 0,
-    spindleSpeed: 0,
-    tool: null
+    feedRate: 500,
+    spindleSpeed: 12000,
+    tool: 1
   });
 
   const [project, setProject] = useState({
@@ -543,36 +543,125 @@ M30 ; End`
     addAxisLabel('Y', new THREE.Vector3(0, 220, 0), '#00ff00');
     addAxisLabel('Z', new THREE.Vector3(0, 0, 220), '#0088ff');
 
-    // Tool animation along toolpath
-    let animationTime = 0;
+    // Parse G-code to extract positions
+    const parseGCodeLine = (line) => {
+      const coords = { x: null, y: null, z: null, f: null };
+      const parts = line.toUpperCase().split(/\s+/);
+      
+      parts.forEach(part => {
+        if (part.startsWith('X')) coords.x = parseFloat(part.slice(1));
+        if (part.startsWith('Y')) coords.y = parseFloat(part.slice(1));
+        if (part.startsWith('Z')) coords.z = parseFloat(part.slice(1));
+        if (part.startsWith('F')) coords.f = parseFloat(part.slice(1));
+      });
+      
+      return coords;
+    };
+    
+    // Parse all G-code lines at startup
+    const gcodeLinesRef = { current: [] };
+    const projectRef = { current: project };
+    projectRef.current = project;
+    
+    const parseAllGCode = () => {
+      const lines = projectRef.current.gcode.channel1.split('\n');
+      const positions = [];
+      let currentPos = { x: 0, y: 0, z: 5 };
+      
+      lines.forEach((line, index) => {
+        // Skip comments and empty lines
+        if (line.trim().startsWith(';') || line.trim() === '') {
+          positions.push({ ...currentPos, comment: true });
+          return;
+        }
+        
+        const coords = parseGCodeLine(line);
+        if (coords.x !== null) currentPos.x = coords.x;
+        if (coords.y !== null) currentPos.y = coords.y;
+        if (coords.z !== null) currentPos.z = coords.z;
+        
+        positions.push({ ...currentPos, feedrate: coords.f });
+      });
+      
+      return positions;
+    };
+    
+    gcodeLinesRef.current = parseAllGCode();
+    
+    // Tool animation following G-code
+    let lastUpdateTime = Date.now();
+    let interpolationProgress = 0;
+    
     const animateToolPath = () => {
-      if (simulationRef.current.isPlaying && toolpathPoints.length > 0 && toolRef.current) {
-        // Calculate position along toolpath
-        const totalPoints = toolpathPoints.length;
-        const currentIndex = Math.floor((animationTime * simulationRef.current.speed) % totalPoints);
-        const nextIndex = (currentIndex + 1) % totalPoints;
-        const t = ((animationTime * simulationRef.current.speed) % totalPoints) - currentIndex;
+      const currentTime = Date.now();
+      const deltaTime = (currentTime - lastUpdateTime) / 1000; // Convert to seconds
+      lastUpdateTime = currentTime;
+      
+      if (simulationRef.current.isPlaying && gcodeLinesRef.current.length > 0 && toolRef.current) {
+        const currentLine = simulationRef.current.currentLine;
+        const nextLine = Math.min(currentLine + 1, gcodeLinesRef.current.length - 1);
         
-        // Interpolate between points
-        const currentPoint = toolpathPoints[currentIndex];
-        const nextPoint = toolpathPoints[nextIndex];
+        // Skip comment lines
+        let actualCurrentLine = currentLine;
+        let actualNextLine = nextLine;
+        while (actualCurrentLine < gcodeLinesRef.current.length && gcodeLinesRef.current[actualCurrentLine].comment) {
+          actualCurrentLine++;
+        }
+        while (actualNextLine < gcodeLinesRef.current.length && gcodeLinesRef.current[actualNextLine].comment) {
+          actualNextLine++;
+        }
         
-        if (currentPoint && nextPoint) {
-          const x = currentPoint.x + (nextPoint.x - currentPoint.x) * t;
-          const y = currentPoint.y + (nextPoint.y - currentPoint.y) * t;
-          const z = currentPoint.z + (nextPoint.z - currentPoint.z) * t + 20; // Add tool length offset
+        if (actualCurrentLine < gcodeLinesRef.current.length && actualNextLine < gcodeLinesRef.current.length) {
+          const currentPos = gcodeLinesRef.current[actualCurrentLine];
+          const nextPos = gcodeLinesRef.current[actualNextLine];
+          
+          // Calculate interpolation speed based on feedrate or default speed
+          const feedrate = nextPos.feedrate || 500; // mm/min default
+          const distance = Math.sqrt(
+            Math.pow(nextPos.x - currentPos.x, 2) +
+            Math.pow(nextPos.y - currentPos.y, 2) +
+            Math.pow(nextPos.z - currentPos.z, 2)
+          );
+          
+          const moveTime = distance > 0 ? (distance / (feedrate / 60)) : 0.1; // seconds
+          interpolationProgress += (deltaTime * simulationRef.current.speed) / moveTime;
+          
+          if (interpolationProgress >= 1) {
+            // Move to next line
+            interpolationProgress = 0;
+            const nextLineNum = Math.min(
+              simulationRef.current.currentLine + 1,
+              gcodeLinesRef.current.length - 1
+            );
+            
+            // Update state through callback
+            setSimulation(prev => ({
+              ...prev,
+              currentLine: nextLineNum,
+              isPlaying: nextLineNum < gcodeLinesRef.current.length - 1
+            }));
+            
+            simulationRef.current.currentLine = nextLineNum;
+            
+            // Stop at end of program
+            if (nextLineNum >= gcodeLinesRef.current.length - 1) {
+              simulationRef.current.isPlaying = false;
+            }
+          }
+          
+          // Interpolate position
+          const t = Math.min(interpolationProgress, 1);
+          const x = currentPos.x + (nextPos.x - currentPos.x) * t;
+          const y = currentPos.y + (nextPos.y - currentPos.y) * t;
+          const z = currentPos.z + (nextPos.z - currentPos.z) * t + 50; // Tool offset
           
           toolRef.current.position.set(x, y, z);
           
-          // Rotate tool (spindle rotation)
-          toolRef.current.children.forEach(child => {
-            if (child.geometry && child.geometry.type === 'CylinderGeometry') {
-              child.rotation.z += 0.5 * simulationRef.current.speed;
-            }
-          });
+          // Rotate spindle around Z-axis
+          if (simulationRef.current.spindleSpeed > 0) {
+            toolRef.current.rotation.z += (simulationRef.current.spindleSpeed / 1000) * deltaTime;
+          }
         }
-        
-        animationTime += 0.016; // 60 FPS
       }
     };
     
@@ -600,7 +689,7 @@ M30 ; End`
       }
       renderer.dispose();
     };
-  }, [simulation]);
+  }, [simulation, project.gcode.channel1]);
 
   // Panel management functions
   const togglePanel = (panelId) => {
@@ -1077,6 +1166,13 @@ M30 ; End`
       isPlaying: false,
       currentLine: 0,
       position: { x: 0, y: 0, z: 0, a: 0, b: 0, c: 0 }
+    }));
+  };
+  
+  const playPauseSimulation = () => {
+    setSimulation(prev => ({
+      ...prev,
+      isPlaying: !prev.isPlaying
     }));
   };
 
