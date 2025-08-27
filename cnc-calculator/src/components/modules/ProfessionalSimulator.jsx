@@ -103,18 +103,20 @@ M30`);
 
   // Initialize Three.js Scene
   useEffect(() => {
-    if (!mountRef.current) return;
-    
-    // Clear any existing content
-    while (mountRef.current.firstChild) {
-      mountRef.current.removeChild(mountRef.current.firstChild);
-    }
+    // Small delay to ensure DOM is ready
+    const timer = setTimeout(() => {
+      if (!mountRef.current) return;
+      
+      // Clear any existing content
+      while (mountRef.current.firstChild) {
+        mountRef.current.removeChild(mountRef.current.firstChild);
+      }
 
-    // Scene setup
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x1a1a1a);
-    scene.fog = new THREE.Fog(0x1a1a1a, 500, 2000);
-    sceneRef.current = scene;
+      // Scene setup
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x1a1a1a);
+      scene.fog = new THREE.Fog(0x1a1a1a, 500, 2000);
+      sceneRef.current = scene;
 
     // Camera
     const camera = new THREE.PerspectiveCamera(
@@ -213,12 +215,17 @@ M30`);
     };
     window.addEventListener('resize', handleResize);
 
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        if (mountRef.current && renderer.domElement) {
+          mountRef.current.removeChild(renderer.domElement);
+        }
+        renderer.dispose();
+      };
+    }, 100);
+
     return () => {
-      window.removeEventListener('resize', handleResize);
-      if (mountRef.current && renderer.domElement) {
-        mountRef.current.removeChild(renderer.domElement);
-      }
-      renderer.dispose();
+      clearTimeout(timer);
     };
   }, []);
 
@@ -523,34 +530,8 @@ M30`);
     }
   };
 
-  // Check if mobile
-  const isMobile = window.innerWidth <= 640;
-
   return (
     <div className="professional-simulator">
-      {/* Mobile Exit Button */}
-      {isMobile && (
-        <button 
-          className="mobile-exit-button"
-          onClick={() => window.history.back()}
-          style={{
-            position: 'fixed',
-            top: '10px',
-            right: '10px',
-            zIndex: 1001,
-            padding: '8px 12px',
-            background: '#dc3545',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            fontSize: '14px',
-            fontWeight: 'bold'
-          }}
-        >
-          ✕ Exit
-        </button>
-      )}
-      
       {/* Ribbon Toolbar */}
       <div className="cam-ribbon">
         <div className="ribbon-tabs">
