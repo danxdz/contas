@@ -151,13 +151,14 @@ M30 ; Program end`);
   
   // Panel states for collapsing
   const [panelStates, setPanelStates] = useState({
-    toolPanel: window.innerWidth > 968,
-    infoPanel: window.innerWidth > 968,
-    gcodeEditor: true
+    toolPanel: window.innerWidth > 640,
+    infoPanel: window.innerWidth > 640,
+    gcodeEditor: window.innerWidth > 640
   });
   
   // Fullscreen state
   const [isFullscreen, setIsFullscreen] = useState(true);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 640);
   
   // Tool Database Integration
   const [toolDatabase, setToolDatabase] = useState(() => {
@@ -402,9 +403,24 @@ M30 ; Program end`);
       camera.updateProjectionMatrix();
       renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
       
-      // Auto-collapse panels on small screens
-      if (window.innerWidth <= 968) {
-        setPanelStates({ toolPanel: false, infoPanel: false });
+      // Auto-collapse panels based on screen size
+      const width = window.innerWidth;
+      setIsMobile(width <= 640);
+      
+      if (width <= 640) {
+        // Mobile: hide all panels, keep editor visible
+        setPanelStates({ 
+          toolPanel: false, 
+          infoPanel: false,
+          gcodeEditor: true 
+        });
+      } else if (width <= 968) {
+        // Tablet: hide side panels
+        setPanelStates(prev => ({ 
+          ...prev,
+          toolPanel: false, 
+          infoPanel: false 
+        }));
       }
     };
     window.addEventListener('resize', handleResize);
@@ -1465,25 +1481,27 @@ M30 ; Program end`);
             <option value="3D">3D</option>
             <option value="Split">Split</option>
           </select>
-          <button 
-            className="btn btn-small"
-            onClick={() => {
-              setPanelStates(prev => ({
-                toolPanel: !prev.toolPanel && !prev.infoPanel,
-                infoPanel: !prev.toolPanel && !prev.infoPanel,
-                gcodeEditor: !prev.gcodeEditor
-              }));
-            }}
-            style={{ 
-              padding: '2px 6px', 
-              fontSize: '10px',
-              background: 'rgba(255, 255, 255, 0.1)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              color: 'white'
-            }}
-          >
-            {panelStates.toolPanel ? '⬜' : '⬛'} Panels
-          </button>
+          {!isMobile && (
+            <button 
+              className="btn btn-small"
+              onClick={() => {
+                setPanelStates(prev => ({
+                  toolPanel: !prev.toolPanel && !prev.infoPanel,
+                  infoPanel: !prev.toolPanel && !prev.infoPanel,
+                  gcodeEditor: !prev.gcodeEditor
+                }));
+              }}
+              style={{ 
+                padding: '2px 6px', 
+                fontSize: '10px',
+                background: 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                color: 'white'
+              }}
+            >
+              {panelStates.toolPanel ? '⬜' : '⬛'} Panels
+            </button>
+          )}
           <button 
             className="btn btn-small"
             onClick={() => window.history.back()}
