@@ -152,8 +152,12 @@ M30 ; Program end`);
   // Panel states for collapsing
   const [panelStates, setPanelStates] = useState({
     toolPanel: window.innerWidth > 968,
-    infoPanel: window.innerWidth > 968
+    infoPanel: window.innerWidth > 968,
+    gcodeEditor: true
   });
+  
+  // Fullscreen state
+  const [isFullscreen, setIsFullscreen] = useState(true);
   
   // Tool Database Integration
   const [toolDatabase, setToolDatabase] = useState(() => {
@@ -1441,10 +1445,10 @@ M30 ; Program end`);
   return (
     <div className="gcode-simulator">
       <div className="simulator-header">
-        <h2>Advanced G-Code Simulator</h2>
+        <h2>🚀 G-Code Simulator</h2>
         <div className="header-controls">
           <label className="file-input-label">
-            📁 Load G-Code
+            📁 Load
             <input
               type="file"
               accept=".nc,.gcode,.txt"
@@ -1457,10 +1461,43 @@ M30 ; Program end`);
             onChange={(e) => setSimulationMode(e.target.value)}
             className="mode-selector"
           >
-            <option value="2D">2D View</option>
-            <option value="3D">3D View</option>
-            <option value="Split">Split View</option>
+            <option value="2D">2D</option>
+            <option value="3D">3D</option>
+            <option value="Split">Split</option>
           </select>
+          <button 
+            className="btn btn-small"
+            onClick={() => {
+              setPanelStates(prev => ({
+                toolPanel: !prev.toolPanel && !prev.infoPanel,
+                infoPanel: !prev.toolPanel && !prev.infoPanel,
+                gcodeEditor: !prev.gcodeEditor
+              }));
+            }}
+            style={{ 
+              padding: '2px 6px', 
+              fontSize: '10px',
+              background: 'rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              color: 'white'
+            }}
+          >
+            {panelStates.toolPanel ? '⬜' : '⬛'} Panels
+          </button>
+          <button 
+            className="btn btn-small"
+            onClick={() => window.history.back()}
+            style={{ 
+              padding: '2px 8px', 
+              fontSize: '11px',
+              background: '#dc3545',
+              color: 'white',
+              border: 'none',
+              borderRadius: '3px'
+            }}
+          >
+            ✕ Exit
+          </button>
         </div>
       </div>
 
@@ -2004,12 +2041,19 @@ M30 ; Program end`);
       </div>
 
       {/* G-Code Editor */}
-      <div className="gcode-editor">
+      <div className={`gcode-editor ${!panelStates.gcodeEditor ? 'collapsed' : ''}`}>
         <div className="editor-header">
           <h3>G-Code Program</h3>
           <div className="editor-actions">
             <button className="btn btn-small" onClick={verifyGCode}>Verify</button>
             <button className="btn btn-small" onClick={optimizeGCode}>Optimize</button>
+            <button 
+              className="btn btn-small"
+              onClick={() => setPanelStates(prev => ({ ...prev, gcodeEditor: !prev.gcodeEditor }))}
+              style={{ marginLeft: '10px' }}
+            >
+              {panelStates.gcodeEditor ? '▼' : '▲'}
+            </button>
           </div>
         </div>
         <div className="gcode-content" style={{ position: 'relative', height: '100%', display: 'flex', overflow: 'hidden' }}>
