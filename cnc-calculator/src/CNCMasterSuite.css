@@ -168,7 +168,6 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
 }
 
@@ -177,12 +176,12 @@
   min-width: 200px;
   max-width: 600px;
   border-right: 2px solid #d1d1d1;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
 
 .panel-left.collapsed {
   width: 40px !important;
   min-width: 40px;
+}
+
 }
 
 .panel-right {
@@ -190,7 +189,6 @@
   min-width: 200px;
   max-width: 400px;
   border-left: 2px solid #d1d1d1;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .panel-right.collapsed {
@@ -351,34 +349,7 @@
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Smooth animations */
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.panel {
-  animation: slideIn 0.3s ease-out;
-}
-
-.panel-content {
-  animation: fadeIn 0.4s ease-out;
-}
+/* Removed jumping animations - keeping it stable */
 
 .simulator-viewport {
   width: 100%;
