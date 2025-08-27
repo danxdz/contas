@@ -1,0 +1,469 @@
+/* CNC Pro Suite - Fullscreen with Dynamic Floating/Docked Panels */
+
+.cnc-pro-suite {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #0a0e1a;
+}
+
+/* 3D Viewport - Full Background */
+.viewport-3d {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.viewport-3d canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Quick Toolbar - Top */
+.quick-toolbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: rgba(20, 24, 36, 0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  gap: 10px;
+  z-index: 1000;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar-group button {
+  width: 30px;
+  height: 30px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #a0aec0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: all 0.2s ease;
+}
+
+.toolbar-group button:hover {
+  background: rgba(0, 212, 255, 0.1);
+  border-color: #00d4ff;
+  color: #00d4ff;
+  transform: translateY(-1px);
+}
+
+.toolbar-group button.active {
+  background: linear-gradient(135deg, #00d4ff, #0099cc);
+  border-color: transparent;
+  color: white;
+}
+
+.toolbar-separator {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.speed-slider {
+  width: 80px;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  outline: none;
+}
+
+.speed-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: #00d4ff;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.toolbar-info {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #718096;
+  font-size: 11px;
+  font-family: 'Consolas', monospace;
+}
+
+.toolbar-info span {
+  color: #a0aec0;
+}
+
+/* Panel System */
+.panel {
+  background: rgba(20, 24, 36, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  transition: all 0.3s ease;
+}
+
+/* Floating Panel */
+.panel.floating {
+  position: fixed !important;
+  resize: both;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Docked Panels */
+.panel.docked {
+  position: fixed;
+  transition: transform 0.3s ease;
+}
+
+.panel.docked-left {
+  left: 0;
+  top: 40px;
+  bottom: 0;
+  width: 400px;
+  border-radius: 0 8px 8px 0;
+  border-left: none;
+}
+
+.panel.docked-right {
+  right: 0;
+  top: 40px;
+  bottom: 0;
+  width: 350px;
+  border-radius: 8px 0 0 8px;
+  border-right: none;
+}
+
+.panel.docked-bottom {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 200px;
+  border-radius: 8px 8px 0 0;
+  border-bottom: none;
+}
+
+/* Panel Header */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(10, 14, 26, 0.6);
+  border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+  cursor: move;
+  user-select: none;
+}
+
+.panel.floating .panel-header:hover {
+  background: rgba(0, 212, 255, 0.05);
+}
+
+.panel-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #00d4ff;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.panel-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.panel-controls button {
+  width: 20px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #718096;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.panel-controls button:hover {
+  background: rgba(0, 212, 255, 0.1);
+  border-color: #00d4ff;
+  color: #00d4ff;
+}
+
+/* Panel Content */
+.panel-content {
+  flex: 1;
+  overflow: auto;
+  padding: 10px;
+  color: #e0e0e0;
+}
+
+/* Minimized Panel */
+.panel.minimized {
+  height: 35px !important;
+}
+
+.panel.minimized .panel-content {
+  display: none;
+}
+
+/* Resize Handle */
+.panel-resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 20px;
+  height: 20px;
+  cursor: nwse-resize;
+  background: linear-gradient(135deg, transparent 50%, rgba(0, 212, 255, 0.3) 50%);
+  border-radius: 0 0 8px 0;
+}
+
+.panel-resize-handle:hover {
+  background: linear-gradient(135deg, transparent 40%, #00d4ff 40%);
+}
+
+/* G-Code Editor Specific */
+.gcode-editor-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.gcode-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+
+.gcode-tab {
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px 4px 0 0;
+  color: #718096;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.2s ease;
+}
+
+.gcode-tab.active {
+  background: rgba(0, 212, 255, 0.1);
+  border-color: #00d4ff;
+  color: #00d4ff;
+}
+
+.gcode-textarea {
+  flex: 1;
+  background: #0a0e1a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #00ff88;
+  font-family: 'Consolas', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 10px;
+  resize: none;
+  outline: none;
+}
+
+.gcode-textarea:focus {
+  border-color: #00d4ff;
+  box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.1);
+}
+
+/* Tool Manager Specific */
+.tool-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tool-item {
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tool-item:hover {
+  background: rgba(0, 212, 255, 0.05);
+  border-color: rgba(0, 212, 255, 0.3);
+  transform: translateX(2px);
+}
+
+.tool-item.selected {
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(0, 153, 204, 0.1));
+  border-color: #00d4ff;
+}
+
+/* Console Specific */
+.console-content {
+  background: #0a0e1a;
+  color: #00ff88;
+  font-family: 'Consolas', monospace;
+  font-size: 11px;
+  padding: 10px;
+  height: 100%;
+}
+
+.console-content div {
+  margin-bottom: 2px;
+}
+
+/* Context Menu */
+.context-menu {
+  position: fixed;
+  background: rgba(20, 24, 36, 0.98);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 6px;
+  padding: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  z-index: 10000;
+}
+
+.context-menu button {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  background: none;
+  border: none;
+  color: #a0aec0;
+  text-align: left;
+  cursor: pointer;
+  font-size: 12px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.context-menu button:hover {
+  background: rgba(0, 212, 255, 0.1);
+  color: #00d4ff;
+}
+
+.menu-separator {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 4px 8px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .panel.docked-left {
+    width: 300px;
+  }
+  
+  .panel.docked-right {
+    width: 250px;
+  }
+  
+  .toolbar-info {
+    display: none;
+  }
+  
+  .quick-toolbar {
+    overflow-x: auto;
+  }
+}
+
+/* Glass Effect for Panels */
+@supports (backdrop-filter: blur(20px)) {
+  .panel {
+    background: rgba(20, 24, 36, 0.85);
+    backdrop-filter: blur(20px) saturate(180%);
+  }
+}
+
+/* Dark scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #00d4ff;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #0099cc;
+}
+
+/* Loading Animation */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.loading {
+  animation: pulse 2s infinite;
+}
+
+/* Glow Effects */
+.glow {
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+}
+
+/* Focus States */
+*:focus {
+  outline: 2px solid #00d4ff;
+  outline-offset: 2px;
+}
+
+button:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.3);
+}
