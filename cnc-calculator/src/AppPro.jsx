@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './AppPro.css';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Basic Calculators
 import ThreadCalculator from './components/ThreadCalculator';
@@ -299,23 +300,45 @@ function AppPro() {
     
     const Component = module.component;
     
-    // Pass tool database to simulator
-    if (module.id === 'simulator') {
-      return <Component toolDatabase={toolDatabase} onToolSelect={(tool) => console.log('Selected tool:', tool)} />;
+    // Add error handling
+    if (!Component) {
+      console.error(`Component not found for module: ${module.name} (${module.id})`);
+      return (
+        <div style={{ padding: '20px', color: '#ff4444', textAlign: 'center' }}>
+          <h3>Error: Component not found</h3>
+          <p>Module: {module.name} ({module.id})</p>
+        </div>
+      );
     }
     
-    // Pass database management to Tool Database component
-    if (module.id === 'database') {
-      return <Component 
-        tools={toolDatabase} 
-        onUpdate={(newTools) => {
-          setToolDatabase(newTools);
-          localStorage.setItem('cncToolDatabase', JSON.stringify(newTools));
-        }} 
-      />;
+    try {
+      // Pass tool database to simulator
+      if (module.id === 'simulator') {
+        return <Component toolDatabase={toolDatabase} onToolSelect={(tool) => console.log('Selected tool:', tool)} />;
+      }
+      
+      // Pass database management to Tool Database component
+      if (module.id === 'database') {
+        return <Component 
+          tools={toolDatabase} 
+          onUpdate={(newTools) => {
+            setToolDatabase(newTools);
+            localStorage.setItem('cncToolDatabase', JSON.stringify(newTools));
+          }} 
+        />;
+      }
+      
+      return <Component />;
+    } catch (error) {
+      console.error(`Error rendering module ${module.name}:`, error);
+      return (
+        <div style={{ padding: '20px', color: '#ff4444', textAlign: 'center' }}>
+          <h3>Error loading module</h3>
+          <p>Module: {module.name}</p>
+          <p>Error: {error.message}</p>
+        </div>
+      );
     }
-    
-    return <Component />;
   };
 
   const currentModule = moduleCategories[activeCategory]?.modules.find(m => m.id === activeModule);
@@ -407,7 +430,9 @@ function AppPro() {
         </div>
         
         <div className="module-container">
-          {getCurrentComponent()}
+          <ErrorBoundary>
+            {getCurrentComponent()}
+          </ErrorBoundary>
         </div>
       </main>
     </div>
