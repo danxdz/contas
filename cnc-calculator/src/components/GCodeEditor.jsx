@@ -99,12 +99,13 @@ const GCodeEditor = ({ gcode, onChange, currentLine }) => {
           background: currentLine >= 0 ? 
             `linear-gradient(
               transparent ${currentLine * 18}px,
-              rgba(0, 212, 255, 0.2) ${currentLine * 18}px,
-              rgba(0, 212, 255, 0.2) ${(currentLine + 1) * 18}px,
+              rgba(0, 255, 100, 0.25) ${currentLine * 18}px,
+              rgba(0, 255, 100, 0.25) ${(currentLine + 1) * 18}px,
               transparent ${(currentLine + 1) * 18}px
             ), #0a0e1a` : '#0a0e1a',
           backgroundAttachment: 'local',
-          lineHeight: '18px'
+          lineHeight: '18px',
+          boxShadow: currentLine >= 0 ? `inset 4px 0 0 0 #00ff64` : 'none'
         }}
       />
       
