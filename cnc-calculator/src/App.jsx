@@ -55,7 +55,7 @@ const moduleRegistry = {
 
 function App() {
   const [darkMode, setDarkMode] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
+  const [sidebarOpen, setSidebarOpen] = useState(true); // Always start with sidebar open
   const [selectedModule, setSelectedModule] = useState('thread');
   const [favoriteModules, setFavoriteModules] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
