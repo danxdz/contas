@@ -131,6 +131,12 @@ const GCodeSimulator = () => {
   const [parsedProgram, setParsedProgram] = useState(null);
   const [simulationMode, setSimulationMode] = useState('3D'); // 2D, 3D, or Split
   
+  // Panel states for collapsing
+  const [panelStates, setPanelStates] = useState({
+    toolPanel: window.innerWidth > 968,
+    infoPanel: window.innerWidth > 968
+  });
+  
   // Tool Database Integration
   const [toolDatabase, setToolDatabase] = useState(() => {
     const saved = localStorage.getItem('toolDatabase');
@@ -329,6 +335,11 @@ const GCodeSimulator = () => {
       camera.aspect = mountRef.current.clientWidth / mountRef.current.clientHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
+      
+      // Auto-collapse panels on small screens
+      if (window.innerWidth <= 968) {
+        setPanelStates({ toolPanel: false, infoPanel: false });
+      }
     };
     window.addEventListener('resize', handleResize);
     
@@ -1054,7 +1065,14 @@ const GCodeSimulator = () => {
 
       <div className="simulator-layout">
         {/* Tool & Fixture Panel */}
-        <div className="tool-panel">
+        <div className={`tool-panel ${!panelStates.toolPanel ? 'collapsed' : ''}`}>
+          <button 
+            className="panel-toggle"
+            onClick={() => setPanelStates(prev => ({ ...prev, toolPanel: !prev.toolPanel }))}
+            title={panelStates.toolPanel ? 'Collapse' : 'Expand'}
+          >
+            {panelStates.toolPanel ? '◀' : '▶'}
+          </button>
           <h3>Setup</h3>
           
           {/* Fixture Section */}
@@ -1295,7 +1313,14 @@ const GCodeSimulator = () => {
         </div>
 
         {/* Info Panel */}
-        <div className="info-panel">
+        <div className={`info-panel ${!panelStates.infoPanel ? 'collapsed' : ''}`}>
+          <button 
+            className="panel-toggle"
+            onClick={() => setPanelStates(prev => ({ ...prev, infoPanel: !prev.infoPanel }))}
+            title={panelStates.infoPanel ? 'Collapse' : 'Expand'}
+          >
+            {panelStates.infoPanel ? '▶' : '◀'}
+          </button>
           <h3>Cutting Data</h3>
           <div className="data-grid">
             <div className="data-item">
