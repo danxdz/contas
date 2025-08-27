@@ -96,16 +96,21 @@ const GCodeEditor = ({ gcode, onChange, currentLine }) => {
         spellCheck={false}
         placeholder="Enter G-code here..."
         style={{
-          background: currentLine >= 0 ? 
+          backgroundImage: currentLine >= 0 ? 
             `linear-gradient(
+              to bottom,
+              transparent,
               transparent ${currentLine * 18}px,
-              rgba(0, 255, 100, 0.25) ${currentLine * 18}px,
-              rgba(0, 255, 100, 0.25) ${(currentLine + 1) * 18}px,
-              transparent ${(currentLine + 1) * 18}px
-            ), #0a0e1a` : '#0a0e1a',
+              #00ff3344 ${currentLine * 18}px,
+              #00ff3344 ${(currentLine + 1) * 18}px,
+              transparent ${(currentLine + 1) * 18}px,
+              transparent
+            )` : 'none',
+          backgroundColor: '#0a0e1a',
           backgroundAttachment: 'local',
           lineHeight: '18px',
-          boxShadow: currentLine >= 0 ? `inset 4px 0 0 0 #00ff64` : 'none'
+          paddingLeft: currentLine >= 0 ? '14px' : '10px',
+          borderLeft: currentLine >= 0 ? '4px solid #00ff64' : 'none'
         }}
       />
       

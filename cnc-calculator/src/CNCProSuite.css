@@ -423,19 +423,18 @@
 
 .gcode-textarea {
   flex: 1;
-  background: #0a0e1a !important;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   color: #ffffff !important;  /* Pure white for maximum visibility */
   font-family: 'Consolas', 'Courier New', monospace;
   font-size: 14px;
   font-weight: 400;
-  line-height: 18px;  /* Fixed line height for proper highlighting */
+  line-height: 18px !important;  /* Fixed line height for proper highlighting */
   padding: 10px;
   resize: none;
   outline: none;
   caret-color: #00ff64;  /* Green cursor like old CNC */
-  text-shadow: 0 0 2px rgba(255, 255, 255, 0.5);  /* Subtle CRT glow */
+  text-shadow: 0 0 1px rgba(255, 255, 255, 0.8);  /* Subtle CRT glow */
 }
 
 /* Retro CNC terminal effect */
