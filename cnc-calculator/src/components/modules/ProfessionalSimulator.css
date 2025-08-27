@@ -3,16 +3,14 @@
 .professional-simulator {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  width: 100vw;
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 1000;
+  height: calc(100vh - var(--header-height, 64px));
+  width: 100%;
+  position: relative;
   background: #1e1e1e;
   color: #e0e0e0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   font-size: 12px;
+  overflow: hidden;
 }
 
 /* Ribbon Toolbar - Microsoft Office Style */
@@ -787,18 +785,33 @@
 }
 
 @media (max-width: 640px) {
+  .professional-simulator {
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+  }
+  
   .cam-ribbon {
     display: none;
   }
   
   .left-panel,
   .right-panel {
-    width: 100%;
+    display: none;
   }
   
   .gcode-overlay {
     width: calc(100% - 20px);
     max-height: 30%;
+    font-size: 10px;
+  }
+  
+  .gcode-lines {
+    padding: 4px;
   }
   
   .sim-controls {
@@ -822,6 +835,10 @@
   }
   
   .bottom-panel {
-    height: 120px;
+    height: 100px;
+  }
+  
+  .viewport-container {
+    background: #1a1a1a !important;
   }
 }

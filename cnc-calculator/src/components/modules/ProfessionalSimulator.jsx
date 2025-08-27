@@ -104,6 +104,11 @@ M30`);
   // Initialize Three.js Scene
   useEffect(() => {
     if (!mountRef.current) return;
+    
+    // Clear any existing content
+    while (mountRef.current.firstChild) {
+      mountRef.current.removeChild(mountRef.current.firstChild);
+    }
 
     // Scene setup
     const scene = new THREE.Scene();
@@ -170,16 +175,20 @@ M30`);
     scene.add(axesHelper);
 
     // Add machine table
-    addMachineTable(scene);
-    
-    // Add fixture
-    addFixture(scene);
-    
-    // Add stock
-    addStock(scene);
-    
-    // Add tool
-    addTool(scene);
+    try {
+      addMachineTable(scene);
+      
+      // Add fixture
+      addFixture(scene);
+      
+      // Add stock
+      addStock(scene);
+      
+      // Add tool
+      addTool(scene);
+    } catch (error) {
+      console.error('Error adding 3D objects:', error);
+    }
 
     // Animation loop
     const animate = () => {
@@ -214,16 +223,16 @@ M30`);
   }, []);
 
   // Add machine table
-  const addMachineTable = (scene) => {
+  const addMachineTable = useCallback((scene) => {
+    if (!scene) return;
+    
     const tableGeometry = new THREE.BoxGeometry(
-      workspace.machine.travels.x,
-      workspace.machine.travels.y,
+      workspace.machine.travels.x || 850,
+      workspace.machine.travels.y || 500,
       20
     );
     const tableMaterial = new THREE.MeshPhongMaterial({
-      color: 0x404040,
-      metalness: 0.8,
-      roughness: 0.2
+      color: 0x404040
     });
     const table = new THREE.Mesh(tableGeometry, tableMaterial);
     table.position.z = -10;
@@ -233,7 +242,7 @@ M30`);
     // T-slots
     for (let i = -200; i <= 200; i += 100) {
       const slotGeometry = new THREE.BoxGeometry(
-        workspace.machine.travels.x,
+        workspace.machine.travels.x || 850,
         10,
         5
       );
@@ -242,10 +251,12 @@ M30`);
       slot.position.set(0, i, 0);
       scene.add(slot);
     }
-  };
+  }, [workspace.machine.travels]);
 
   // Add fixture
-  const addFixture = (scene) => {
+  const addFixture = useCallback((scene) => {
+    if (!scene) return;
+    
     const fixtureGroup = new THREE.Group();
     
     if (workspace.setup.fixture === 'vise') {
@@ -270,10 +281,12 @@ M30`);
     }
     
     scene.add(fixtureGroup);
-  };
+  }, [workspace.setup.fixture]);
 
   // Add stock
-  const addStock = (scene) => {
+  const addStock = useCallback((scene) => {
+    if (!scene) return;
+    
     if (stockRef.current) {
       scene.remove(stockRef.current);
     }
@@ -305,10 +318,12 @@ M30`);
     stock.receiveShadow = true;
     stockRef.current = stock;
     scene.add(stock);
-  };
+  }, [workspace.setup.stock]);
 
   // Add tool
-  const addTool = (scene) => {
+  const addTool = useCallback((scene) => {
+    if (!scene) return;
+    
     if (toolRef.current) {
       scene.remove(toolRef.current);
     }
@@ -318,9 +333,7 @@ M30`);
     // Tool holder
     const holderGeometry = new THREE.CylinderGeometry(20, 20, 50, 16);
     const holderMaterial = new THREE.MeshPhongMaterial({
-      color: 0x404040,
-      metalness: 0.9,
-      roughness: 0.1
+      color: 0x404040
     });
     const holder = new THREE.Mesh(holderGeometry, holderMaterial);
     holder.rotateX(-Math.PI / 2);
@@ -330,9 +343,7 @@ M30`);
     // Tool shank
     const shankGeometry = new THREE.CylinderGeometry(6, 6, 40, 16);
     const shankMaterial = new THREE.MeshPhongMaterial({
-      color: 0x606060,
-      metalness: 0.9,
-      roughness: 0.1
+      color: 0x606060
     });
     const shank = new THREE.Mesh(shankGeometry, shankMaterial);
     shank.rotateX(-Math.PI / 2);
@@ -343,8 +354,6 @@ M30`);
     const toolGeometry = new THREE.CylinderGeometry(5, 5, 30, 16);
     const toolMaterial = new THREE.MeshPhongMaterial({
       color: 0xffaa00,
-      metalness: 0.7,
-      roughness: 0.3,
       emissive: 0xff6600,
       emissiveIntensity: 0.2
     });
@@ -356,7 +365,7 @@ M30`);
     toolGroup.position.set(0, 0, 200);
     toolRef.current = toolGroup;
     scene.add(toolGroup);
-  };
+  }, []);
 
   // Update tool position
   const updateToolPosition = () => {
@@ -514,8 +523,34 @@ M30`);
     }
   };
 
+  // Check if mobile
+  const isMobile = window.innerWidth <= 640;
+
   return (
     <div className="professional-simulator">
+      {/* Mobile Exit Button */}
+      {isMobile && (
+        <button 
+          className="mobile-exit-button"
+          onClick={() => window.history.back()}
+          style={{
+            position: 'fixed',
+            top: '10px',
+            right: '10px',
+            zIndex: 1001,
+            padding: '8px 12px',
+            background: '#dc3545',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            fontSize: '14px',
+            fontWeight: 'bold'
+          }}
+        >
+          ✕ Exit
+        </button>
+      )}
+      
       {/* Ribbon Toolbar */}
       <div className="cam-ribbon">
         <div className="ribbon-tabs">
