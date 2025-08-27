@@ -11,3 +11,4 @@ export { default as GCodeVisualizer } from './GCodeVisualizer';
 export { default as FeedsSpeedsOptimizer } from './FeedsSpeedsOptimizer';
 export { default as ToolDatabase } from './ToolDatabase';
 export { default as ShopFloorUtilities } from './ShopFloorUtilities';
+export { default as MachineConfigurator } from './MachineConfigurator';

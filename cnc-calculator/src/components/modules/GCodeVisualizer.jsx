@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import * as THREE from 'three';
+import MachineConfigurator from './MachineConfigurator';
 
 // Machine configurations
 const MACHINE_CONFIGS = {
@@ -169,6 +170,9 @@ function GCodeVisualizer() {
     length: 120,
     showStock: true
   });
+  
+  const [showMachineConfig, setShowMachineConfig] = useState(false);
+  const [customMachineConfig, setCustomMachineConfig] = useState(null);
   
   const [statistics, setStatistics] = useState(null);
   const [errors, setErrors] = useState([]);
@@ -1449,23 +1453,40 @@ function GCodeVisualizer() {
       <div className="form-row">
         <div className="form-group">
           <label>Machine Type</label>
-          <select 
-            value={machineType} 
-            onChange={(e) => {
-              setMachineType(e.target.value);
-              setGcode(MACHINE_CONFIGS[e.target.value].example);
-              setPlayback(prev => ({ 
-                ...prev, 
-                toolType: MACHINE_CONFIGS[e.target.value].toolTypes[0] 
-              }));
-            }}
-          >
-            {Object.entries(MACHINE_CONFIGS).map(([key, config]) => (
-              <option key={key} value={key}>{config.name}</option>
-            ))}
-          </select>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <select 
+              value={customMachineConfig ? 'custom' : machineType} 
+              onChange={(e) => {
+                if (e.target.value !== 'custom') {
+                  setMachineType(e.target.value);
+                  setGcode(MACHINE_CONFIGS[e.target.value].example);
+                  setPlayback(prev => ({ 
+                    ...prev, 
+                    toolType: MACHINE_CONFIGS[e.target.value].toolTypes[0] 
+                  }));
+                  setCustomMachineConfig(null);
+                }
+              }}
+              style={{ flex: 1 }}
+            >
+              {Object.entries(MACHINE_CONFIGS).map(([key, config]) => (
+                <option key={key} value={key}>{config.name}</option>
+              ))}
+              {customMachineConfig && (
+                <option value="custom">📦 {customMachineConfig.name}</option>
+              )}
+            </select>
+            <button
+              className="btn"
+              onClick={() => setShowMachineConfig(true)}
+              style={{ padding: '5px 15px' }}
+              title="Configure Machine"
+            >
+              ⚙️
+            </button>
+          </div>
           <small style={{ display: 'block', marginTop: '4px', color: '#666' }}>
-            {MACHINE_CONFIGS[machineType].description}
+            {customMachineConfig ? customMachineConfig.specs.positioning + 'mm positioning accuracy' : MACHINE_CONFIGS[machineType].description}
           </small>
         </div>
         
@@ -2089,6 +2110,57 @@ function GCodeVisualizer() {
               Line {error.line}: {error.message}
             </p>
           ))}
+        </div>
+      )}
+      
+      {/* Machine Configuration Modal */}
+      {showMachineConfig && (
+        <div className="modal-overlay" onClick={() => setShowMachineConfig(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '1200px', width: '95%', maxHeight: '90vh' }}>
+            <div className="modal-header">
+              <h2>Machine Configuration Manager</h2>
+              <button className="close-btn" onClick={() => setShowMachineConfig(false)}>×</button>
+            </div>
+            <div style={{ height: 'calc(100% - 60px)', overflow: 'auto' }}>
+              <MachineConfigurator
+                currentMachine={customMachineConfig?.id || machineType}
+                onMachineSelect={(machine) => {
+                  if (!machine.isTemplate) {
+                    setCustomMachineConfig(machine);
+                    setMachineType(machine.type);
+                    // Update workpiece based on machine specs
+                    if (machine.type === 'lathe' || machine.type === 'swiss') {
+                      setWorkpieceSetup(prev => ({
+                        ...prev,
+                        diameter: Math.min(prev.diameter, machine.specs.maxTurningDiameter || 100),
+                        length: Math.min(prev.length, machine.specs.maxTurningLength || 200)
+                      }));
+                    } else {
+                      setWorkpieceSetup(prev => ({
+                        ...prev,
+                        stockWidth: Math.min(prev.stockWidth, machine.specs.tableWidth || 200),
+                        stockDepth: Math.min(prev.stockDepth, machine.specs.tableLength || 200),
+                        stockHeight: Math.min(prev.stockHeight, machine.specs.workpieceMaxHeight || 100)
+                      }));
+                    }
+                  } else {
+                    // Template selected, use built-in config
+                    const baseType = machine.type;
+                    setMachineType(baseType);
+                    setCustomMachineConfig(null);
+                    if (MACHINE_CONFIGS[baseType]) {
+                      setGcode(MACHINE_CONFIGS[baseType].example);
+                      setPlayback(prev => ({ 
+                        ...prev, 
+                        toolType: MACHINE_CONFIGS[baseType].toolTypes[0] 
+                      }));
+                    }
+                  }
+                  setShowMachineConfig(false);
+                }}
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>
