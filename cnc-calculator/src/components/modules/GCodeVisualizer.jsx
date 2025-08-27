@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import MachineConfigurator from './MachineConfigurator';
+import SetupManager from './SetupManager';
 
 // Machine configurations
 const MACHINE_CONFIGS = {
@@ -173,6 +174,8 @@ function GCodeVisualizer() {
   
   const [showMachineConfig, setShowMachineConfig] = useState(false);
   const [customMachineConfig, setCustomMachineConfig] = useState(null);
+  const [showSetupManager, setShowSetupManager] = useState(false);
+  const [activeSetup, setActiveSetup] = useState(null);
   
   const [statistics, setStatistics] = useState(null);
   const [errors, setErrors] = useState([]);
@@ -926,16 +929,36 @@ function GCodeVisualizer() {
         sceneRef.current.add(jawFace);
       }
       
-      // Lathe workpiece (cylindrical stock)
-      if (workpieceSetup.showStock) {
-        const workpieceGeometry = new THREE.CylinderGeometry(
-          workpieceSetup.diameter / 2,
-          workpieceSetup.diameter / 2,
-          workpieceSetup.length,
-          32
-        );
+      // Lathe workpiece (cylindrical stock) - Use setup data if available
+      if (workpieceSetup.showStock || activeSetup?.part) {
+        const part = activeSetup?.part;
+        let workpieceDiameter = workpieceSetup.diameter;
+        let workpieceLength = workpieceSetup.length;
+        let workpieceColor = 0xaaaaaa;
+        
+        // Use active setup part if available
+        if (part && (part.type === 'cylindrical' || part.type === 'hexagonal')) {
+          workpieceDiameter = part.dimensions.diameter;
+          workpieceLength = part.dimensions.length;
+          workpieceColor = part.color ? parseInt(part.color.replace('#', '0x')) : 0xaaaaaa;
+        }
+        
+        const workpieceGeometry = part?.type === 'hexagonal' 
+          ? new THREE.CylinderGeometry(
+              workpieceDiameter / 2,
+              workpieceDiameter / 2,
+              workpieceLength,
+              6  // Hexagonal
+            )
+          : new THREE.CylinderGeometry(
+              workpieceDiameter / 2,
+              workpieceDiameter / 2,
+              workpieceLength,
+              32  // Cylindrical
+            );
+            
         const workpieceMaterial = new THREE.MeshStandardMaterial({ 
-          color: 0xaaaaaa,  // Raw aluminum/steel color
+          color: workpieceColor,
           metalness: 0.9,
           roughness: 0.4
         });
@@ -1903,26 +1926,41 @@ function GCodeVisualizer() {
       
       <div className="form-row">
         <div className="form-group">
-          <label>Tool Type</label>
-          <select
-            value={playback.toolType}
-            onChange={(e) => setPlayback(prev => ({ ...prev, toolType: e.target.value }))}
-          >
-            {MACHINE_CONFIGS[machineType].toolTypes.map(tool => (
-              <option key={tool} value={tool}>{tool}</option>
-            ))}
-          </select>
+          <label>Tool Selection</label>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <select
+              value={playback.toolType}
+              onChange={(e) => setPlayback(prev => ({ ...prev, toolType: e.target.value }))}
+              style={{ flex: 1 }}
+            >
+              {MACHINE_CONFIGS[machineType].toolTypes.map(tool => (
+                <option key={tool} value={tool}>{tool}</option>
+              ))}
+              {activeSetup?.tool && (
+                <option value="custom">🔧 {activeSetup.tool.name}</option>
+              )}
+            </select>
+            <button
+              className="btn btn-small"
+              onClick={() => setShowSetupManager(true)}
+              style={{ padding: '5px 15px' }}
+              title="Setup Manager"
+            >
+              📦
+            </button>
+          </div>
         </div>
         
         <div className="form-group">
           <label>Tool Diameter (mm)</label>
           <input
             type="number"
-            value={playback.toolDiameter}
+            value={activeSetup?.tool?.specs?.diameter || playback.toolDiameter}
             onChange={(e) => setPlayback(prev => ({ ...prev, toolDiameter: parseFloat(e.target.value) }))}
             step="0.1"
             min="0.1"
             max="50"
+            disabled={!!activeSetup?.tool}
           />
         </div>
         
@@ -2157,6 +2195,53 @@ function GCodeVisualizer() {
                     }
                   }
                   setShowMachineConfig(false);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Setup Manager Modal */}
+      {showSetupManager && (
+        <div className="modal-overlay" onClick={() => setShowSetupManager(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '1000px', width: '95%', maxHeight: '90vh' }}>
+            <div className="modal-header">
+              <h2>Setup Manager</h2>
+              <button className="close-btn" onClick={() => setShowSetupManager(false)}>×</button>
+            </div>
+            <div style={{ height: 'calc(100% - 60px)', overflow: 'auto' }}>
+              <SetupManager
+                currentSetup={activeSetup}
+                onSetupChange={(setup) => {
+                  setActiveSetup(setup);
+                  // Update workpiece dimensions if part is selected
+                  if (setup.part) {
+                    if (setup.part.type === 'cylindrical' || setup.part.type === 'hexagonal') {
+                      setWorkpieceSetup(prev => ({
+                        ...prev,
+                        diameter: setup.part.dimensions.diameter,
+                        length: setup.part.dimensions.length,
+                        showStock: true
+                      }));
+                    } else if (setup.part.type === 'rectangular') {
+                      setWorkpieceSetup(prev => ({
+                        ...prev,
+                        stockWidth: setup.part.dimensions.width,
+                        stockDepth: setup.part.dimensions.depth,
+                        stockHeight: setup.part.dimensions.height,
+                        showStock: true
+                      }));
+                    }
+                  }
+                  // Update tool if selected
+                  if (setup.tool) {
+                    setPlayback(prev => ({
+                      ...prev,
+                      toolType: 'custom',
+                      toolDiameter: setup.tool.specs.diameter
+                    }));
+                  }
                 }}
               />
             </div>
