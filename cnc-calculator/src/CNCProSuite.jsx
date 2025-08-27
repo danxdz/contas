@@ -12,6 +12,21 @@ import ToolManager from './components/ToolManager';
 import MachineControl from './components/MachineControl';
 import FeatureTree from './components/FeatureTree';
 
+// Import all calculator modules
+import {
+  ToolLifeCalculator,
+  CircularInterpolation,
+  PowerTorqueCalculator,
+  GeometryTools,
+  PocketMillingWizard,
+  UnifiedSimulator,
+  FeedsSpeedsOptimizer,
+  ToolDatabase,
+  ShopFloorUtilities,
+  MachineConfigurator,
+  SetupManager
+} from './components/modules';
+
 const CNCProSuite = () => {
   // Panel system - each panel can be floating or docked
   const [panels, setPanels] = useState({
@@ -84,6 +99,107 @@ const CNCProSuite = () => {
       zIndex: 1,
       minimized: false,
       title: 'Console'
+    },
+    // Calculator modules
+    feedsSpeeds: {
+      visible: false,
+      floating: true,
+      docked: null,
+      position: { x: 100, y: 100 },
+      size: { width: 500, height: 600 },
+      zIndex: 2,
+      minimized: false,
+      title: 'Feeds & Speeds Calculator'
+    },
+    toolLife: {
+      visible: false,
+      floating: true,
+      docked: null,
+      position: { x: 150, y: 100 },
+      size: { width: 500, height: 500 },
+      zIndex: 2,
+      minimized: false,
+      title: 'Tool Life Calculator'
+    },
+    geometry: {
+      visible: false,
+      floating: true,
+      docked: null,
+      position: { x: 200, y: 100 },
+      size: { width: 550, height: 600 },
+      zIndex: 2,
+      minimized: false,
+      title: 'Geometry Tools'
+    },
+    pocketMilling: {
+      visible: false,
+      floating: true,
+      docked: null,
+      position: { x: 120, y: 120 },
+      size: { width: 600, height: 650 },
+      zIndex: 2,
+      minimized: false,
+      title: 'Pocket Milling Wizard'
+    },
+    shopFloor: {
+      visible: false,
+      floating: true,
+      docked: null,
+      position: { x: 180, y: 100 },
+      size: { width: 700, height: 600 },
+      zIndex: 2,
+      minimized: false,
+      title: 'Shop Floor Utilities'
+    },
+    powerTorque: {
+      visible: false,
+      floating: true,
+      docked: null,
+      position: { x: 250, y: 150 },
+      size: { width: 500, height: 550 },
+      zIndex: 2,
+      minimized: false,
+      title: 'Power & Torque Calculator'
+    },
+    circular: {
+      visible: false,
+      floating: true,
+      docked: null,
+      position: { x: 300, y: 100 },
+      size: { width: 500, height: 500 },
+      zIndex: 2,
+      minimized: false,
+      title: 'Circular Interpolation'
+    },
+    machineConfig: {
+      visible: false,
+      floating: true,
+      docked: null,
+      position: { x: 100, y: 80 },
+      size: { width: 800, height: 700 },
+      zIndex: 2,
+      minimized: false,
+      title: 'Machine Configurator'
+    },
+    setupManager: {
+      visible: false,
+      floating: true,
+      docked: null,
+      position: { x: 150, y: 90 },
+      size: { width: 750, height: 650 },
+      zIndex: 2,
+      minimized: false,
+      title: 'Setup Manager'
+    },
+    toolDatabase: {
+      visible: false,
+      floating: true,
+      docked: null,
+      position: { x: 200, y: 100 },
+      size: { width: 700, height: 600 },
+      zIndex: 2,
+      minimized: false,
+      title: 'Tool Database'
     }
   });
 
@@ -756,14 +872,18 @@ G00 X0 Y0 Z5`
     tools: {
       label: 'Tools',
       items: [
-        { id: 'calculator', label: 'Feeds & Speeds Calculator', action: () => {} },
-        { id: 'converter', label: 'Unit Converter', action: () => {} },
-        { id: 'trigonometry', label: 'Trigonometry Calculator', action: () => {} },
+        { id: 'feedsspeeds', label: 'Feeds & Speeds Optimizer', action: () => togglePanel('feedsSpeeds') },
+        { id: 'toollife', label: 'Tool Life Calculator', action: () => togglePanel('toolLife') },
+        { id: 'powerTorque', label: 'Power & Torque Calculator', action: () => togglePanel('powerTorque') },
+        { id: 'circular', label: 'Circular Interpolation', action: () => togglePanel('circular') },
+        { id: 'geometry', label: 'Geometry Tools', action: () => togglePanel('geometry') },
         { divider: true },
-        { id: 'toollib', label: 'Tool Library', action: () => togglePanel('tools') },
-        { id: 'materials', label: 'Material Database', action: () => {} },
+        { id: 'pocketwizard', label: 'Pocket Milling Wizard', action: () => togglePanel('pocketMilling') },
+        { id: 'shopfloor', label: 'Shop Floor Utilities', action: () => togglePanel('shopFloor') },
         { divider: true },
-        { id: 'postprocessor', label: 'Post Processor', action: () => {} }
+        { id: 'tooldatabase', label: 'Tool Database', action: () => togglePanel('toolDatabase') },
+        { id: 'machineconfig', label: 'Machine Configurator', action: () => togglePanel('machineConfig') },
+        { id: 'setupmanager', label: 'Setup Manager', action: () => togglePanel('setupManager') }
       ]
     },
     machine: {
@@ -931,6 +1051,18 @@ G00 X0 Y0 Z5`
           <div>Type 'help' for commands</div>
         </div>
       )}
+      
+      {/* Calculator Modules */}
+      {renderPanel('feedsSpeeds', <FeedsSpeedsOptimizer />)}
+      {renderPanel('toolLife', <ToolLifeCalculator />)}
+      {renderPanel('powerTorque', <PowerTorqueCalculator />)}
+      {renderPanel('circular', <CircularInterpolation />)}
+      {renderPanel('geometry', <GeometryTools />)}
+      {renderPanel('pocketMilling', <PocketMillingWizard />)}
+      {renderPanel('shopFloor', <ShopFloorUtilities />)}
+      {renderPanel('toolDatabase', <ToolDatabase />)}
+      {renderPanel('machineConfig', <MachineConfigurator />)}
+      {renderPanel('setupManager', <SetupManager />)}
       
       {/* Context Menu */}
       <div className="context-menu" style={{ display: 'none' }}>
