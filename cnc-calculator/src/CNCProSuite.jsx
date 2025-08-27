@@ -591,73 +591,118 @@ M30 ; End`
     // Tool animation following G-code
     let lastUpdateTime = Date.now();
     let interpolationProgress = 0;
+    let lastProcessedLine = -1;
+    let lastPositionUpdate = 0;
     
     const animateToolPath = () => {
       const currentTime = Date.now();
       const deltaTime = (currentTime - lastUpdateTime) / 1000; // Convert to seconds
       lastUpdateTime = currentTime;
       
-      if (simulationRef.current.isPlaying && gcodeLinesRef.current.length > 0 && toolRef.current) {
+      // Always update tool position based on current line (for step-by-step)
+      if (gcodeLinesRef.current.length > 0 && toolRef.current) {
         const currentLine = simulationRef.current.currentLine;
-        const nextLine = Math.min(currentLine + 1, gcodeLinesRef.current.length - 1);
         
-        // Skip comment lines
+        // If line changed (step mode or reset), reset interpolation
+        if (currentLine !== lastProcessedLine) {
+          interpolationProgress = 0;
+          lastProcessedLine = currentLine;
+        }
+        
+        // Find actual line (skip comments)
         let actualCurrentLine = currentLine;
-        let actualNextLine = nextLine;
-        while (actualCurrentLine < gcodeLinesRef.current.length && gcodeLinesRef.current[actualCurrentLine].comment) {
+        while (actualCurrentLine < gcodeLinesRef.current.length && 
+               gcodeLinesRef.current[actualCurrentLine].comment) {
           actualCurrentLine++;
         }
-        while (actualNextLine < gcodeLinesRef.current.length && gcodeLinesRef.current[actualNextLine].comment) {
-          actualNextLine++;
-        }
         
-        if (actualCurrentLine < gcodeLinesRef.current.length && actualNextLine < gcodeLinesRef.current.length) {
-          const currentPos = gcodeLinesRef.current[actualCurrentLine];
-          const nextPos = gcodeLinesRef.current[actualNextLine];
+        if (actualCurrentLine < gcodeLinesRef.current.length) {
+          const targetPos = gcodeLinesRef.current[actualCurrentLine];
           
-          // Calculate interpolation speed based on feedrate or default speed
-          const feedrate = nextPos.feedrate || 500; // mm/min default
-          const distance = Math.sqrt(
-            Math.pow(nextPos.x - currentPos.x, 2) +
-            Math.pow(nextPos.y - currentPos.y, 2) +
-            Math.pow(nextPos.z - currentPos.z, 2)
-          );
-          
-          const moveTime = distance > 0 ? (distance / (feedrate / 60)) : 0.1; // seconds
-          interpolationProgress += (deltaTime * simulationRef.current.speed) / moveTime;
-          
-          if (interpolationProgress >= 1) {
-            // Move to next line
-            interpolationProgress = 0;
-            const nextLineNum = Math.min(
-              simulationRef.current.currentLine + 1,
-              gcodeLinesRef.current.length - 1
-            );
+          if (simulationRef.current.isPlaying) {
+            // Playing - animate to next line
+            const nextLine = Math.min(currentLine + 1, gcodeLinesRef.current.length - 1);
+            let actualNextLine = nextLine;
+            while (actualNextLine < gcodeLinesRef.current.length && 
+                   gcodeLinesRef.current[actualNextLine].comment) {
+              actualNextLine++;
+            }
             
-            // Update state through callback
+            if (actualNextLine < gcodeLinesRef.current.length) {
+              const nextPos = gcodeLinesRef.current[actualNextLine];
+              
+              // Calculate interpolation speed based on feedrate
+              const feedrate = targetPos.feedrate || 500; // mm/min default
+              const distance = Math.sqrt(
+                Math.pow(nextPos.x - targetPos.x, 2) +
+                Math.pow(nextPos.y - targetPos.y, 2) +
+                Math.pow(nextPos.z - targetPos.z, 2)
+              );
+              
+              const moveTime = distance > 0 ? (distance / (feedrate / 60)) : 0.1; // seconds
+              interpolationProgress += (deltaTime * simulationRef.current.speed) / moveTime;
+              
+              if (interpolationProgress >= 1) {
+                // Move to next line
+                interpolationProgress = 0;
+                const lines = projectRef.current.gcode.channel1.split('\n');
+                let nextLineToProcess = currentLine + 1;
+                
+                // Skip comments
+                while (nextLineToProcess < lines.length && 
+                       (lines[nextLineToProcess].trim().startsWith(';') || 
+                        lines[nextLineToProcess].trim() === '')) {
+                  nextLineToProcess++;
+                }
+                
+                if (nextLineToProcess < lines.length) {
+                  // Update state
+                  setSimulation(prev => ({
+                    ...prev,
+                    currentLine: nextLineToProcess
+                  }));
+                  simulationRef.current.currentLine = nextLineToProcess;
+                } else {
+                  // End of program
+                  setSimulation(prev => ({
+                    ...prev,
+                    isPlaying: false,
+                    currentLine: lines.length - 1
+                  }));
+                  simulationRef.current.isPlaying = false;
+                }
+              }
+              
+              // Interpolate position
+              const t = Math.min(interpolationProgress, 1);
+              const x = targetPos.x + (nextPos.x - targetPos.x) * t;
+              const y = targetPos.y + (nextPos.y - targetPos.y) * t;
+              const z = targetPos.z + (nextPos.z - targetPos.z) * t;
+              
+              // Update tool position
+              toolRef.current.position.set(x, y, z + 50);
+              
+              // Update simulation position state (throttled to 10Hz)
+              if (currentTime - lastPositionUpdate > 100) {
+                lastPositionUpdate = currentTime;
+                setSimulation(prev => ({
+                  ...prev,
+                  position: { ...prev.position, x, y, z }
+                }));
+              }
+            }
+          } else {
+            // Not playing - just position at current line
+            toolRef.current.position.set(targetPos.x, targetPos.y, targetPos.z + 50);
+            
+            // Update simulation position state for step mode
             setSimulation(prev => ({
               ...prev,
-              currentLine: nextLineNum,
-              isPlaying: nextLineNum < gcodeLinesRef.current.length - 1
+              position: { ...prev.position, x: targetPos.x, y: targetPos.y, z: targetPos.z }
             }));
-            
-            simulationRef.current.currentLine = nextLineNum;
-            
-            // Stop at end of program
-            if (nextLineNum >= gcodeLinesRef.current.length - 1) {
-              simulationRef.current.isPlaying = false;
-            }
           }
           
-          // Interpolate position
-          const t = Math.min(interpolationProgress, 1);
-          const x = currentPos.x + (nextPos.x - currentPos.x) * t;
-          const y = currentPos.y + (nextPos.y - currentPos.y) * t;
-          const z = currentPos.z + (nextPos.z - currentPos.z) * t + 50; // Tool offset
-          
-          toolRef.current.position.set(x, y, z);
-          
-          // Rotate spindle around Z-axis
+          // Always rotate spindle if speed > 0
           if (simulationRef.current.spindleSpeed > 0) {
             toolRef.current.rotation.z += (simulationRef.current.spindleSpeed / 1000) * deltaTime;
           }
@@ -948,14 +993,14 @@ M30 ; End`
       <div className="toolbar-info">
         <span>{project.name}</span>
         <span>|</span>
-        <span>X: {simulation.position.x.toFixed(3)}</span>
-        <span>Y: {simulation.position.y.toFixed(3)}</span>
-        <span>Z: {simulation.position.z.toFixed(3)}</span>
+        <span>X: {simulation.position.x.toFixed(1)}</span>
+        <span>Y: {simulation.position.y.toFixed(1)}</span>
+        <span>Z: {simulation.position.z.toFixed(1)}</span>
         <span>|</span>
         <span>F: {simulation.feedRate}</span>
         <span>S: {simulation.spindleSpeed}</span>
         <span>|</span>
-        <span>Line: {simulation.currentLine}</span>
+        <span>Line: {simulation.currentLine + 1}/{project.gcode.channel1.split('\n').length}</span>
       </div>
     </div>
   );
@@ -1177,17 +1222,37 @@ M30 ; End`
   };
 
   const stepForward = () => {
-    setSimulation(prev => ({
-      ...prev,
-      currentLine: Math.min(prev.currentLine + 1, 1000)
-    }));
+    const lines = project.gcode.channel1.split('\n');
+    setSimulation(prev => {
+      let nextLine = prev.currentLine + 1;
+      // Skip comments and empty lines
+      while (nextLine < lines.length && 
+             (lines[nextLine].trim().startsWith(';') || lines[nextLine].trim() === '')) {
+        nextLine++;
+      }
+      return {
+        ...prev,
+        currentLine: Math.min(nextLine, lines.length - 1),
+        isPlaying: false
+      };
+    });
   };
   
   const stepBackward = () => {
-    setSimulation(prev => ({
-      ...prev,
-      currentLine: Math.max(prev.currentLine - 1, 0)
-    }));
+    const lines = project.gcode.channel1.split('\n');
+    setSimulation(prev => {
+      let prevLine = prev.currentLine - 1;
+      // Skip comments and empty lines
+      while (prevLine >= 0 && 
+             (lines[prevLine].trim().startsWith(';') || lines[prevLine].trim() === '')) {
+        prevLine--;
+      }
+      return {
+        ...prev,
+        currentLine: Math.max(prevLine, 0),
+        isPlaying: false
+      };
+    });
   };
 
   // Top menu system
