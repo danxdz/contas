@@ -6,6 +6,7 @@ import './CNCMasterSuite.css';
 
 // Module imports
 import DualChannelDebugger from './components/DualChannelDebugger';
+import DualChannelEditor from './components/DualChannelEditor';
 import StepProcessor from './components/StepProcessor';
 import ToolpathGenerator from './components/ToolpathGenerator';
 import SimulationEngine from './components/SimulationEngine';
@@ -178,7 +179,7 @@ G00 X0 Y0 Z5
       label: 'View',
       items: [
         { id: 'simulator', label: 'Simulator', checked: layout.centerView === 'simulator', action: () => setCenterView('simulator') },
-        { id: 'dual-channel', label: 'Dual Channel', checked: layout.centerView === 'dual-channel', action: () => setCenterView('dual-channel') },
+        { id: 'dual-channel', label: 'Dual Channel Editor', checked: layout.centerView === 'dual-channel', action: () => setCenterView('dual-channel') },
         { id: 'step-processor', label: 'STEP Processor', checked: layout.centerView === 'step-processor', action: () => setCenterView('step-processor') },
         { divider: true },
         { id: 'left-panel', label: 'Left Panel', checked: layout.leftPanel.visible, action: () => togglePanel('left') },
@@ -361,7 +362,7 @@ G00 X0 Y0 Z5
         );
       case 'dual-channel':
         return (
-          <DualChannelDebugger 
+          <DualChannelEditor 
             program={program}
             setProgram={setProgram}
             simulation={simulation}
