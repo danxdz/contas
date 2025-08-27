@@ -18,6 +18,7 @@ import {
   FeedsSpeedsOptimizer,
   ToolDatabase,
   GCodeVisualizer,
+  GCodeSimulator,
   ShopFloorUtilities
 } from './components/modules/index.jsx';
 
@@ -42,7 +43,8 @@ const moduleRegistry = {
     { id: 'database', name: 'Tool Database', icon: '🗄️', component: ToolDatabase },
   ],
   'Simulation': [
-    { id: 'visualizer', name: 'G-Code Simulator', icon: '🎬', component: GCodeVisualizer },
+    { id: 'visualizer', name: 'G-Code Visualizer', icon: '🎬', component: GCodeVisualizer },
+    { id: 'simulator', name: 'Advanced Simulator', icon: '🚀', component: GCodeSimulator },
   ],
   'Shop Management': [
     { id: 'shopfloor', name: 'Shop Floor Utils', icon: '🏭', component: ShopFloorUtilities },
