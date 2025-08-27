@@ -1,0 +1,520 @@
+/* CNC Master Suite - Professional Desktop Application */
+
+.cnc-master-suite {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #f0f0f0;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 12px;
+  overflow: hidden;
+}
+
+/* Menu Bar */
+.menu-bar {
+  display: flex;
+  background: #ffffff;
+  border-bottom: 1px solid #d1d1d1;
+  height: 28px;
+  user-select: none;
+}
+
+.menu-item {
+  position: relative;
+}
+
+.menu-button {
+  padding: 4px 12px;
+  background: none;
+  border: none;
+  color: #333;
+  cursor: pointer;
+  font-size: 12px;
+  height: 28px;
+  transition: background 0.2s;
+}
+
+.menu-button:hover {
+  background: #e8e8e8;
+}
+
+.menu-dropdown {
+  position: absolute;
+  top: 28px;
+  left: 0;
+  background: #ffffff;
+  border: 1px solid #d1d1d1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  min-width: 200px;
+  display: none;
+  z-index: 1000;
+}
+
+.menu-item:hover .menu-dropdown {
+  display: block;
+}
+
+.menu-option {
+  display: flex;
+  align-items: center;
+  padding: 6px 20px;
+  background: none;
+  border: none;
+  color: #333;
+  cursor: pointer;
+  font-size: 12px;
+  width: 100%;
+  text-align: left;
+  position: relative;
+  transition: background 0.2s;
+}
+
+.menu-option:hover {
+  background: #0078d4;
+  color: white;
+}
+
+.menu-label {
+  flex: 1;
+}
+
+.menu-check {
+  position: absolute;
+  left: 4px;
+}
+
+.menu-shortcut {
+  margin-left: 20px;
+  color: #666;
+  font-size: 11px;
+}
+
+.menu-option:hover .menu-shortcut {
+  color: #ccc;
+}
+
+.menu-divider {
+  height: 1px;
+  background: #e1e1e1;
+  margin: 4px 0;
+}
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  align-items: center;
+  background: #f8f8f8;
+  border-bottom: 1px solid #d1d1d1;
+  height: 36px;
+  padding: 0 8px;
+  gap: 8px;
+}
+
+.toolbar-group {
+  display: flex;
+  gap: 4px;
+}
+
+.toolbar-group button {
+  width: 28px;
+  height: 28px;
+  background: #ffffff;
+  border: 1px solid #d1d1d1;
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: all 0.2s;
+}
+
+.toolbar-group button:hover {
+  background: #e8f4fd;
+  border-color: #0078d4;
+}
+
+.toolbar-group button:active {
+  background: #cce8ff;
+}
+
+.toolbar-separator {
+  width: 1px;
+  height: 24px;
+  background: #d1d1d1;
+}
+
+.toolbar-info {
+  color: #666;
+  font-size: 11px;
+  margin-left: auto;
+}
+
+/* Main Layout */
+.main-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  background: #e8e8e8;
+}
+
+/* Panels */
+.panel {
+  background: #ffffff;
+  border: 1px solid #d1d1d1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-left {
+  resize: horizontal;
+  min-width: 200px;
+  max-width: 600px;
+  border-right: 2px solid #d1d1d1;
+}
+
+.panel-right {
+  resize: horizontal;
+  min-width: 200px;
+  max-width: 400px;
+  border-left: 2px solid #d1d1d1;
+}
+
+.panel-bottom {
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  resize: vertical;
+  min-height: 100px;
+  max-height: 400px;
+  border-top: 2px solid #d1d1d1;
+  z-index: 10;
+}
+
+.panel-tabs {
+  display: flex;
+  background: #f0f0f0;
+  border-bottom: 1px solid #d1d1d1;
+  height: 32px;
+}
+
+.panel-tabs button {
+  padding: 6px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #666;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.panel-tabs button:hover {
+  background: #e8e8e8;
+  color: #333;
+}
+
+.panel-tabs button.active {
+  background: #ffffff;
+  border-bottom-color: #0078d4;
+  color: #0078d4;
+}
+
+.panel-content {
+  flex: 1;
+  overflow: auto;
+  padding: 10px;
+}
+
+/* Code Editor */
+.code-editor {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.code-editor textarea {
+  flex: 1;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  border: none;
+  padding: 10px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+}
+
+/* Center View */
+.center-view {
+  flex: 1;
+  position: relative;
+  background: #2d2d30;
+  overflow: hidden;
+}
+
+.simulator-viewport {
+  width: 100%;
+  height: 100%;
+}
+
+.simulator-viewport canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Dual Channel View */
+.dual-channel-view {
+  display: flex;
+  height: 100%;
+  gap: 2px;
+  padding: 10px;
+  background: #2d2d30;
+}
+
+.channel-panel {
+  flex: 1;
+  background: #1e1e1e;
+  border: 1px solid #3e3e42;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.channel-header {
+  padding: 8px 12px;
+  background: #2d2d30;
+  border-bottom: 1px solid #3e3e42;
+  color: #cccccc;
+  font-weight: 600;
+}
+
+.channel-content {
+  flex: 1;
+  padding: 10px;
+  overflow-y: auto;
+  color: #d4d4d4;
+  font-family: 'Consolas', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.channel-stack {
+  padding: 8px;
+  background: #252526;
+  border-top: 1px solid #3e3e42;
+  color: #969696;
+  font-size: 11px;
+}
+
+/* STEP Processor View */
+.step-processor-view {
+  display: flex;
+  height: 100%;
+  background: #f0f0f0;
+}
+
+.step-sidebar {
+  width: 300px;
+  background: #ffffff;
+  border-right: 1px solid #d1d1d1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.step-viewer {
+  flex: 1;
+  position: relative;
+  background: #2d2d30;
+}
+
+.step-controls {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #d1d1d1;
+  border-radius: 4px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Features List */
+.features-list {
+  padding: 10px;
+}
+
+.features-list h3 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 14px;
+}
+
+.feature-item {
+  padding: 8px;
+  margin-bottom: 6px;
+  background: #f8f8f8;
+  border: 1px solid #e1e1e1;
+  border-radius: 3px;
+  font-size: 11px;
+  display: flex;
+  justify-content: space-between;
+  transition: background 0.2s;
+}
+
+.feature-item:hover {
+  background: #e8f4fd;
+  border-color: #0078d4;
+}
+
+/* Tools Panel */
+.tools-panel {
+  padding: 10px;
+}
+
+.tools-panel h3 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 14px;
+}
+
+.tool-item {
+  padding: 8px;
+  margin-bottom: 6px;
+  background: #f8f8f8;
+  border: 1px solid #e1e1e1;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tool-item:hover {
+  background: #e8f4fd;
+  border-color: #0078d4;
+  transform: translateX(2px);
+}
+
+/* Console */
+.console {
+  background: #1e1e1e;
+  color: #00ff00;
+  font-family: 'Consolas', monospace;
+  font-size: 11px;
+  padding: 8px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* Status Bar */
+.status-bar {
+  display: flex;
+  align-items: center;
+  background: #007acc;
+  color: white;
+  height: 22px;
+  padding: 0 10px;
+  font-size: 11px;
+  user-select: none;
+}
+
+.status-separator {
+  margin: 0 8px;
+  opacity: 0.5;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .panel-left {
+    min-width: 150px;
+  }
+  
+  .panel-right {
+    min-width: 150px;
+  }
+}
+
+@media (max-width: 768px) {
+  .menu-bar {
+    overflow-x: auto;
+  }
+  
+  .toolbar {
+    overflow-x: auto;
+  }
+  
+  .panel-left,
+  .panel-right {
+    position: absolute;
+    z-index: 100;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Dark Theme Support */
+@media (prefers-color-scheme: dark) {
+  .cnc-master-suite {
+    background: #1e1e1e;
+  }
+  
+  .menu-bar {
+    background: #2d2d30;
+    border-bottom-color: #3e3e42;
+  }
+  
+  .menu-button {
+    color: #cccccc;
+  }
+  
+  .menu-button:hover {
+    background: #3e3e42;
+  }
+  
+  .menu-dropdown {
+    background: #252526;
+    border-color: #3e3e42;
+  }
+  
+  .menu-option {
+    color: #cccccc;
+  }
+  
+  .menu-option:hover {
+    background: #094771;
+  }
+  
+  .toolbar {
+    background: #2d2d30;
+    border-bottom-color: #3e3e42;
+  }
+  
+  .toolbar-group button {
+    background: #3e3e42;
+    border-color: #555;
+    color: #cccccc;
+  }
+  
+  .panel {
+    background: #252526;
+    border-color: #3e3e42;
+  }
+  
+  .panel-tabs {
+    background: #2d2d30;
+  }
+  
+  .panel-tabs button {
+    color: #969696;
+  }
+  
+  .panel-tabs button.active {
+    background: #1e1e1e;
+    color: #ffffff;
+  }
+}
