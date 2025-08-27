@@ -1,0 +1,587 @@
+/* CNC Simulator App - Main Interface */
+
+.cnc-simulator-app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #0a0e1a;
+  color: #e0e0e0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow: hidden;
+}
+
+/* Top Toolbar */
+.app-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  height: 50px;
+  padding: 0 15px;
+  background: linear-gradient(180deg, #1a1e2a 0%, #141824 100%);
+  border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+  flex-shrink: 0;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.toolbar-group:first-child {
+  padding-left: 0;
+}
+
+.toolbar-group:last-child {
+  border-right: none;
+  margin-left: auto;
+}
+
+.app-title {
+  font-size: 18px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #00d4ff, #0099cc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.toolbar-group button,
+.file-btn {
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #a0aec0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.file-btn {
+  display: inline-block;
+}
+
+.toolbar-group button:hover,
+.file-btn:hover {
+  background: rgba(0, 212, 255, 0.1);
+  border-color: #00d4ff;
+  color: #00d4ff;
+  transform: translateY(-1px);
+}
+
+.toolbar-group button.active {
+  background: linear-gradient(135deg, #00d4ff, #0099cc);
+  color: white;
+  border-color: transparent;
+}
+
+.speed-slider {
+  width: 80px;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  outline: none;
+}
+
+.speed-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: #00d4ff;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.toolbar-group span {
+  color: #00d4ff;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 50px;
+}
+
+/* Main Layout */
+.app-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Panels */
+.panel {
+  background: #141824;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-left {
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  resize: horizontal;
+  min-width: 250px;
+  max-width: 600px;
+}
+
+.panel-right {
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  min-width: 200px;
+  max-width: 400px;
+}
+
+.panel-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  resize: vertical;
+  min-height: 100px;
+  max-height: 300px;
+}
+
+.panel-tabs {
+  display: flex;
+  background: #0a0e1a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.panel-tabs button {
+  flex: 1;
+  padding: 10px;
+  background: none;
+  border: none;
+  color: #718096;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.panel-tabs button:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #a0aec0;
+}
+
+.panel-tabs button.active {
+  color: #00d4ff;
+  background: #141824;
+  position: relative;
+}
+
+.panel-tabs button.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #00d4ff;
+}
+
+/* G-Code Editor */
+.gcode-editor {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.line-numbers {
+  width: 50px;
+  background: #0a0e1a;
+  padding: 10px 5px;
+  text-align: right;
+  color: #4a5568;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 11px;
+  line-height: 18px;
+  overflow-y: auto;
+  user-select: none;
+}
+
+.line-numbers div {
+  height: 18px;
+}
+
+.line-numbers div.active {
+  color: #00d4ff;
+  background: rgba(0, 212, 255, 0.1);
+  margin: 0 -5px;
+  padding: 0 5px;
+}
+
+.gcode-editor textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #e0e0e0;
+  padding: 10px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 11px;
+  line-height: 18px;
+  resize: none;
+  outline: none;
+}
+
+/* Modules List */
+.modules-list {
+  flex: 1;
+  padding: 15px;
+  overflow-y: auto;
+}
+
+.module-category {
+  margin-bottom: 20px;
+}
+
+.module-category h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #00d4ff;
+  font-size: 14px;
+  margin: 0 0 10px 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.module-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  margin-bottom: 5px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  color: #a0aec0;
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.module-item:hover {
+  background: rgba(0, 212, 255, 0.05);
+  border-color: rgba(0, 212, 255, 0.3);
+  color: #00d4ff;
+  transform: translateX(5px);
+}
+
+/* Viewport */
+.viewport-container {
+  flex: 1;
+  position: relative;
+  background: linear-gradient(135deg, #0a0e1a 0%, #141824 100%);
+}
+
+.viewport-3d {
+  width: 100%;
+  height: 100%;
+}
+
+.viewport-3d canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Module Overlay */
+.module-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  max-width: 800px;
+  max-height: 80vh;
+  background: rgba(20, 24, 36, 0.98);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -45%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+.module-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.module-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background: rgba(10, 14, 26, 0.8);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.module-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: #00d4ff;
+  font-size: 18px;
+}
+
+.module-header button {
+  background: none;
+  border: none;
+  color: #718096;
+  font-size: 24px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.module-header button:hover {
+  color: #ff4444;
+}
+
+.module-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+/* Tools Panel */
+.tools-panel,
+.setup-panel {
+  padding: 15px;
+  overflow-y: auto;
+}
+
+.tools-panel h4,
+.setup-panel h4 {
+  color: #00d4ff;
+  font-size: 14px;
+  margin: 0 0 15px 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.tool-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tool-item {
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  color: #a0aec0;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.tool-item:hover {
+  background: rgba(0, 212, 255, 0.05);
+  border-color: rgba(0, 212, 255, 0.3);
+  color: #00d4ff;
+}
+
+/* Setup Panel */
+.setup-panel select {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 15px;
+  background: #0a0e1a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 12px;
+}
+
+.dimension-inputs,
+.offset-values {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.dimension-inputs label,
+.offset-values label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #718096;
+  font-size: 12px;
+}
+
+.dimension-inputs input,
+.offset-values input {
+  flex: 1;
+  padding: 6px;
+  background: #0a0e1a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 11px;
+  min-width: 50px;
+}
+
+/* Console */
+.console {
+  padding: 10px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 11px;
+  color: #00ff88;
+  overflow-y: auto;
+}
+
+.console div {
+  margin-bottom: 2px;
+}
+
+/* Panel Toggles */
+.panel-toggles {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  gap: 5px;
+  background: rgba(20, 24, 36, 0.9);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 5px;
+}
+
+.panel-toggles button {
+  width: 30px;
+  height: 30px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #718096;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.panel-toggles button:hover {
+  background: rgba(0, 212, 255, 0.1);
+  border-color: #00d4ff;
+  color: #00d4ff;
+}
+
+.panel-toggles button.active {
+  background: #00d4ff;
+  color: #0a0e1a;
+  border-color: #00d4ff;
+}
+
+/* Responsive */
+@media (max-width: 968px) {
+  .app-toolbar {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 10px;
+  }
+  
+  .toolbar-group {
+    padding: 5px;
+    border: none;
+  }
+  
+  .panel-left,
+  .panel-right {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 100;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  }
+  
+  .panel-left {
+    left: 0;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+  
+  .panel-left.visible {
+    transform: translateX(0);
+  }
+  
+  .panel-right {
+    right: 0;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+  }
+  
+  .panel-right.visible {
+    transform: translateX(0);
+  }
+  
+  .module-overlay {
+    width: 95%;
+    max-height: 90vh;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-title {
+    font-size: 14px;
+  }
+  
+  .toolbar-group button,
+  .file-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+  
+  .speed-slider {
+    width: 60px;
+  }
+  
+  .panel-left,
+  .panel-right {
+    width: 80vw !important;
+    max-width: 300px;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #00d4ff;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #0099cc;
+}
