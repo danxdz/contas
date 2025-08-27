@@ -214,20 +214,101 @@ const CNCProSuite = () => {
   });
 
   const [project, setProject] = useState({
-    name: 'Untitled Project',
+    name: 'Example Pocket Milling',
     gcode: {
-      channel1: `; Main Program
+      channel1: `; POCKET MILLING EXAMPLE
+; Material: Aluminum 6061
+; Tool: 10mm End Mill
+; ====================
+
+G21 G90 G94 ; Metric, Absolute, Feed/min
+G17 G49 G40 G80 ; XY plane, Cancel offsets
+G54 ; Work coordinate system
+
+; Tool Change
+T1 M06 ; Select Tool 1
+S12000 M03 ; Spindle ON, 12000 RPM
+M08 ; Coolant ON
+
+; Rapid to start position
+G00 X-40 Y-25 ; Move to pocket corner
+G00 Z5 ; Safe height
+
+; Pocket roughing - Layer 1 (Z-5)
+G01 Z-5 F300 ; Plunge
+G01 X40 F800 ; Cut along X
+G01 Y-15 ; Step over
+G01 X-40 ; Return cut
+G01 Y-5 ; Step over
+G01 X40 ; Cut
+G01 Y5 ; Step over
+G01 X-40 ; Return
+G01 Y15 ; Step over
+G01 X40 ; Cut
+G01 Y25 ; Final pass
+G01 X-40 ; Return
+
+; Pocket roughing - Layer 2 (Z-10)
+G00 Z1 ; Lift
+G00 X-35 Y-20 ; Reposition
+G01 Z-10 F300 ; Plunge deeper
+G01 X35 F800 ; Cut
+G01 Y-10 ; Step
+G01 X-35 ; Return
+G01 Y0 ; Step
+G01 X35 ; Cut
+G01 Y10 ; Step
+G01 X-35 ; Return
+G01 Y20 ; Final
+G01 X35 ; Cut
+
+; Finishing pass
+G00 Z1 ; Lift
+G00 X-40 Y-25 ; Corner
+G01 Z-10 F200 ; Plunge
+G01 X40 Y-25 F600 ; Bottom edge
+G01 X40 Y25 ; Right edge
+G01 X-40 Y25 ; Top edge
+G01 X-40 Y-25 ; Left edge
+
+; Drilling cycle for corner holes
+G00 Z5 ; Safe height
+G00 X-50 Y-30 ; Hole 1
+G81 Z-25 R2 F150 ; Drill cycle
+X50 ; Hole 2
+Y30 ; Hole 3
+X-50 ; Hole 4
+G80 ; Cancel cycle
+
+; Program end
+G00 Z100 ; Retract
+M09 ; Coolant OFF
+M05 ; Spindle OFF
+G28 G91 Z0 ; Home Z
+G28 X0 Y0 ; Home XY
+M30 ; Program end`,
+      channel2: `; SUB SPINDLE PROGRAM
+; For dual-spindle lathes
+; ====================
+
 G21 G90 G94
-G54
-T1 M06
-S12000 M03
-G00 X0 Y0 Z5`,
-      channel2: `; Sub Program
-G21 G90 G94
-G55
+G55 ; Second work offset
 T11 M06
 S8000 M03
-G00 X0 Y0 Z5`
+G00 X0 Y0 Z5
+
+; Waiting for main spindle
+M00 ; Optional stop
+
+; Sub operations here
+G01 Z-10 F200
+G01 X20 F500
+G01 Y20
+G01 X-20
+G01 Y-20
+G00 Z5
+
+M30 ; End`
     },
     stepFile: null,
     stepContent: null,
@@ -245,6 +326,10 @@ G00 X0 Y0 Z5`
   const sceneRef = useRef(null);
   const rendererRef = useRef(null);
   const cameraRef = useRef(null);
+  const controlsRef = useRef(null);
+  const workpieceRef = useRef(null);
+  const toolRef = useRef(null);
+  const toolpathRef = useRef(null);
 
   // Initialize 3D scene
   useEffect(() => {
@@ -273,7 +358,7 @@ G00 X0 Y0 Z5`
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    const controlsRef = { current: controls };
+    controlsRef.current = controls;
 
     // Lighting
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -299,6 +384,138 @@ G00 X0 Y0 Z5`
     bed.position.z = -10;
     bed.receiveShadow = true;
     scene.add(bed);
+    
+    // Example Workpiece - Aluminum block
+    const workpieceGroup = new THREE.Group();
+    
+    // Main stock
+    const stockGeometry = new THREE.BoxGeometry(150, 100, 50);
+    const stockMaterial = new THREE.MeshPhongMaterial({ 
+      color: 0x888888,
+      metalness: 0.7,
+      roughness: 0.3
+    });
+    const stock = new THREE.Mesh(stockGeometry, stockMaterial);
+    stock.position.z = 25;
+    stock.castShadow = true;
+    stock.receiveShadow = true;
+    workpieceGroup.add(stock);
+    
+    // Machined pocket
+    const pocketGeometry = new THREE.BoxGeometry(100, 60, 20);
+    const pocketMaterial = new THREE.MeshPhongMaterial({ 
+      color: 0x666666,
+      metalness: 0.8,
+      roughness: 0.2
+    });
+    const pocket = new THREE.Mesh(pocketGeometry, pocketMaterial);
+    pocket.position.set(0, 0, 35);
+    workpieceGroup.add(pocket);
+    
+    // Holes
+    const holePositions = [
+      { x: -50, y: -30 },
+      { x: 50, y: -30 },
+      { x: 50, y: 30 },
+      { x: -50, y: 30 }
+    ];
+    
+    holePositions.forEach(pos => {
+      const holeGeometry = new THREE.CylinderGeometry(5, 5, 51, 32);
+      const holeMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x444444
+      });
+      const hole = new THREE.Mesh(holeGeometry, holeMaterial);
+      hole.position.set(pos.x, pos.y, 25);
+      hole.rotation.x = Math.PI / 2;
+      workpieceGroup.add(hole);
+    });
+    
+    scene.add(workpieceGroup);
+    workpieceRef.current = workpieceGroup;
+    
+    // Example Tool - End Mill
+    const toolGroup = new THREE.Group();
+    
+    // Tool holder
+    const holderGeometry = new THREE.CylinderGeometry(12, 12, 40, 32);
+    const holderMaterial = new THREE.MeshPhongMaterial({ 
+      color: 0x333333,
+      metalness: 0.9
+    });
+    const holder = new THREE.Mesh(holderGeometry, holderMaterial);
+    holder.position.z = 20;
+    toolGroup.add(holder);
+    
+    // Cutting tool
+    const toolGeometry = new THREE.CylinderGeometry(5, 5, 30, 32);
+    const toolMaterial = new THREE.MeshPhongMaterial({ 
+      color: 0x00ff00,
+      emissive: 0x00ff00,
+      emissiveIntensity: 0.3
+    });
+    const tool = new THREE.Mesh(toolGeometry, toolMaterial);
+    tool.position.z = -5;
+    toolGroup.add(tool);
+    
+    toolGroup.position.set(0, 0, 100);
+    scene.add(toolGroup);
+    toolRef.current = toolGroup;
+    
+    // Example Toolpath - Pocket milling pattern
+    const toolpathPoints = [];
+    const steps = 20;
+    const width = 80;
+    const height = 50;
+    
+    // Spiral pocket pattern
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const offset = t * 30;
+      const points = [
+        new THREE.Vector3(-width/2 + offset, -height/2 + offset, 40 - t * 15),
+        new THREE.Vector3(width/2 - offset, -height/2 + offset, 40 - t * 15),
+        new THREE.Vector3(width/2 - offset, height/2 - offset, 40 - t * 15),
+        new THREE.Vector3(-width/2 + offset, height/2 - offset, 40 - t * 15),
+        new THREE.Vector3(-width/2 + offset, -height/2 + offset, 40 - t * 15)
+      ];
+      toolpathPoints.push(...points);
+    }
+    
+    const toolpathGeometry = new THREE.BufferGeometry().setFromPoints(toolpathPoints);
+    const toolpathMaterial = new THREE.LineBasicMaterial({ 
+      color: 0x00ffff,
+      linewidth: 2,
+      transparent: true,
+      opacity: 0.7
+    });
+    const toolpath = new THREE.Line(toolpathGeometry, toolpathMaterial);
+    scene.add(toolpath);
+    toolpathRef.current = toolpath;
+    
+    // Add coordinate labels
+    const addAxisLabel = (text, position, color) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 64;
+      const context = canvas.getContext('2d');
+      context.fillStyle = color;
+      context.font = 'bold 48px Arial';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText(text, 32, 32);
+      
+      const texture = new THREE.CanvasTexture(canvas);
+      const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+      const sprite = new THREE.Sprite(spriteMaterial);
+      sprite.position.copy(position);
+      sprite.scale.set(20, 20, 1);
+      scene.add(sprite);
+    };
+    
+    addAxisLabel('X', new THREE.Vector3(220, 0, 0), '#ff0000');
+    addAxisLabel('Y', new THREE.Vector3(0, 220, 0), '#00ff00');
+    addAxisLabel('Z', new THREE.Vector3(0, 0, 220), '#0088ff');
 
     // Animation loop
     const animate = () => {
@@ -755,17 +972,21 @@ G00 X0 Y0 Z5`
   };
 
   const setCameraView = (view) => {
-    if (!cameraRef.current) return;
+    if (!cameraRef.current || !controlsRef.current) return;
     const positions = {
-      top: [0, 0, 800],
-      front: [0, -800, 0],
-      side: [800, 0, 0],
-      iso: [400, 400, 600]
+      top: [0, 0, 800],      // Looking down Z-axis
+      front: [0, -800, 0],   // Looking along Y-axis
+      side: [800, 0, 0],     // Looking along X-axis
+      iso: [600, -400, 400]  // Rotated 90° CCW so Y points up-right
     };
     const pos = positions[view];
     if (pos) {
       cameraRef.current.position.set(...pos);
       cameraRef.current.lookAt(0, 0, 0);
+      
+      // Set up vector for proper orientation (Z-up for CNC)
+      cameraRef.current.up.set(0, 0, 1);
+      controlsRef.current.update();
     }
   };
 
