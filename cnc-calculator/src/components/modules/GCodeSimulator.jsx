@@ -127,7 +127,22 @@ class OrbitControls {
 // Enhanced G-Code Simulator with full Tool Database integration
 const GCodeSimulator = () => {
   // Core states
-  const [gcode, setGcode] = useState('');
+  const [gcode, setGcode] = useState(`; Sample G-Code Program
+G21 ; Metric units
+G90 ; Absolute positioning
+G17 ; XY plane
+G00 Z5 ; Rapid to safe height
+G00 X0 Y0 ; Move to origin
+M03 S12000 ; Spindle on
+G00 X10 Y10 ; Position
+G01 Z-2 F100 ; Plunge
+G01 X50 Y10 F300 ; Cut
+G01 X50 Y50 ; Cut
+G01 X10 Y50 ; Cut
+G01 X10 Y10 ; Cut
+G00 Z5 ; Retract
+M05 ; Spindle off
+M30 ; Program end`);
   const [parsedProgram, setParsedProgram] = useState(null);
   const [simulationMode, setSimulationMode] = useState('3D'); // 2D, 3D, or Split
   
@@ -298,11 +313,11 @@ const GCodeSimulator = () => {
     controls.target.set(0, 0, 0);
     controlsRef.current = controls;
     
-    // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    // Enhanced Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
     scene.add(ambientLight);
     
-    const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+    const directionalLight1 = new THREE.DirectionalLight(0xffffff, 1.0);
     directionalLight1.position.set(100, 100, 100);
     directionalLight1.castShadow = true;
     directionalLight1.shadow.camera.near = 0.1;
@@ -313,9 +328,18 @@ const GCodeSimulator = () => {
     directionalLight1.shadow.camera.bottom = -200;
     scene.add(directionalLight1);
     
-    const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
+    const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.6);
     directionalLight2.position.set(-100, -100, 50);
     scene.add(directionalLight2);
+    
+    // Add hemisphere light for better ambient
+    const hemisphereLight = new THREE.HemisphereLight(0x87CEEB, 0x444444, 0.5);
+    scene.add(hemisphereLight);
+    
+    // Add point light for tool area
+    const pointLight = new THREE.PointLight(0xffffff, 0.5, 200);
+    pointLight.position.set(0, 0, 50);
+    scene.add(pointLight);
     
     // Add grid and axes
     addSceneHelpers();
@@ -328,6 +352,16 @@ const GCodeSimulator = () => {
     
     // Add initial workpiece
     addWorkpiece();
+    
+    // Create initial tool
+    createInitialTool();
+    
+    // Parse initial G-code if available
+    const initialParsed = parseGCode(gcode);
+    setParsedProgram(initialParsed);
+    if (initialParsed && initialParsed.commands) {
+      drawToolpath(initialParsed);
+    }
     
     // Handle resize
     const handleResize = () => {
@@ -347,12 +381,6 @@ const GCodeSimulator = () => {
     const animate = () => {
       animationRef.current = requestAnimationFrame(animate);
       controls.update();
-      
-      // Update simulation
-      if (simulation.isRunning && !simulation.isPaused) {
-        updateSimulation();
-      }
-      
       renderer.render(scene, camera);
     };
     animate();
@@ -385,6 +413,21 @@ const GCodeSimulator = () => {
     
     return () => clearTimeout(timer);
   }, [panelStates]);
+  
+  // Handle simulation updates
+  useEffect(() => {
+    if (!simulation.isRunning || simulation.isPaused) return;
+    
+    const interval = setInterval(() => {
+      updateSimulation();
+      setSimulation(prev => ({
+        ...prev,
+        currentLine: Math.min(prev.currentLine + 1, parsedProgram?.lines?.length || 0)
+      }));
+    }, 100 / simulation.speed); // Adjust speed
+    
+    return () => clearInterval(interval);
+  }, [simulation.isRunning, simulation.isPaused, simulation.speed, simulation.currentLine]);
   
   // Add scene helpers (grid, axes)
   const addSceneHelpers = () => {
@@ -637,6 +680,47 @@ const GCodeSimulator = () => {
     sceneRef.current.add(mesh);
   };
   
+  // Create initial tool
+  const createInitialTool = () => {
+    if (!sceneRef.current) return;
+    
+    // Remove old tool if exists
+    if (toolRef.current) {
+      sceneRef.current.remove(toolRef.current);
+    }
+    
+    const toolGroup = new THREE.Group();
+    
+    // Default end mill
+    const toolGeometry = new THREE.CylinderGeometry(3, 3, 30, 16);
+    const toolMaterial = new THREE.MeshStandardMaterial({
+      color: 0x888888,
+      metalness: 0.8,
+      roughness: 0.2
+    });
+    const tool = new THREE.Mesh(toolGeometry, toolMaterial);
+    tool.rotation.x = Math.PI / 2; // Align with Z axis
+    toolGroup.add(tool);
+    
+    // Tool holder
+    const holderGeometry = new THREE.CylinderGeometry(5, 5, 20, 16);
+    const holderMaterial = new THREE.MeshStandardMaterial({
+      color: 0x333333,
+      metalness: 0.7,
+      roughness: 0.3
+    });
+    const holder = new THREE.Mesh(holderGeometry, holderMaterial);
+    holder.rotation.x = Math.PI / 2;
+    holder.position.z = 25;
+    toolGroup.add(holder);
+    
+    // Position at origin
+    toolGroup.position.set(0, 0, 20);
+    
+    sceneRef.current.add(toolGroup);
+    toolRef.current = toolGroup;
+  };
+  
   // Create tool from database
   const createToolFromDatabase = (toolData) => {
     if (!sceneRef.current || !toolData) return;
@@ -753,6 +837,7 @@ const GCodeSimulator = () => {
     const lines = code.split('\n');
     const program = {
       lines: [],
+      commands: [],
       tools: {},
       bounds: { minX: 0, maxX: 0, minY: 0, maxY: 0, minZ: 0, maxZ: 0 },
       estimatedTime: 0
@@ -873,6 +958,16 @@ const GCodeSimulator = () => {
       }
       
       program.lines.push(command);
+      
+      // Add to commands array if it's a movement command
+      if (command.type && (command.type === 'rapid' || command.type === 'feed')) {
+        program.commands.push({
+          type: command.params.G === 0 ? 'G00' : 'G01',
+          startPos: command.startPos,
+          endPos: command.endPos,
+          feed: command.feed
+        });
+      }
     });
     
     return program;
@@ -885,21 +980,22 @@ const GCodeSimulator = () => {
       return;
     }
     
-    const command = parsedProgram.lines[simulation.currentLine];
-    
     // Update tool position
-    if (toolRef.current) {
-      const progress = 0.1 * simulation.speed; // Smooth animation
-      toolRef.current.position.x += (command.endPos.x - toolRef.current.position.x) * progress;
-      toolRef.current.position.y += (command.endPos.y - toolRef.current.position.y) * progress;
-      toolRef.current.position.z += (command.endPos.z - toolRef.current.position.z) * progress;
+    if (toolRef.current && parsedProgram.commands && parsedProgram.commands.length > 0) {
+      const progress = simulation.currentLine / Math.max(1, parsedProgram.lines.length - 1);
+      const commandIndex = Math.floor(progress * parsedProgram.commands.length);
+      const command = parsedProgram.commands[Math.min(commandIndex, parsedProgram.commands.length - 1)];
       
-      // Rotation for 5-axis
-      if (command.endPos.a !== undefined || command.endPos.b !== undefined) {
-        toolRef.current.rotation.x = THREE.MathUtils.degToRad(command.endPos.a || 0);
-        toolRef.current.rotation.y = THREE.MathUtils.degToRad(command.endPos.b || 0);
+      if (command && command.endPos) {
+        toolRef.current.position.set(
+          command.endPos.x,
+          command.endPos.y,
+          command.endPos.z + 20 // Tool offset
+        );
       }
     }
+    
+    const command = parsedProgram.lines[simulation.currentLine];
     
     // Material removal simulation
     if (simulation.materialRemoval && command.type === 'feed') {
@@ -967,23 +1063,37 @@ const GCodeSimulator = () => {
     });
   };
   
-  // Draw toolpath
-  const drawToolpath = (command) => {
-    if (!sceneRef.current || !simulation.showToolpath) return;
+  // Draw full toolpath
+  const drawToolpath = (parsedProgram) => {
+    if (!sceneRef.current || !parsedProgram || !parsedProgram.commands) return;
     
-    const material = new THREE.LineBasicMaterial({ 
-      color: command.type === 'rapid' ? 0xff0000 : 0x00ff00,
-      linewidth: 2
+    // Remove old toolpath
+    if (toolpathRef.current) {
+      sceneRef.current.remove(toolpathRef.current);
+    }
+    
+    const toolpathGroup = new THREE.Group();
+    
+    parsedProgram.commands.forEach(command => {
+      if (command.startPos && command.endPos) {
+        const material = new THREE.LineBasicMaterial({ 
+          color: command.type === 'G00' ? 0xff0000 : 0x00ff00,
+          linewidth: 2
+        });
+        
+        const points = [
+          new THREE.Vector3(command.startPos.x, command.startPos.y, command.startPos.z),
+          new THREE.Vector3(command.endPos.x, command.endPos.y, command.endPos.z)
+        ];
+        
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const line = new THREE.Line(geometry, material);
+        toolpathGroup.add(line);
+      }
     });
     
-    const points = [
-      new THREE.Vector3(command.startPos.x, command.startPos.y, command.startPos.z),
-      new THREE.Vector3(command.endPos.x, command.endPos.y, command.endPos.z)
-    ];
-    
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    const line = new THREE.Line(geometry, material);
-    sceneRef.current.add(line);
+    sceneRef.current.add(toolpathGroup);
+    toolpathRef.current = toolpathGroup;
   };
   
   // Tool selection from database
