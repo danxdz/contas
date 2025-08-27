@@ -280,6 +280,14 @@ M30 ; Program end`);
   const textareaRef = useRef(null);
   const lineNumbersRef = useRef(null);
   
+  // Parse initial G-code on mount
+  useEffect(() => {
+    if (gcode && !parsedProgram) {
+      const parsed = parseGCode(gcode);
+      setParsedProgram(parsed);
+    }
+  }, []);
+  
   // Initialize Three.js scene
   useEffect(() => {
     if (!mountRef.current) return;
@@ -1333,20 +1341,75 @@ M30 ; Program end`);
   };
   
   const stepForward = () => {
-    if (parsedProgram && simulation.currentLine < parsedProgram.lines.length - 1) {
+    // Parse G-code if not already parsed
+    let program = parsedProgram;
+    if (!program && gcode) {
+      program = parseGCode(gcode);
+      setParsedProgram(program);
+      if (program && program.commands) {
+        drawToolpath(program);
+      }
+    }
+    
+    if (program && simulation.currentLine < program.lines.length - 1) {
+      const nextLine = simulation.currentLine + 1;
       setSimulation(prev => ({
         ...prev,
-        currentLine: prev.currentLine + 1
+        currentLine: nextLine
       }));
+      
+      // Update tool position for this step
+      if (toolRef.current && program.commands && program.commands.length > 0) {
+        const progress = nextLine / Math.max(1, program.lines.length - 1);
+        const commandIndex = Math.floor(progress * program.commands.length);
+        const command = program.commands[Math.min(commandIndex, program.commands.length - 1)];
+        
+        if (command && command.endPos) {
+          toolRef.current.position.set(
+            command.endPos.x,
+            command.endPos.y,
+            command.endPos.z + 20 // Tool offset
+          );
+        }
+      }
     }
   };
   
   const stepBackward = () => {
+    // Parse G-code if not already parsed
+    let program = parsedProgram;
+    if (!program && gcode) {
+      program = parseGCode(gcode);
+      setParsedProgram(program);
+      if (program && program.commands) {
+        drawToolpath(program);
+      }
+    }
+    
     if (simulation.currentLine > 0) {
+      const prevLine = simulation.currentLine - 1;
       setSimulation(prev => ({
         ...prev,
-        currentLine: prev.currentLine - 1
+        currentLine: prevLine
       }));
+      
+      // Update tool position for this step
+      if (toolRef.current && program.commands && program.commands.length > 0) {
+        const progress = prevLine / Math.max(1, program.lines.length - 1);
+        const commandIndex = Math.floor(progress * program.commands.length);
+        const command = program.commands[Math.min(commandIndex, program.commands.length - 1)];
+        
+        if (command && command.endPos) {
+          toolRef.current.position.set(
+            command.endPos.x,
+            command.endPos.y,
+            command.endPos.z + 20 // Tool offset
+          );
+        } else if (prevLine === 0) {
+          // Return to origin
+          toolRef.current.position.set(0, 0, 20);
+        }
+      }
     }
   };
   
