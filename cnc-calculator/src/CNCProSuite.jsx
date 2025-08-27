@@ -114,7 +114,9 @@ S8000 M03
 G00 X0 Y0 Z5`
     },
     stepFile: null,
+    stepContent: null,
     features: [],
+    suggestedTools: [],
     tools: []
   });
 
@@ -494,16 +496,122 @@ G00 X0 Y0 Z5`
   };
 
   const loadSTEPFile = (file) => {
-    // STEP file processing
-    setProject(prev => ({
-      ...prev,
-      stepFile: file.name,
-      features: [
-        { type: 'pocket', depth: 10, width: 50, length: 80 },
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      // Parse STEP file content
+      const stepContent = e.target.result;
+      
+      // Extract basic features from STEP (simplified - real implementation would parse STEP format)
+      const features = detectFeaturesFromSTEP(stepContent);
+      const suggestedTools = generateToolsFromFeatures(features);
+      
+      setProject(prev => ({
+        ...prev,
+        stepFile: file.name,
+        stepContent: stepContent,
+        features: features,
+        suggestedTools: suggestedTools
+      }));
+      
+      // Show STEP processor panel
+      setPanels(prev => ({
+        ...prev,
+        stepProcessor: { ...prev.stepProcessor, visible: true }
+      }));
+    };
+    reader.readAsText(file);
+  };
+  
+  const detectFeaturesFromSTEP = (content) => {
+    // Mock feature detection - in production would parse STEP geometry
+    const features = [];
+    
+    // Look for common STEP entities
+    if (content.includes('CYLINDRICAL_SURFACE') || content.includes('CIRCLE')) {
+      features.push({ 
+        type: 'hole', 
+        diameter: 10, 
+        depth: 25,
+        position: { x: 30, y: 30, z: 0 }
+      });
+      features.push({ 
+        type: 'hole', 
+        diameter: 8, 
+        depth: 20,
+        position: { x: -30, y: 30, z: 0 }
+      });
+    }
+    
+    if (content.includes('RECTANGULAR_TRIMMED_SURFACE')) {
+      features.push({ 
+        type: 'pocket', 
+        depth: 10, 
+        width: 50, 
+        length: 80,
+        cornerRadius: 5,
+        position: { x: 0, y: 0, z: 10 }
+      });
+    }
+    
+    if (content.includes('SLOT') || content.includes('RECTANGULAR_CLOSED_PROFILE')) {
+      features.push({ 
+        type: 'slot', 
+        width: 8, 
+        length: 40, 
+        depth: 5,
+        position: { x: 0, y: -40, z: 5 }
+      });
+    }
+    
+    // If no specific features found, add default ones
+    if (features.length === 0) {
+      features.push(
+        { type: 'pocket', depth: 10, width: 50, length: 80, cornerRadius: 5 },
         { type: 'hole', diameter: 10, depth: 20 },
-        { type: 'slot', width: 8, length: 40, depth: 5 }
-      ]
-    }));
+        { type: 'hole', diameter: 8, depth: 15 },
+        { type: 'slot', width: 8, length: 40, depth: 5 },
+        { type: 'profile', perimeter: 280, depth: 2 }
+      );
+    }
+    
+    return features;
+  };
+  
+  const generateToolsFromFeatures = (features) => {
+    const tools = [];
+    const toolSet = new Set();
+    
+    features.forEach(feature => {
+      switch(feature.type) {
+        case 'hole':
+          if (feature.diameter <= 6) {
+            toolSet.add(JSON.stringify({ type: 'drill', diameter: feature.diameter }));
+          } else {
+            toolSet.add(JSON.stringify({ type: 'drill', diameter: feature.diameter - 0.2 }));
+            toolSet.add(JSON.stringify({ type: 'reamer', diameter: feature.diameter }));
+          }
+          break;
+        case 'pocket':
+          toolSet.add(JSON.stringify({ type: 'endmill', diameter: 10, flutes: 3 }));
+          if (feature.cornerRadius) {
+            toolSet.add(JSON.stringify({ type: 'endmill', diameter: feature.cornerRadius * 2, flutes: 4 }));
+          }
+          break;
+        case 'slot':
+          toolSet.add(JSON.stringify({ type: 'slotmill', diameter: feature.width, flutes: 2 }));
+          break;
+        case 'profile':
+          toolSet.add(JSON.stringify({ type: 'endmill', diameter: 12, flutes: 4 }));
+          break;
+      }
+    });
+    
+    // Convert Set back to array of unique tools
+    Array.from(toolSet).forEach(toolStr => {
+      tools.push(JSON.parse(toolStr));
+    });
+    
+    return tools;
   };
 
   const loadSTLFile = (file) => {
@@ -593,7 +701,7 @@ G00 X0 Y0 Z5`
         { id: 'save', label: 'Save', shortcut: 'Ctrl+S', action: saveProject },
         { id: 'saveAs', label: 'Save As...', shortcut: 'Ctrl+Shift+S', action: saveProject },
         { divider: true },
-        { id: 'import', label: 'Import STEP...', action: () => togglePanel('stepProcessor') },
+        { id: 'import', label: 'Import STEP...', action: () => document.getElementById('step-file-input').click() },
         { id: 'export', label: 'Export G-Code...', action: () => {} },
         { divider: true },
         { id: 'recent', label: 'Recent Files', submenu: true },
@@ -746,6 +854,27 @@ G00 X0 Y0 Z5`
       {/* Quick Access Toolbar */}
       <QuickToolbar />
       
+      {/* Hidden File Inputs */}
+      <input 
+        id="file-input"
+        type="file" 
+        accept=".nc,.gcode,.step,.stp,.stl,.iges,.igs"
+        onChange={(e) => handleFileLoad(e.target.files[0])}
+        style={{ display: 'none' }}
+      />
+      <input 
+        id="step-file-input"
+        type="file" 
+        accept=".step,.stp,.STEP,.STP,.iges,.igs,.IGES,.IGS"
+        onChange={(e) => {
+          const file = e.target.files[0];
+          if (file) {
+            loadSTEPFile(file);
+          }
+        }}
+        style={{ display: 'none' }}
+      />
+      
       {/* Floating/Docked Panels */}
       {renderPanel('gcode', 
         <GCodeEditor 
@@ -772,7 +901,12 @@ G00 X0 Y0 Z5`
       
       {renderPanel('stepProcessor',
         <StepProcessor 
-          stepFile={{ loaded: !!project.stepFile, fileName: project.stepFile, features: project.features }}
+          stepFile={{ 
+            loaded: !!project.stepFile, 
+            fileName: project.stepFile, 
+            features: project.features || [],
+            suggestedTools: project.suggestedTools || []
+          }}
           onGenerateCode={(code) => setProject(prev => ({ ...prev, gcode: { ...prev.gcode, channel1: code } }))}
         />
       )}
