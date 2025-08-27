@@ -17,11 +17,10 @@ import {
   PocketMillingWizard,
   FeedsSpeedsOptimizer,
   ToolDatabase,
-  GCodeVisualizer,
-  GCodeSimulator,
-  ProfessionalSimulator,
   ShopFloorUtilities
 } from './components/modules/index.jsx';
+
+import UnifiedSimulator from './components/modules/UnifiedSimulator';
 
 // Module Categories
 const moduleCategories = {
@@ -59,9 +58,7 @@ const moduleCategories = {
     name: 'CAM/Simulation',
     icon: '🎬',
     modules: [
-      { id: 'cam', name: 'Professional CAM', component: ProfessionalSimulator, icon: '🏆' },
-      { id: 'visualizer', name: 'G-Code Viewer', component: GCodeVisualizer, icon: '👁️' },
-      { id: 'simulator', name: 'Simulator', component: GCodeSimulator, icon: '🚀' },
+      { id: 'simulator', name: 'Professional Simulator', component: UnifiedSimulator, icon: '🏆' },
     ]
   },
   production: {
@@ -302,8 +299,8 @@ function AppPro() {
     
     const Component = module.component;
     
-    // Pass tool database to CAM simulator
-    if (module.id === 'cam' || module.id === 'simulator' || module.id === 'visualizer') {
+    // Pass tool database to simulator
+    if (module.id === 'simulator') {
       return <Component toolDatabase={toolDatabase} onToolSelect={(tool) => console.log('Selected tool:', tool)} />;
     }
     
