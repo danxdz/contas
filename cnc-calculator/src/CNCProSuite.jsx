@@ -581,8 +581,165 @@ G00 X0 Y0 Z5`
     }));
   };
 
+  // Top menu system
+  const [activeMenu, setActiveMenu] = useState(null);
+  
+  const menuItems = {
+    file: {
+      label: 'File',
+      items: [
+        { id: 'new', label: 'New Project', shortcut: 'Ctrl+N', action: newProject },
+        { id: 'open', label: 'Open...', shortcut: 'Ctrl+O', action: () => document.getElementById('file-input').click() },
+        { id: 'save', label: 'Save', shortcut: 'Ctrl+S', action: saveProject },
+        { id: 'saveAs', label: 'Save As...', shortcut: 'Ctrl+Shift+S', action: saveProject },
+        { divider: true },
+        { id: 'import', label: 'Import STEP...', action: () => togglePanel('stepProcessor') },
+        { id: 'export', label: 'Export G-Code...', action: () => {} },
+        { divider: true },
+        { id: 'recent', label: 'Recent Files', submenu: true },
+        { divider: true },
+        { id: 'exit', label: 'Exit', action: () => window.close() }
+      ]
+    },
+    edit: {
+      label: 'Edit',
+      items: [
+        { id: 'undo', label: 'Undo', shortcut: 'Ctrl+Z', action: () => {} },
+        { id: 'redo', label: 'Redo', shortcut: 'Ctrl+Y', action: () => {} },
+        { divider: true },
+        { id: 'cut', label: 'Cut', shortcut: 'Ctrl+X', action: () => {} },
+        { id: 'copy', label: 'Copy', shortcut: 'Ctrl+C', action: () => {} },
+        { id: 'paste', label: 'Paste', shortcut: 'Ctrl+V', action: () => {} },
+        { divider: true },
+        { id: 'find', label: 'Find...', shortcut: 'Ctrl+F', action: () => {} },
+        { id: 'replace', label: 'Replace...', shortcut: 'Ctrl+H', action: () => {} }
+      ]
+    },
+    view: {
+      label: 'View',
+      items: [
+        { id: 'top', label: 'Top View', action: () => setCameraView('top') },
+        { id: 'front', label: 'Front View', action: () => setCameraView('front') },
+        { id: 'side', label: 'Side View', action: () => setCameraView('side') },
+        { id: 'iso', label: 'Isometric', action: () => setCameraView('iso') },
+        { divider: true },
+        { id: 'gcode', label: 'G-Code Editor', checked: panels.gcode.visible, action: () => togglePanel('gcode') },
+        { id: 'tools', label: 'Tool Manager', checked: panels.tools.visible, action: () => togglePanel('tools') },
+        { id: 'dual', label: 'Dual Channel', checked: panels.dualChannel.visible, action: () => togglePanel('dualChannel') },
+        { id: 'step', label: 'STEP Processor', checked: panels.stepProcessor.visible, action: () => togglePanel('stepProcessor') },
+        { id: 'machine', label: 'Machine Control', checked: panels.machineControl.visible, action: () => togglePanel('machineControl') },
+        { id: 'features', label: 'Feature Tree', checked: panels.features.visible, action: () => togglePanel('features') },
+        { id: 'console', label: 'Console', checked: panels.console.visible, action: () => togglePanel('console') }
+      ]
+    },
+    simulation: {
+      label: 'Simulation',
+      items: [
+        { id: 'play', label: simulation.isPlaying ? 'Pause' : 'Play', shortcut: 'Space', action: () => setSimulation(prev => ({ ...prev, isPlaying: !prev.isPlaying })) },
+        { id: 'stop', label: 'Stop', action: stopSimulation },
+        { id: 'step', label: 'Step Forward', shortcut: 'F10', action: stepForward },
+        { divider: true },
+        { id: 'speed', label: `Speed: ${simulation.speed}x`, submenu: true },
+        { divider: true },
+        { id: 'verify', label: 'Verify G-Code', action: () => {} },
+        { id: 'optimize', label: 'Optimize Toolpath', action: () => {} }
+      ]
+    },
+    tools: {
+      label: 'Tools',
+      items: [
+        { id: 'calculator', label: 'Feeds & Speeds Calculator', action: () => {} },
+        { id: 'converter', label: 'Unit Converter', action: () => {} },
+        { id: 'trigonometry', label: 'Trigonometry Calculator', action: () => {} },
+        { divider: true },
+        { id: 'toollib', label: 'Tool Library', action: () => togglePanel('tools') },
+        { id: 'materials', label: 'Material Database', action: () => {} },
+        { divider: true },
+        { id: 'postprocessor', label: 'Post Processor', action: () => {} }
+      ]
+    },
+    machine: {
+      label: 'Machine',
+      items: [
+        { id: 'connect', label: 'Connect to Machine', action: () => {} },
+        { id: 'disconnect', label: 'Disconnect', disabled: true, action: () => {} },
+        { divider: true },
+        { id: 'jog', label: 'Jog Mode', action: () => {} },
+        { id: 'mdi', label: 'MDI Mode', action: () => {} },
+        { id: 'auto', label: 'Auto Mode', action: () => {} },
+        { divider: true },
+        { id: 'offsets', label: 'Work Offsets', action: () => {} },
+        { id: 'tooloffsets', label: 'Tool Offsets', action: () => {} },
+        { id: 'parameters', label: 'Machine Parameters', action: () => {} }
+      ]
+    },
+    help: {
+      label: 'Help',
+      items: [
+        { id: 'docs', label: 'Documentation', action: () => {} },
+        { id: 'shortcuts', label: 'Keyboard Shortcuts', action: () => {} },
+        { divider: true },
+        { id: 'tutorials', label: 'Tutorials', action: () => {} },
+        { id: 'samples', label: 'Sample Projects', action: () => {} },
+        { divider: true },
+        { id: 'about', label: 'About CNC Pro Suite', action: () => {} }
+      ]
+    }
+  };
+
   return (
     <div className="cnc-pro-suite">
+      {/* Top Menu Bar */}
+      <div className="top-menu-bar">
+        <div className="menu-items">
+          {Object.entries(menuItems).map(([key, menu]) => (
+            <div 
+              key={key} 
+              className={`menu-item ${activeMenu === key ? 'active' : ''}`}
+              onMouseEnter={() => setActiveMenu(key)}
+              onClick={() => setActiveMenu(activeMenu === key ? null : key)}
+            >
+              {menu.label}
+              {activeMenu === key && (
+                <div className="menu-dropdown" onMouseLeave={() => setActiveMenu(null)}>
+                  {menu.items.map((item, idx) => (
+                    item.divider ? (
+                      <div key={idx} className="menu-divider" />
+                    ) : (
+                      <div 
+                        key={item.id} 
+                        className={`menu-dropdown-item ${item.disabled ? 'disabled' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!item.disabled && item.action) {
+                            item.action();
+                            setActiveMenu(null);
+                          }
+                        }}
+                      >
+                        <span className="menu-label">
+                          {item.checked !== undefined && (
+                            <span className="menu-check">{item.checked ? '✓' : ' '}</span>
+                          )}
+                          {item.label}
+                        </span>
+                        {item.shortcut && (
+                          <span className="menu-shortcut">{item.shortcut}</span>
+                        )}
+                        {item.submenu && (
+                          <span className="menu-arrow">▶</span>
+                        )}
+                      </div>
+                    )
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="menu-title">CNC Pro Suite v2.0</div>
+      </div>
+      
       {/* 3D Viewport - Full screen background */}
       <div ref={mountRef} className="viewport-3d" />
       
