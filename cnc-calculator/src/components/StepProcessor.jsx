@@ -2,6 +2,524 @@ import React, { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
+// StepViewer3D Component
+const StepViewer3D = ({ stepFile, selectedFeatures, viewMode, onViewModeChange }) => {
+  const mountRef = useRef(null);
+  const sceneRef = useRef(null);
+  const stockRef = useRef(null);
+  const raycasterRef = useRef(new THREE.Raycaster());
+  const mouseRef = useRef(new THREE.Vector2());
+  
+  const [stockSetup, setStockSetup] = useState({
+    visible: false,
+    material: 'Aluminum 6061',
+    dimensions: { x: 150, y: 100, z: 50 },
+    origin: { x: 0, y: 0, z: 0 },
+    color: '#888888'
+  });
+  
+  const [fixtureSetup, setFixtureSetup] = useState({
+    visible: false,
+    type: 'Vise',
+    jawWidth: 150,
+    clampForce: 500
+  });
+  
+  const [toolSetup, setToolSetup] = useState({
+    visible: false,
+    type: 'End Mill',
+    diameter: 10,
+    flutes: 4,
+    length: 75
+  });
+  
+  useEffect(() => {
+    if (!mountRef.current) return;
+    
+    // Scene setup
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x2a2e3a);
+    sceneRef.current = scene;
+    
+    // Camera
+    const camera = new THREE.PerspectiveCamera(
+      45,
+      mountRef.current.clientWidth / mountRef.current.clientHeight,
+      0.1,
+      2000
+    );
+    camera.position.set(200, -200, 200);
+    camera.up.set(0, 0, 1);
+    
+    // Renderer
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
+    renderer.shadowMap.enabled = true;
+    mountRef.current.appendChild(renderer.domElement);
+    
+    // Controls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(100, 100, 200);
+    directionalLight.castShadow = true;
+    scene.add(directionalLight);
+    
+    // Grid
+    const gridHelper = new THREE.GridHelper(300, 30, 0x444444, 0x222222);
+    gridHelper.rotateX(Math.PI / 2);
+    scene.add(gridHelper);
+    
+    // Axes
+    const axesHelper = new THREE.AxesHelper(100);
+    scene.add(axesHelper);
+    
+    // Create stock/workpiece
+    const createStock = () => {
+      const stockGroup = new THREE.Group();
+      
+      // Main stock block
+      const stockGeometry = new THREE.BoxGeometry(
+        stockSetup.dimensions.x,
+        stockSetup.dimensions.y,
+        stockSetup.dimensions.z
+      );
+      const stockMaterial = new THREE.MeshPhongMaterial({ 
+        color: stockSetup.color,
+        transparent: true,
+        opacity: viewMode === 'wireframe' ? 0.3 : 0.9
+      });
+      const stock = new THREE.Mesh(stockGeometry, stockMaterial);
+      stock.position.set(
+        stockSetup.origin.x,
+        stockSetup.origin.y,
+        stockSetup.origin.z + stockSetup.dimensions.z / 2
+      );
+      stock.castShadow = true;
+      stock.receiveShadow = true;
+      stock.userData = { type: 'stock', clickable: true };
+      stockGroup.add(stock);
+      
+      // Add edges for wireframe mode
+      if (viewMode === 'wireframe' || viewMode === 'features') {
+        const edges = new THREE.EdgesGeometry(stockGeometry);
+        const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff });
+        const edgeLines = new THREE.LineSegments(edges, edgeMaterial);
+        edgeLines.position.copy(stock.position);
+        stockGroup.add(edgeLines);
+      }
+      
+      // Add detected features if in features mode
+      if (viewMode === 'features' && stepFile.loaded && stepFile.features) {
+        stepFile.features.forEach((feature, idx) => {
+          const isSelected = selectedFeatures.includes(idx);
+          
+          if (feature.type === 'hole') {
+            const holeGeometry = new THREE.CylinderGeometry(
+              feature.diameter / 2,
+              feature.diameter / 2,
+              feature.depth || 20,
+              32
+            );
+            const holeMaterial = new THREE.MeshPhongMaterial({ 
+              color: isSelected ? 0x00ff00 : 0xff0000,
+              transparent: true,
+              opacity: 0.7
+            });
+            const hole = new THREE.Mesh(holeGeometry, holeMaterial);
+            hole.position.set(0, 0, stockSetup.dimensions.z / 2);
+            hole.rotation.x = Math.PI / 2;
+            stockGroup.add(hole);
+          } else if (feature.type === 'pocket') {
+            const pocketGeometry = new THREE.BoxGeometry(
+              feature.width || 60,
+              feature.length || 80,
+              feature.depth || 10
+            );
+            const pocketMaterial = new THREE.MeshPhongMaterial({ 
+              color: isSelected ? 0x00ff00 : 0x0088ff,
+              transparent: true,
+              opacity: 0.7
+            });
+            const pocket = new THREE.Mesh(pocketGeometry, pocketMaterial);
+            pocket.position.set(0, 0, stockSetup.dimensions.z - feature.depth / 2);
+            stockGroup.add(pocket);
+          }
+        });
+      }
+      
+      return stockGroup;
+    };
+    
+    // Add stock to scene
+    const stockGroup = createStock();
+    scene.add(stockGroup);
+    stockRef.current = stockGroup;
+    
+    // Mouse click handler
+    const handleClick = (event) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouseRef.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouseRef.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      
+      raycasterRef.current.setFromCamera(mouseRef.current, camera);
+      const intersects = raycasterRef.current.intersectObjects(scene.children, true);
+      
+      if (intersects.length > 0) {
+        const clickedObject = intersects[0].object;
+        if (clickedObject.userData.type === 'stock') {
+          setStockSetup(prev => ({ ...prev, visible: true }));
+        }
+      }
+    };
+    
+    renderer.domElement.addEventListener('click', handleClick);
+    
+    // Animation loop
+    const animate = () => {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    };
+    animate();
+    
+    // Handle resize
+    const handleResize = () => {
+      if (!mountRef.current) return;
+      camera.aspect = mountRef.current.clientWidth / mountRef.current.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
+    };
+    window.addEventListener('resize', handleResize);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      renderer.domElement.removeEventListener('click', handleClick);
+      if (mountRef.current && renderer.domElement) {
+        mountRef.current.removeChild(renderer.domElement);
+      }
+      renderer.dispose();
+    };
+  }, [stepFile, selectedFeatures, viewMode, stockSetup.dimensions]);
+  
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <div ref={mountRef} style={{ width: '100%', height: '100%' }} />
+      
+      {/* View Mode Controls */}
+      <div className="step-controls" style={{
+        position: 'absolute',
+        bottom: '10px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        display: 'flex',
+        gap: '5px',
+        background: 'rgba(42, 46, 58, 0.9)',
+        padding: '5px',
+        borderRadius: '6px'
+      }}>
+        <button 
+          onClick={() => onViewModeChange('wireframe')}
+          className={viewMode === 'wireframe' ? 'active' : ''}
+          style={{
+            padding: '5px 10px',
+            background: viewMode === 'wireframe' ? '#4a9eff' : '#333',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '12px'
+          }}
+        >
+          Wireframe
+        </button>
+        <button 
+          onClick={() => onViewModeChange('shaded')}
+          className={viewMode === 'shaded' ? 'active' : ''}
+          style={{
+            padding: '5px 10px',
+            background: viewMode === 'shaded' ? '#4a9eff' : '#333',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '12px'
+          }}
+        >
+          Shaded
+        </button>
+        <button 
+          onClick={() => onViewModeChange('features')}
+          className={viewMode === 'features' ? 'active' : ''}
+          style={{
+            padding: '5px 10px',
+            background: viewMode === 'features' ? '#4a9eff' : '#333',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '12px'
+          }}
+        >
+          Features
+        </button>
+        <button 
+          onClick={() => onViewModeChange('toolpaths')}
+          className={viewMode === 'toolpaths' ? 'active' : ''}
+          style={{
+            padding: '5px 10px',
+            background: viewMode === 'toolpaths' ? '#4a9eff' : '#333',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '12px'
+          }}
+        >
+          Toolpaths
+        </button>
+      </div>
+      
+      {/* Stock Setup Window */}
+      {stockSetup.visible && (
+        <div style={{
+          position: 'absolute',
+          top: '20px',
+          right: '20px',
+          width: '300px',
+          background: 'linear-gradient(135deg, #2a2e3a 0%, #1a1e2a 100%)',
+          border: '1px solid rgba(74, 158, 255, 0.3)',
+          borderRadius: '8px',
+          padding: '15px',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '15px'
+          }}>
+            <h3 style={{ margin: 0, color: '#4a9eff', fontSize: '16px' }}>Stock Setup</h3>
+            <button 
+              onClick={() => setStockSetup(prev => ({ ...prev, visible: false }))}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#fff',
+                fontSize: '20px',
+                cursor: 'pointer'
+              }}
+            >
+              ×
+            </button>
+          </div>
+          
+          <div style={{ marginBottom: '10px' }}>
+            <label style={{ display: 'block', color: '#ccc', fontSize: '12px', marginBottom: '5px' }}>
+              Material
+            </label>
+            <select 
+              value={stockSetup.material}
+              onChange={(e) => setStockSetup(prev => ({ ...prev, material: e.target.value }))}
+              style={{
+                width: '100%',
+                padding: '5px',
+                background: '#1a1e2a',
+                color: '#fff',
+                border: '1px solid #444',
+                borderRadius: '4px'
+              }}
+            >
+              <option>Aluminum 6061</option>
+              <option>Steel 1018</option>
+              <option>Stainless 304</option>
+              <option>Brass</option>
+              <option>Plastic (Delrin)</option>
+            </select>
+          </div>
+          
+          <div style={{ marginBottom: '10px' }}>
+            <label style={{ display: 'block', color: '#ccc', fontSize: '12px', marginBottom: '5px' }}>
+              Dimensions (mm)
+            </label>
+            <div style={{ display: 'flex', gap: '5px' }}>
+              <input 
+                type="number"
+                value={stockSetup.dimensions.x}
+                onChange={(e) => setStockSetup(prev => ({ 
+                  ...prev, 
+                  dimensions: { ...prev.dimensions, x: parseFloat(e.target.value) }
+                }))}
+                placeholder="X"
+                style={{
+                  flex: 1,
+                  padding: '5px',
+                  background: '#1a1e2a',
+                  color: '#fff',
+                  border: '1px solid #444',
+                  borderRadius: '4px'
+                }}
+              />
+              <input 
+                type="number"
+                value={stockSetup.dimensions.y}
+                onChange={(e) => setStockSetup(prev => ({ 
+                  ...prev, 
+                  dimensions: { ...prev.dimensions, y: parseFloat(e.target.value) }
+                }))}
+                placeholder="Y"
+                style={{
+                  flex: 1,
+                  padding: '5px',
+                  background: '#1a1e2a',
+                  color: '#fff',
+                  border: '1px solid #444',
+                  borderRadius: '4px'
+                }}
+              />
+              <input 
+                type="number"
+                value={stockSetup.dimensions.z}
+                onChange={(e) => setStockSetup(prev => ({ 
+                  ...prev, 
+                  dimensions: { ...prev.dimensions, z: parseFloat(e.target.value) }
+                }))}
+                placeholder="Z"
+                style={{
+                  flex: 1,
+                  padding: '5px',
+                  background: '#1a1e2a',
+                  color: '#fff',
+                  border: '1px solid #444',
+                  borderRadius: '4px'
+                }}
+              />
+            </div>
+          </div>
+          
+          <div style={{ marginBottom: '10px' }}>
+            <label style={{ display: 'block', color: '#ccc', fontSize: '12px', marginBottom: '5px' }}>
+              Origin Offset
+            </label>
+            <div style={{ display: 'flex', gap: '5px' }}>
+              <input 
+                type="number"
+                value={stockSetup.origin.x}
+                onChange={(e) => setStockSetup(prev => ({ 
+                  ...prev, 
+                  origin: { ...prev.origin, x: parseFloat(e.target.value) }
+                }))}
+                placeholder="X"
+                style={{
+                  flex: 1,
+                  padding: '5px',
+                  background: '#1a1e2a',
+                  color: '#fff',
+                  border: '1px solid #444',
+                  borderRadius: '4px'
+                }}
+              />
+              <input 
+                type="number"
+                value={stockSetup.origin.y}
+                onChange={(e) => setStockSetup(prev => ({ 
+                  ...prev, 
+                  origin: { ...prev.origin, y: parseFloat(e.target.value) }
+                }))}
+                placeholder="Y"
+                style={{
+                  flex: 1,
+                  padding: '5px',
+                  background: '#1a1e2a',
+                  color: '#fff',
+                  border: '1px solid #444',
+                  borderRadius: '4px'
+                }}
+              />
+              <input 
+                type="number"
+                value={stockSetup.origin.z}
+                onChange={(e) => setStockSetup(prev => ({ 
+                  ...prev, 
+                  origin: { ...prev.origin, z: parseFloat(e.target.value) }
+                }))}
+                placeholder="Z"
+                style={{
+                  flex: 1,
+                  padding: '5px',
+                  background: '#1a1e2a',
+                  color: '#fff',
+                  border: '1px solid #444',
+                  borderRadius: '4px'
+                }}
+              />
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button 
+              onClick={() => {
+                // Apply changes
+                setStockSetup(prev => ({ ...prev, visible: false }));
+              }}
+              style={{
+                flex: 1,
+                padding: '8px',
+                background: 'linear-gradient(135deg, #4a9eff 0%, #0066cc 100%)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              Apply
+            </button>
+            <button 
+              onClick={() => {
+                // Save setup
+                localStorage.setItem('stockSetup', JSON.stringify(stockSetup));
+                setStockSetup(prev => ({ ...prev, visible: false }));
+              }}
+              style={{
+                flex: 1,
+                padding: '8px',
+                background: 'linear-gradient(135deg, #00c853 0%, #00a040 100%)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {/* Instruction text */}
+      <div style={{
+        position: 'absolute',
+        top: '10px',
+        left: '10px',
+        color: '#4a9eff',
+        fontSize: '12px',
+        background: 'rgba(0, 0, 0, 0.5)',
+        padding: '5px 10px',
+        borderRadius: '4px'
+      }}>
+        Click on stock to edit setup
+      </div>
+    </div>
+  );
+};
+
 const StepProcessor = ({ stepFile, onGenerateCode }) => {
   const [selectedFeatures, setSelectedFeatures] = useState([]);
   const [toolAssignments, setToolAssignments] = useState({});
