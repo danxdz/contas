@@ -434,20 +434,21 @@ M30 ; End`
     scene.add(workpieceGroup);
     workpieceRef.current = workpieceGroup;
     
-    // Example Tool - End Mill
+    // Example Tool - End Mill (properly oriented along Z-axis)
     const toolGroup = new THREE.Group();
     
-    // Tool holder
+    // Tool holder (along Z-axis)
     const holderGeometry = new THREE.CylinderGeometry(12, 12, 40, 32);
     const holderMaterial = new THREE.MeshPhongMaterial({ 
       color: 0x333333,
       metalness: 0.9
     });
     const holder = new THREE.Mesh(holderGeometry, holderMaterial);
+    holder.rotation.x = Math.PI / 2; // Rotate to align with Z-axis
     holder.position.z = 20;
     toolGroup.add(holder);
     
-    // Cutting tool
+    // Cutting tool (along Z-axis)
     const toolGeometry = new THREE.CylinderGeometry(5, 5, 30, 32);
     const toolMaterial = new THREE.MeshPhongMaterial({ 
       color: 0x00ff00,
@@ -455,8 +456,26 @@ M30 ; End`
       emissiveIntensity: 0.3
     });
     const tool = new THREE.Mesh(toolGeometry, toolMaterial);
+    tool.rotation.x = Math.PI / 2; // Rotate to align with Z-axis
     tool.position.z = -5;
     toolGroup.add(tool);
+    
+    // Tool flutes detail
+    const fluteCount = 4;
+    for (let i = 0; i < fluteCount; i++) {
+      const angle = (i * Math.PI * 2) / fluteCount;
+      const fluteGeometry = new THREE.BoxGeometry(1, 1, 30);
+      const fluteMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x004400,
+        emissive: 0x00ff00,
+        emissiveIntensity: 0.1
+      });
+      const flute = new THREE.Mesh(fluteGeometry, fluteMaterial);
+      flute.position.x = Math.cos(angle) * 4;
+      flute.position.y = Math.sin(angle) * 4;
+      flute.position.z = -5;
+      toolGroup.add(flute);
+    }
     
     toolGroup.position.set(0, 0, 100);
     scene.add(toolGroup);
