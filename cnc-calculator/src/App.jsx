@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
-import 'react-tabs/style/react-tabs.css';
+import './App.css';
 
 // Core Calculators
 import ThreadCalculator from './components/ThreadCalculator';
@@ -9,7 +8,7 @@ import CuttingSpeedCalculator from './components/CuttingSpeedCalculator';
 import FaceMillingCalculator from './components/FaceMillingCalculator';
 import VariousTools from './components/VariousTools';
 
-// New Advanced Modules
+// Advanced Modules
 import {
   ToolLifeCalculator,
   CircularInterpolation,
@@ -22,45 +21,73 @@ import {
   ShopFloorUtilities
 } from './components/modules/index.jsx';
 
-// Module Registry for easy expansion
+// Module Registry with categories
 const moduleRegistry = {
-  core: [
-    { id: 'thread', name: '🔩 Threads', component: ThreadCalculator },
-    { id: 'trig', name: '📐 Trigonometry', component: TrigonometryCalculator },
-    { id: 'speed', name: '⚡ Cutting Speed', component: CuttingSpeedCalculator },
-    { id: 'face', name: '🔧 Face Milling', component: FaceMillingCalculator },
-    { id: 'tools', name: '🛠️ Various Tools', component: VariousTools },
+  'Basic Calculators': [
+    { id: 'thread', name: 'Thread Calculator', icon: '🔩', component: ThreadCalculator },
+    { id: 'trig', name: 'Trigonometry', icon: '📐', component: TrigonometryCalculator },
+    { id: 'speed', name: 'Cutting Speed', icon: '⚡', component: CuttingSpeedCalculator },
+    { id: 'face', name: 'Face Milling', icon: '🔧', component: FaceMillingCalculator },
+    { id: 'tools', name: 'Various Tools', icon: '🛠️', component: VariousTools },
   ],
-  advanced: [
-    { id: 'toollife', name: '💰 Tool Life', component: ToolLifeCalculator },
-    { id: 'circular', name: '🔄 Circular/Helical', component: CircularInterpolation },
-    { id: 'power', name: '💪 Power/Torque', component: PowerTorqueCalculator },
-    { id: 'geometry', name: '📏 Geometry', component: GeometryTools },
-    { id: 'pocket', name: '📦 Pocket Milling', component: PocketMillingWizard },
-    { id: 'optimize', name: '📈 Optimizer', component: FeedsSpeedsOptimizer },
-    { id: 'database', name: '🗄️ Tool DB', component: ToolDatabase },
-    { id: 'visualizer', name: '🎬 G-Code Viz', component: GCodeVisualizer },
-    { id: 'shopfloor', name: '🏭 Shop Floor', component: ShopFloorUtilities },
+  'Advanced Tools': [
+    { id: 'toollife', name: 'Tool Life & Cost', icon: '💰', component: ToolLifeCalculator },
+    { id: 'circular', name: 'Circular/Helical', icon: '🔄', component: CircularInterpolation },
+    { id: 'power', name: 'Power & Torque', icon: '💪', component: PowerTorqueCalculator },
+    { id: 'geometry', name: 'Geometry Tools', icon: '📏', component: GeometryTools },
+    { id: 'pocket', name: 'Pocket Milling', icon: '📦', component: PocketMillingWizard },
+  ],
+  'Optimization': [
+    { id: 'optimize', name: 'Feeds & Speeds', icon: '📈', component: FeedsSpeedsOptimizer },
+    { id: 'database', name: 'Tool Database', icon: '🗄️', component: ToolDatabase },
+  ],
+  'Simulation': [
+    { id: 'visualizer', name: 'G-Code Simulator', icon: '🎬', component: GCodeVisualizer },
+  ],
+  'Shop Management': [
+    { id: 'shopfloor', name: 'Shop Floor Utils', icon: '🏭', component: ShopFloorUtilities },
   ]
 };
 
 function App() {
   const [darkMode, setDarkMode] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [selectedTabIndex, setSelectedTabIndex] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
+  const [selectedModule, setSelectedModule] = useState('thread');
   const [favoriteModules, setFavoriteModules] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [expandedCategories, setExpandedCategories] = useState(
+    Object.keys(moduleRegistry).reduce((acc, cat) => ({ ...acc, [cat]: true }), {})
+  );
 
-  // Load preferences from localStorage
+  // Load preferences
   useEffect(() => {
     const savedDarkMode = localStorage.getItem('darkMode') === 'true';
     const savedFavorites = JSON.parse(localStorage.getItem('favoriteModules') || '[]');
+    const savedModule = localStorage.getItem('selectedModule') || 'thread';
+    
     setDarkMode(savedDarkMode);
     setFavoriteModules(savedFavorites);
+    setSelectedModule(savedModule);
     
     if (savedDarkMode) {
       document.body.classList.add('dark-mode');
     }
+
+    // Handle window resize
+    const handleResize = () => {
+      if (window.innerWidth <= 768) {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Save selected module
+  useEffect(() => {
+    localStorage.setItem('selectedModule', selectedModule);
+  }, [selectedModule]);
 
   const toggleDarkMode = () => {
     const newDarkMode = !darkMode;
@@ -78,224 +105,165 @@ function App() {
     localStorage.setItem('favoriteModules', JSON.stringify(newFavorites));
   };
 
-  // Combine all modules for rendering
-  const allModules = [...moduleRegistry.core, ...moduleRegistry.advanced];
+  const toggleCategory = (category) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [category]: !prev[category]
+    }));
+  };
+
+  const selectModule = (moduleId) => {
+    setSelectedModule(moduleId);
+    // Auto-close sidebar on mobile after selection
+    if (window.innerWidth <= 768) {
+      setSidebarOpen(false);
+    }
+  };
+
+  // Get all modules flat
+  const allModules = Object.values(moduleRegistry).flat();
   
-  // Sort favorites first if any
-  const sortedModules = favoriteModules.length > 0
-    ? [
-        ...allModules.filter(m => favoriteModules.includes(m.id)),
-        ...allModules.filter(m => !favoriteModules.includes(m.id))
-      ]
-    : allModules;
+  // Filter modules based on search
+  const filteredRegistry = {};
+  Object.entries(moduleRegistry).forEach(([category, modules]) => {
+    const filtered = modules.filter(m => 
+      m.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    if (filtered.length > 0) {
+      filteredRegistry[category] = filtered;
+    }
+  });
+
+  // Get current module component
+  const currentModule = allModules.find(m => m.id === selectedModule);
+  const CurrentComponent = currentModule?.component || ThreadCalculator;
+
+  // Create favorites category if any
+  const displayRegistry = { ...filteredRegistry };
+  if (favoriteModules.length > 0 && !searchTerm) {
+    const favModules = allModules.filter(m => favoriteModules.includes(m.id));
+    displayRegistry['⭐ Favorites'] = favModules;
+    // Move favorites to top
+    const reordered = { '⭐ Favorites': favModules, ...filteredRegistry };
+    Object.keys(displayRegistry).forEach(key => delete displayRegistry[key]);
+    Object.assign(displayRegistry, reordered);
+  }
 
   return (
     <div className={`app-container ${darkMode ? 'dark' : ''}`}>
-      <header className="header">
-        <div className="header-content">
-          <div className="header-title">
-            <button 
-              className="mobile-menu-toggle"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label="Toggle menu"
-            >
-              ☰
-            </button>
-            <h1>⚙️ CNC Calculator Pro</h1>
-          </div>
-          <div className="header-controls">
-            <button 
-              className="dark-mode-toggle"
-              onClick={toggleDarkMode}
-              aria-label="Toggle dark mode"
-            >
-              {darkMode ? '☀️' : '🌙'}
-            </button>
-            <button 
-              className="settings-btn"
-              onClick={() => setSelectedTabIndex(allModules.length)}
-              aria-label="Settings"
-            >
-              ⚙️
-            </button>
-          </div>
+      {/* Header */}
+      <header className="app-header">
+        <div className="header-left">
+          <button 
+            className="menu-toggle"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label="Toggle menu"
+          >
+            <span className="hamburger">
+              <span></span>
+              <span></span>
+              <span></span>
+            </span>
+          </button>
+          <h1 className="app-title">
+            <span className="title-icon">🏭</span>
+            <span className="title-text">CNC Calculator Pro</span>
+          </h1>
         </div>
-        <p className="header-subtitle">Professional Machining & Programming Suite</p>
+        
+        <div className="header-right">
+          <button 
+            className="theme-toggle"
+            onClick={toggleDarkMode}
+            aria-label="Toggle dark mode"
+          >
+            {darkMode ? '☀️' : '🌙'}
+          </button>
+        </div>
       </header>
-      
-      <div className="container">
-        <Tabs 
-          selectedIndex={selectedTabIndex} 
-          onSelect={index => setSelectedTabIndex(index)}
-          className="tabs-container"
-        >
-          <TabList className={`tab-list ${mobileMenuOpen ? 'mobile-open' : ''}`}>
-            {sortedModules.map((module) => (
-              <Tab key={module.id} className="tab-item">
-                <span className="tab-content">
-                  <span className="tab-name">{module.name}</span>
-                  {favoriteModules.includes(module.id) && (
-                    <span className="favorite-star">⭐</span>
-                  )}
-                </span>
-              </Tab>
-            ))}
-            <Tab className="tab-item settings-tab">
-              <span className="tab-content">
-                <span className="tab-name">⚙️ Settings</span>
-              </span>
-            </Tab>
-          </TabList>
 
-          {sortedModules.map((module) => (
-            <TabPanel key={module.id} className="tab-panel">
-              <div className="module-header">
-                <button
-                  className={`favorite-btn ${favoriteModules.includes(module.id) ? 'active' : ''}`}
-                  onClick={() => toggleFavorite(module.id)}
-                  aria-label={`${favoriteModules.includes(module.id) ? 'Remove from' : 'Add to'} favorites`}
-                >
-                  {favoriteModules.includes(module.id) ? '⭐' : '☆'}
-                </button>
-              </div>
-              <module.component />
-            </TabPanel>
-          ))}
-          
-          <TabPanel className="tab-panel">
-            <SettingsPanel 
-              darkMode={darkMode}
-              toggleDarkMode={toggleDarkMode}
-              favoriteModules={favoriteModules}
-              allModules={allModules}
-              toggleFavorite={toggleFavorite}
-            />
-          </TabPanel>
-        </Tabs>
-      </div>
-      
-      <MobileNavBar 
-        modules={sortedModules}
-        selectedIndex={selectedTabIndex}
-        onSelect={setSelectedTabIndex}
-      />
-    </div>
-  );
-}
-
-// Settings Panel Component
-function SettingsPanel({ darkMode, toggleDarkMode, favoriteModules, allModules, toggleFavorite }) {
-  const clearCache = () => {
-    localStorage.clear();
-    window.location.reload();
-  };
-
-  const exportSettings = () => {
-    const settings = {
-      darkMode,
-      favoriteModules,
-      savedCalculations: localStorage.getItem('savedCalculations'),
-      toolDatabase: localStorage.getItem('toolDatabase'),
-    };
-    const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'cnc-calculator-settings.json';
-    a.click();
-  };
-
-  return (
-    <div className="calculator-section settings-section">
-      <h2>Settings & Preferences</h2>
-      
-      <div className="settings-group">
-        <h3>Appearance</h3>
-        <div className="setting-item">
-          <label className="setting-label">
+      <div className="app-layout">
+        {/* Sidebar */}
+        <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+          <div className="sidebar-header">
             <input
-              type="checkbox"
-              checked={darkMode}
-              onChange={toggleDarkMode}
+              type="text"
+              className="module-search"
+              placeholder="Search modules..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <span>Dark Mode</span>
-          </label>
-        </div>
-      </div>
+          </div>
 
-      <div className="settings-group">
-        <h3>Favorite Modules</h3>
-        <div className="favorite-modules-list">
-          {allModules.map(module => (
-            <div key={module.id} className="setting-item">
-              <label className="setting-label">
-                <input
-                  type="checkbox"
-                  checked={favoriteModules.includes(module.id)}
-                  onChange={() => toggleFavorite(module.id)}
-                />
-                <span>{module.name}</span>
-              </label>
+          <nav className="sidebar-nav">
+            {Object.entries(displayRegistry).map(([category, modules]) => (
+              <div key={category} className="nav-category">
+                <button
+                  className="category-header"
+                  onClick={() => toggleCategory(category)}
+                >
+                  <span className="category-title">{category}</span>
+                  <span className="category-arrow">
+                    {expandedCategories[category] ? '▼' : '▶'}
+                  </span>
+                </button>
+                
+                {expandedCategories[category] && (
+                  <div className="category-modules">
+                    {modules.map(module => (
+                      <button
+                        key={module.id}
+                        className={`module-item ${selectedModule === module.id ? 'active' : ''}`}
+                        onClick={() => selectModule(module.id)}
+                      >
+                        <span className="module-icon">{module.icon}</span>
+                        <span className="module-name">{module.name}</span>
+                        <button
+                          className={`favorite-btn ${favoriteModules.includes(module.id) ? 'active' : ''}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleFavorite(module.id);
+                          }}
+                        >
+                          {favoriteModules.includes(module.id) ? '⭐' : '☆'}
+                        </button>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </nav>
+
+          {/* Sidebar Footer */}
+          <div className="sidebar-footer">
+            <div className="app-info">
+              <small>v2.0.0 | Made with ❤️</small>
             </div>
-          ))}
-        </div>
+          </div>
+        </aside>
+
+        {/* Main Content */}
+        <main className="main-content">
+          <div className="content-header">
+            <h2 className="module-title">
+              <span>{currentModule?.icon}</span>
+              <span>{currentModule?.name}</span>
+            </h2>
+          </div>
+
+          <div className="module-container">
+            <CurrentComponent />
+          </div>
+        </main>
       </div>
 
-      <div className="settings-group">
-        <h3>Data Management</h3>
-        <div className="button-group">
-          <button className="btn" onClick={exportSettings}>
-            Export Settings
-          </button>
-          <button className="btn btn-secondary" onClick={clearCache}>
-            Clear Cache
-          </button>
-        </div>
-      </div>
-
-      <div className="settings-group">
-        <h3>About</h3>
-        <p className="info-text">
-          CNC Calculator Pro v2.0<br />
-          Professional Machining & Programming Suite<br />
-          © 2024 - Open Source Project
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// Mobile Navigation Bar Component
-function MobileNavBar({ modules, selectedIndex, onSelect }) {
-  const [showNav, setShowNav] = useState(false);
-
-  return (
-    <div className="mobile-nav-bar">
-      <button 
-        className="mobile-nav-toggle"
-        onClick={() => setShowNav(!showNav)}
-      >
-        <span className="current-module">
-          {modules[selectedIndex]?.name || 'Select'}
-        </span>
-        <span className="nav-arrow">▼</span>
-      </button>
-      
-      {showNav && (
-        <div className="mobile-nav-dropdown">
-          {modules.map((module, index) => (
-            <button
-              key={module.id}
-              className={`mobile-nav-item ${index === selectedIndex ? 'active' : ''}`}
-              onClick={() => {
-                onSelect(index);
-                setShowNav(false);
-              }}
-            >
-              {module.name}
-            </button>
-          ))}
-        </div>
+      {/* Mobile Overlay */}
+      {sidebarOpen && window.innerWidth <= 768 && (
+        <div 
+          className="sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
     </div>
   );
