@@ -1502,20 +1502,6 @@ M30 ; Program end`);
               {panelStates.toolPanel ? '⬜' : '⬛'} Panels
             </button>
           )}
-          <button 
-            className="btn btn-small"
-            onClick={() => window.history.back()}
-            style={{ 
-              padding: '2px 8px', 
-              fontSize: '11px',
-              background: '#dc3545',
-              color: 'white',
-              border: 'none',
-              borderRadius: '3px'
-            }}
-          >
-            ✕ Exit
-          </button>
         </div>
       </div>
 

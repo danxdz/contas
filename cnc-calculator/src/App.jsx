@@ -177,6 +177,28 @@ function App() {
         
         <div className="header-right">
           <button 
+            className="reset-button"
+            onClick={() => {
+              localStorage.clear();
+              setSelectedModule('thread');
+              setSidebarOpen(true);
+              window.location.reload();
+            }}
+            title="Reset to default"
+            style={{
+              padding: '8px 12px',
+              marginRight: '10px',
+              background: '#dc3545',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '12px'
+            }}
+          >
+            Reset
+          </button>
+          <button 
             className="theme-toggle"
             onClick={toggleDarkMode}
             aria-label="Toggle dark mode"

@@ -1,14 +1,13 @@
 .gcode-simulator {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  width: 100vw;
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 1000;
+  height: calc(100vh - 120px);
+  min-height: 600px;
+  width: 100%;
+  position: relative;
   background: var(--bg-secondary);
   overflow: hidden;
+  border-radius: 8px;
 }
 
 /* Header - Ultra Compact for Fullscreen */
@@ -693,17 +692,16 @@
 }
 
 @media (max-width: 640px) {
-  /* Mobile - Complete redesign for proper flex */
+  /* Mobile - Responsive within app */
   .gcode-simulator {
     display: flex;
     flex-direction: column;
-    height: 100vh;
-    height: 100dvh; /* Dynamic viewport height for mobile */
-    width: 100vw;
-    position: fixed;
-    top: 0;
-    left: 0;
+    height: calc(100vh - 100px);
+    min-height: 500px;
+    width: 100%;
+    position: relative;
     overflow: hidden;
+    border-radius: 4px;
   }
   
   .simulator-header {
