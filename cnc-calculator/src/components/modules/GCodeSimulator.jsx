@@ -369,6 +369,23 @@ const GCodeSimulator = () => {
     };
   }, []);
   
+  // Handle panel state changes - resize viewport
+  useEffect(() => {
+    if (!rendererRef.current || !mountRef.current || !cameraRef.current) return;
+    
+    // Wait for CSS transition to complete
+    const timer = setTimeout(() => {
+      const width = mountRef.current.clientWidth;
+      const height = mountRef.current.clientHeight;
+      
+      rendererRef.current.setSize(width, height);
+      cameraRef.current.aspect = width / height;
+      cameraRef.current.updateProjectionMatrix();
+    }, 300); // Match CSS transition duration
+    
+    return () => clearTimeout(timer);
+  }, [panelStates]);
+  
   // Add scene helpers (grid, axes)
   const addSceneHelpers = () => {
     if (!sceneRef.current) return;
@@ -1068,7 +1085,21 @@ const GCodeSimulator = () => {
         <div className={`tool-panel ${!panelStates.toolPanel ? 'collapsed' : ''}`}>
           <button 
             className="panel-toggle"
-            onClick={() => setPanelStates(prev => ({ ...prev, toolPanel: !prev.toolPanel }))}
+            onClick={() => {
+              setPanelStates(prev => ({ ...prev, toolPanel: !prev.toolPanel }));
+              // Trigger resize after panel animation
+              setTimeout(() => {
+                if (rendererRef.current && mountRef.current) {
+                  const width = mountRef.current.clientWidth;
+                  const height = mountRef.current.clientHeight;
+                  rendererRef.current.setSize(width, height);
+                  if (cameraRef.current) {
+                    cameraRef.current.aspect = width / height;
+                    cameraRef.current.updateProjectionMatrix();
+                  }
+                }
+              }, 300);
+            }}
             title={panelStates.toolPanel ? 'Collapse' : 'Expand'}
           >
             {panelStates.toolPanel ? '◀' : '▶'}
@@ -1316,7 +1347,21 @@ const GCodeSimulator = () => {
         <div className={`info-panel ${!panelStates.infoPanel ? 'collapsed' : ''}`}>
           <button 
             className="panel-toggle"
-            onClick={() => setPanelStates(prev => ({ ...prev, infoPanel: !prev.infoPanel }))}
+            onClick={() => {
+              setPanelStates(prev => ({ ...prev, infoPanel: !prev.infoPanel }));
+              // Trigger resize after panel animation
+              setTimeout(() => {
+                if (rendererRef.current && mountRef.current) {
+                  const width = mountRef.current.clientWidth;
+                  const height = mountRef.current.clientHeight;
+                  rendererRef.current.setSize(width, height);
+                  if (cameraRef.current) {
+                    cameraRef.current.aspect = width / height;
+                    cameraRef.current.updateProjectionMatrix();
+                  }
+                }
+              }, 300);
+            }}
             title={panelStates.infoPanel ? 'Collapse' : 'Expand'}
           >
             {panelStates.infoPanel ? '▶' : '◀'}
