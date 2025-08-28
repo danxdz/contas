@@ -1,298 +1,180 @@
 import React, { useState, useEffect } from 'react';
+import Scene3D from './components/Scene3D';
+import MobileLayout from './components/MobileLayout';
+import DesktopLayout from './components/DesktopLayout';
 import './App.css';
 
-// Core Calculators
-import ThreadCalculator from './components/ThreadCalculator';
-import TrigonometryCalculator from './components/TrigonometryCalculator';
-import CuttingSpeedCalculator from './components/CuttingSpeedCalculator';
-import FaceMillingCalculator from './components/FaceMillingCalculator';
-import VariousTools from './components/VariousTools';
+const App = () => {
+  // Detect device type
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  
+  // Core application state
+  const [project, setProject] = useState({
+    name: 'New Project',
+    gcode: {
+      channel1: `; CNC PROGRAM EXAMPLE
+G21 G90 G94 ; Metric, Absolute, Feed/min
+G17 G40 G49 ; XY Plane, Cancel comp, Cancel length offset
+G54 ; Work coordinate system 1
 
-// Advanced Modules
-import {
-  ToolLifeCalculator,
-  CircularInterpolation,
-  PowerTorqueCalculator,
-  GeometryTools,
-  PocketMillingWizard,
-  FeedsSpeedsOptimizer,
-  ToolDatabase,
-  GCodeVisualizer,
-  GCodeSimulator,
-  ProfessionalSimulator,
-  ShopFloorUtilities
-} from './components/modules/index.jsx';
+; Tool Change
+T1 M06 ; Load Tool 1
+S12000 M03 ; Spindle ON CW at 12000 RPM
+G43 H1 Z100 ; Apply tool length offset, move to safe height
+M08 ; Coolant ON
 
-// Module Registry with categories
-const moduleRegistry = {
-  'Basic Calculators': [
-    { id: 'thread', name: 'Thread Calculator', icon: '🔩', component: ThreadCalculator },
-    { id: 'trig', name: 'Trigonometry', icon: '📐', component: TrigonometryCalculator },
-    { id: 'speed', name: 'Cutting Speed', icon: '⚡', component: CuttingSpeedCalculator },
-    { id: 'face', name: 'Face Milling', icon: '🔧', component: FaceMillingCalculator },
-    { id: 'tools', name: 'Various Tools', icon: '🛠️', component: VariousTools },
-  ],
-  'Advanced Tools': [
-    { id: 'toollife', name: 'Tool Life & Cost', icon: '💰', component: ToolLifeCalculator },
-    { id: 'circular', name: 'Circular/Helical', icon: '🔄', component: CircularInterpolation },
-    { id: 'power', name: 'Power & Torque', icon: '💪', component: PowerTorqueCalculator },
-    { id: 'geometry', name: 'Geometry Tools', icon: '📏', component: GeometryTools },
-    { id: 'pocket', name: 'Pocket Milling', icon: '📦', component: PocketMillingWizard },
-  ],
-  'Optimization': [
-    { id: 'optimize', name: 'Feeds & Speeds', icon: '📈', component: FeedsSpeedsOptimizer },
-    { id: 'database', name: 'Tool Database', icon: '🗄️', component: ToolDatabase },
-  ],
-  'Simulation': [
-    { id: 'visualizer', name: 'G-Code Visualizer', icon: '🎬', component: GCodeVisualizer },
-    { id: 'simulator', name: 'Advanced Simulator', icon: '🚀', component: GCodeSimulator },
-    { id: 'professional', name: 'Professional CAM', icon: '🏆', component: ProfessionalSimulator },
-  ],
-  'Shop Management': [
-    { id: 'shopfloor', name: 'Shop Floor Utils', icon: '🏭', component: ShopFloorUtilities },
-  ]
-};
+; Rapid to start position
+G0 X0 Y0
+G0 Z5 ; Safe approach
 
-function App() {
-  const [darkMode, setDarkMode] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true); // Always start with sidebar open
-  const [selectedModule, setSelectedModule] = useState('thread');
-  const [favoriteModules, setFavoriteModules] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [expandedCategories, setExpandedCategories] = useState(
-    Object.keys(moduleRegistry).reduce((acc, cat) => ({ ...acc, [cat]: true }), {})
-  );
+; Cutting operation
+G01 Z-5 F300 ; Plunge
+G01 X50 F800 ; Cut
+G01 Y50
+G01 X0
+G01 Y0
 
-  // Load preferences
-  useEffect(() => {
-    const savedDarkMode = localStorage.getItem('darkMode') === 'true';
-    const savedFavorites = JSON.parse(localStorage.getItem('favoriteModules') || '[]');
-    const savedModule = localStorage.getItem('selectedModule') || 'thread';
-    
-    setDarkMode(savedDarkMode);
-    setFavoriteModules(savedFavorites);
-    setSelectedModule(savedModule);
-    
-    if (savedDarkMode) {
-      document.body.classList.add('dark-mode');
+; Retract
+G0 Z100 ; Safe height
+M09 ; Coolant OFF
+M05 ; Spindle OFF
+M30 ; Program end`,
+      channel2: ''
     }
+  });
 
-    // Handle window resize
+  const [simulation, setSimulation] = useState({
+    isPlaying: false,
+    currentLine: 0,
+    speed: 1.0,
+    toolAssembly: null,
+    currentToolLength: 0,
+    toolLengthCompActive: false,
+    cutterCompActive: false,
+    activeHCode: 1,
+    activeDCode: 0,
+    spindleSpeed: 0,
+    feedRate: 100
+  });
+
+  const [toolDatabase, setToolDatabase] = useState([]);
+  const [toolAssemblies, setToolAssemblies] = useState([]);
+  
+  const [setupConfig, setSetupConfig] = useState({
+    workOffsets: {
+      activeOffset: 'G54',
+      G54: { x: 0, y: 0, z: 0, description: 'Primary Setup' },
+      G55: { x: 100, y: 100, z: 0, description: 'Secondary Setup' },
+      G56: { x: 0, y: 0, z: 0, description: '' },
+      G57: { x: 0, y: 0, z: 0, description: '' },
+      G58: { x: 0, y: 0, z: 0, description: '' },
+      G59: { x: 0, y: 0, z: 0, description: '' }
+    }
+  });
+
+  const [toolOffsetTable, setToolOffsetTable] = useState({
+    H: Array(100).fill(null).map((_, i) => ({
+      register: i,
+      lengthGeometry: 0,
+      lengthWear: 0
+    })),
+    D: Array(100).fill(null).map((_, i) => ({
+      register: i,
+      diameterGeometry: 0,
+      diameterWear: 0
+    }))
+  });
+
+  const [scene3D, setScene3D] = useState(null);
+
+  // Handle window resize
+  useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth <= 768) {
-        setSidebarOpen(false);
-      }
+      setIsMobile(window.innerWidth <= 768);
     };
-
+    
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Save selected module
+  // Handle simulation playback
   useEffect(() => {
-    localStorage.setItem('selectedModule', selectedModule);
-  }, [selectedModule]);
+    if (!simulation.isPlaying) return;
 
-  const toggleDarkMode = () => {
-    const newDarkMode = !darkMode;
-    setDarkMode(newDarkMode);
-    localStorage.setItem('darkMode', newDarkMode);
-    document.body.classList.toggle('dark-mode');
+    const interval = setInterval(() => {
+      setSimulation(prev => {
+        const lines = project.gcode.channel1.split('\n').length;
+        const nextLine = (prev.currentLine + 1) % lines;
+        return { ...prev, currentLine: nextLine };
+      });
+    }, 1000 / simulation.speed);
+
+    return () => clearInterval(interval);
+  }, [simulation.isPlaying, simulation.speed, project.gcode.channel1]);
+
+  const handleSceneReady = (sceneObjects) => {
+    setScene3D(sceneObjects);
+    console.log('3D Scene ready', sceneObjects);
   };
 
-  const toggleFavorite = (moduleId) => {
-    const newFavorites = favoriteModules.includes(moduleId)
-      ? favoriteModules.filter(id => id !== moduleId)
-      : [...favoriteModules, moduleId];
-    
-    setFavoriteModules(newFavorites);
-    localStorage.setItem('favoriteModules', JSON.stringify(newFavorites));
+  // Common props for both layouts
+  const commonProps = {
+    project,
+    setProject,
+    simulation,
+    setSimulation,
+    toolDatabase,
+    setToolDatabase,
+    toolAssemblies,
+    setToolAssemblies,
+    toolOffsetTable,
+    setToolOffsetTable,
+    setupConfig,
+    setSetupConfig
   };
-
-  const toggleCategory = (category) => {
-    setExpandedCategories(prev => ({
-      ...prev,
-      [category]: !prev[category]
-    }));
-  };
-
-  const selectModule = (moduleId) => {
-    setSelectedModule(moduleId);
-    // Auto-close sidebar on mobile after selection
-    if (window.innerWidth <= 768) {
-      setSidebarOpen(false);
-    }
-  };
-
-  // Get all modules flat
-  const allModules = Object.values(moduleRegistry).flat();
-  
-  // Filter modules based on search
-  const filteredRegistry = {};
-  Object.entries(moduleRegistry).forEach(([category, modules]) => {
-    const filtered = modules.filter(m => 
-      m.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    if (filtered.length > 0) {
-      filteredRegistry[category] = filtered;
-    }
-  });
-
-  // Get current module component
-  const currentModule = allModules.find(m => m.id === selectedModule);
-  const CurrentComponent = currentModule?.component || ThreadCalculator;
-
-  // Create favorites category if any
-  const displayRegistry = { ...filteredRegistry };
-  if (favoriteModules.length > 0 && !searchTerm) {
-    const favModules = allModules.filter(m => favoriteModules.includes(m.id));
-    displayRegistry['⭐ Favorites'] = favModules;
-    // Move favorites to top
-    const reordered = { '⭐ Favorites': favModules, ...filteredRegistry };
-    Object.keys(displayRegistry).forEach(key => delete displayRegistry[key]);
-    Object.assign(displayRegistry, reordered);
-  }
 
   return (
-    <div className={`app-container ${darkMode ? 'dark' : ''}`}>
-      {/* Header */}
-      <header className="app-header">
-        <div className="header-left">
-          <button 
-            className="menu-toggle"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            aria-label="Toggle menu"
-          >
-            <span className="hamburger">
-              <span></span>
-              <span></span>
-              <span></span>
-            </span>
-          </button>
-          <h1 className="app-title">
-            <span className="title-icon">🏭</span>
-            <span className="title-text">CNC Calculator Pro</span>
-          </h1>
-        </div>
-        
-        <div className="header-right">
-          <button 
-            className="reset-button"
-            onClick={() => {
-              localStorage.clear();
-              setSelectedModule('thread');
-              setSidebarOpen(true);
-              window.location.reload();
-            }}
-            title="Reset to default"
-            style={{
-              padding: '8px 12px',
-              marginRight: '10px',
-              background: '#dc3545',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '12px'
-            }}
-          >
-            Reset
-          </button>
-          <button 
-            className="theme-toggle"
-            onClick={toggleDarkMode}
-            aria-label="Toggle dark mode"
-          >
-            {darkMode ? '☀️' : '🌙'}
-          </button>
-        </div>
-      </header>
-
-      <div className="app-layout">
-        {/* Sidebar */}
-        <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-          <div className="sidebar-header">
-            <input
-              type="text"
-              className="module-search"
-              placeholder="Search modules..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
-          <nav className="sidebar-nav">
-            {Object.entries(displayRegistry).map(([category, modules]) => (
-              <div key={category} className="nav-category">
-                <button
-                  className="category-header"
-                  onClick={() => toggleCategory(category)}
-                >
-                  <span className="category-title">{category}</span>
-                  <span className="category-arrow">
-                    {expandedCategories[category] ? '▼' : '▶'}
-                  </span>
-                </button>
-                
-                {expandedCategories[category] && (
-                  <div className="category-modules">
-                    {modules.map(module => (
-                      <button
-                        key={module.id}
-                        className={`module-item ${selectedModule === module.id ? 'active' : ''}`}
-                        onClick={() => selectModule(module.id)}
-                      >
-                        <span className="module-icon">{module.icon}</span>
-                        <span className="module-name">{module.name}</span>
-                        <button
-                          className={`favorite-btn ${favoriteModules.includes(module.id) ? 'active' : ''}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleFavorite(module.id);
-                          }}
-                        >
-                          {favoriteModules.includes(module.id) ? '⭐' : '☆'}
-                        </button>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </nav>
-
-          {/* Sidebar Footer */}
-          <div className="sidebar-footer">
-            <div className="app-info">
-              <small>v2.0.0 | Made with ❤️</small>
-            </div>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className="main-content">
-          <div className="content-header">
-            <h2 className="module-title">
-              <span>{currentModule?.icon}</span>
-              <span>{currentModule?.name}</span>
-            </h2>
-          </div>
-
-          <div className="module-container">
-            <CurrentComponent />
-          </div>
-        </main>
+    <div className="app" style={{ 
+      width: '100vw', 
+      height: '100vh', 
+      overflow: 'hidden',
+      position: 'relative'
+    }}>
+      {/* 3D Scene - Always rendered but may be hidden on mobile */}
+      <div style={{ 
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        display: isMobile && simulation.currentTab !== 'viewer' ? 'none' : 'block'
+      }}>
+        <Scene3D
+          simulation={simulation}
+          gcode={project.gcode.channel1}
+          setupConfig={setupConfig}
+          toolOffsetTable={toolOffsetTable}
+          onSceneReady={handleSceneReady}
+        />
       </div>
 
-      {/* Mobile Overlay */}
-      {sidebarOpen && window.innerWidth <= 768 && (
-        <div 
-          className="sidebar-overlay"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {/* UI Layout */}
+      <div style={{ 
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        pointerEvents: isMobile ? 'auto' : 'none'
+      }}>
+        {isMobile ? (
+          <MobileLayout {...commonProps} />
+        ) : (
+          <DesktopLayout {...commonProps} scene3D={scene3D} />
+        )}
+      </div>
     </div>
   );
-}
+};
 
 export default App;
