@@ -419,8 +419,9 @@ S12000 M03 ; Spindle ON, 12000 RPM
 M08 ; Coolant ON
 
 ; Rapid to start position
+G0 Z50 ; Move to safe height first
 G0 X-40 Y-25 ; Move to pocket corner
-G0 Z5 ; Safe height
+G0 Z5 ; Approach height
 
 ; Pocket roughing - Layer 1 (Z-5)
 G01 Z-5 F300 ; Plunge
@@ -525,7 +526,7 @@ M30 ; End`
   const parseGCodePositions = (gcode) => {
     const lines = gcode.split('\n');
     const positions = [];
-    let current = { x: 0, y: 0, z: 5, f: 500, s: 0, g43: false, g41: false, g42: false, h: 0, d: 0 };
+    let current = { x: 0, y: 0, z: 50, f: 500, s: 0, g43: false, g41: false, g42: false, h: 0, d: 0 };  // Start at safe height
     
     lines.forEach(line => {
       const trimmed = line.trim();
