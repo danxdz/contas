@@ -1331,13 +1331,13 @@ M30 ; End`
       toolRef.current.position.set(toolPosition.x, toolPosition.y, toolPosition.z);
       
       // Material removal simulation
-      if (materialRemoval && showMaterialRemoval && simulation.isPlaying) {
+      if (materialRemovalRef.current && showMaterialRemoval && simulation.isPlaying) {
         const toolDiameter = simulation.toolAssembly?.components?.tool?.diameter || 10;
         const toolLength = 30; // Default tool length
         
         // Check for collision in rapid moves
         if (collisionDetection && currentPos.rapid) {
-          const collision = materialRemoval.checkCollision(toolPosition, toolDiameter, true);
+          const collision = materialRemovalRef.current.checkCollision(toolPosition, toolDiameter, true);
           if (collision.collision) {
             console.warn('⚠️ COLLISION DETECTED:', collision);
             // Pause simulation on collision
@@ -1348,7 +1348,7 @@ M30 ; End`
         
         // Remove material for cutting moves
         if (!currentPos.rapid && currentPos.z < 0) {
-          const removal = materialRemoval.removeMaterial(
+          const removal = materialRemovalRef.current.removeMaterial(
             toolPosition,
             toolDiameter,
             toolLength,
@@ -1357,7 +1357,7 @@ M30 ; End`
           
           // Update mesh every 10 lines for performance
           if (simulation.currentLine % 10 === 0) {
-            materialRemoval.updateStockMesh();
+            materialRemovalRef.current.updateStockMesh();
           }
         }
       }
@@ -1798,6 +1798,44 @@ M30 ; End`
         </button>
         <button onClick={() => togglePanel('console')} className={panels.console.visible ? 'active' : ''} title="Console">
           💻
+        </button>
+      </div>
+      
+      <div className="toolbar-separator" />
+      
+      <div className="toolbar-group">
+        <button 
+          onClick={() => {
+            setShowMaterialRemoval(!showMaterialRemoval);
+            if (!showMaterialRemoval) {
+              alert('Material removal will be enabled on next page reload. Press F5 to reload now.');
+            }
+          }}
+          className={showMaterialRemoval ? 'active' : ''}
+          title="Toggle Material Removal Simulation"
+          style={{
+            background: showMaterialRemoval ? '#00ff88' : 'transparent',
+            color: showMaterialRemoval ? '#000' : '#888'
+          }}
+        >
+          🔨
+        </button>
+        <button 
+          onClick={() => setCollisionDetection(!collisionDetection)}
+          className={collisionDetection ? 'active' : ''}
+          title="Toggle Collision Detection"
+          style={{
+            background: collisionDetection ? '#ff6666' : 'transparent',
+            color: collisionDetection ? '#fff' : '#888'
+          }}
+        >
+          ⚠️
+        </button>
+        <button 
+          onClick={() => setShowShortcutsHelp(true)}
+          title="Keyboard Shortcuts (?)"
+        >
+          ⌨️
         </button>
       </div>
       
