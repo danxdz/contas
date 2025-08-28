@@ -801,61 +801,79 @@
 
 /* Setup Panel Styles */
 .setup-panel {
-  padding: 15px;
+  padding: 20px;
+  height: 100%;
+  overflow-y: auto;
 }
 
-.setup-panel h4 {
+.setup-panel h3 {
   color: #00d4ff;
-  margin: 20px 0 10px 0;
-  font-size: 14px;
+  margin: 0 0 20px 0;
+  font-size: 16px;
   font-weight: 600;
-  border-bottom: 1px solid rgba(0, 212, 255, 0.2);
-  padding-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
-.setup-panel h4:first-child {
-  margin-top: 0;
+.setup-section {
+  margin-bottom: 25px;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
 }
 
-.setup-group {
-  margin: 10px 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+.setup-section h4 {
+  color: #00d4ff;
+  margin: 0 0 15px 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.setup-group label {
+.setup-section label {
+  display: block;
   color: #a0aec0;
-  font-size: 12px;
-  min-width: 100px;
+  font-size: 11px;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.setup-group input,
-.setup-group select {
-  flex: 1;
-  min-width: 80px;
-  padding: 6px 10px;
+.setup-section input,
+.setup-section select {
+  width: 100%;
+  padding: 8px 12px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   color: #fff;
-  font-size: 12px;
+  font-size: 13px;
+  transition: all 0.2s ease;
 }
 
-.setup-group input[type="number"] {
-  max-width: 100px;
-}
-
-.setup-group select {
-  cursor: pointer;
-}
-
-.setup-group input:focus,
-.setup-group select:focus {
+.setup-section input:focus,
+.setup-section select:focus {
   outline: none;
   border-color: #00d4ff;
+  background: rgba(0, 212, 255, 0.05);
   box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.1);
+}
+
+.setup-section button {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.setup-section button:hover {
+  background: rgba(0, 212, 255, 0.1);
+  border-color: #00d4ff;
 }
 
 /* Glass Effect for Panels */

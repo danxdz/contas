@@ -228,6 +228,46 @@ const CNCProSuite = () => {
       minimized: false,
       title: 'Setup Manager'
     },
+    stockSetup: {
+      visible: false,
+      floating: true,
+      docked: null,
+      position: { x: 100, y: 100 },
+      size: { width: 400, height: 500 },
+      zIndex: 2,
+      minimized: false,
+      title: 'Stock Setup'
+    },
+    fixtureSetup: {
+      visible: false,
+      floating: true,
+      docked: null,
+      position: { x: 150, y: 120 },
+      size: { width: 400, height: 450 },
+      zIndex: 2,
+      minimized: false,
+      title: 'Fixture Setup'
+    },
+    machineSetup: {
+      visible: false,
+      floating: true,
+      docked: null,
+      position: { x: 200, y: 100 },
+      size: { width: 450, height: 550 },
+      zIndex: 2,
+      minimized: false,
+      title: 'Machine Setup'
+    },
+    partSetup: {
+      visible: false,
+      floating: true,
+      docked: null,
+      position: { x: 120, y: 110 },
+      size: { width: 400, height: 480 },
+      zIndex: 2,
+      minimized: false,
+      title: 'Part Setup'
+    },
     toolDatabase: {
       visible: false,
       floating: true,
@@ -1338,6 +1378,19 @@ M30 ; End`
         { id: 'parameters', label: 'Machine Parameters', action: () => {} }
       ]
     },
+    setup: {
+      label: 'Setup',
+      items: [
+        { id: 'stock', label: 'Stock Setup...', action: () => togglePanel('stockSetup') },
+        { id: 'part', label: 'Part Setup...', action: () => togglePanel('partSetup') },
+        { id: 'fixture', label: 'Fixture Setup...', action: () => togglePanel('fixtureSetup') },
+        { id: 'machine', label: 'Machine Setup...', action: () => togglePanel('machineSetup') },
+        { divider: true },
+        { id: 'setupwizard', label: 'Setup Wizard', action: () => {} },
+        { id: 'savesetup', label: 'Save Setup', action: () => {} },
+        { id: 'loadsetup', label: 'Load Setup', action: () => {} }
+      ]
+    },
     help: {
       label: 'Help',
       items: [
@@ -1727,6 +1780,482 @@ M30 ; End`
       {renderPanel('toolDatabase', <ToolDatabase />)}
       {renderPanel('machineConfig', <MachineConfigurator />)}
           {renderPanel('setupManager', <SetupManager />)}
+          
+          {/* Setup Panels */}
+          {renderPanel('stockSetup', 
+            <div className="setup-panel">
+              <h3 style={{ color: '#00d4ff', marginBottom: '20px' }}>Stock Configuration</h3>
+              
+              <div className="setup-section">
+                <h4>Stock Type</h4>
+                <select 
+                  value={setupConfig.stock.type}
+                  onChange={(e) => setSetupConfig(prev => ({
+                    ...prev,
+                    stock: { ...prev.stock, type: e.target.value }
+                  }))}
+                  style={{ width: '100%', padding: '8px', marginBottom: '15px' }}
+                >
+                  <option value="block">Rectangular Block</option>
+                  <option value="cylinder">Cylinder</option>
+                  <option value="tube">Tube</option>
+                  <option value="custom">Custom Shape</option>
+                </select>
+              </div>
+              
+              <div className="setup-section">
+                <h4>Dimensions (mm)</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label>X (Length)</label>
+                    <input 
+                      type="number" 
+                      value={setupConfig.stock.dimensions.x}
+                      onChange={(e) => setSetupConfig(prev => ({
+                        ...prev,
+                        stock: { 
+                          ...prev.stock, 
+                          dimensions: { ...prev.stock.dimensions, x: parseFloat(e.target.value) }
+                        }
+                      }))}
+                      style={{ width: '100%', padding: '5px' }}
+                    />
+                  </div>
+                  <div>
+                    <label>Y (Width)</label>
+                    <input 
+                      type="number" 
+                      value={setupConfig.stock.dimensions.y}
+                      onChange={(e) => setSetupConfig(prev => ({
+                        ...prev,
+                        stock: { 
+                          ...prev.stock, 
+                          dimensions: { ...prev.stock.dimensions, y: parseFloat(e.target.value) }
+                        }
+                      }))}
+                      style={{ width: '100%', padding: '5px' }}
+                    />
+                  </div>
+                  <div>
+                    <label>Z (Height)</label>
+                    <input 
+                      type="number" 
+                      value={setupConfig.stock.dimensions.z}
+                      onChange={(e) => setSetupConfig(prev => ({
+                        ...prev,
+                        stock: { 
+                          ...prev.stock, 
+                          dimensions: { ...prev.stock.dimensions, z: parseFloat(e.target.value) }
+                        }
+                      }))}
+                      style={{ width: '100%', padding: '5px' }}
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="setup-section">
+                <h4>Material</h4>
+                <select 
+                  value={setupConfig.stock.material}
+                  onChange={(e) => setSetupConfig(prev => ({
+                    ...prev,
+                    stock: { ...prev.stock, material: e.target.value }
+                  }))}
+                  style={{ width: '100%', padding: '8px' }}
+                >
+                  <option value="aluminum">Aluminum 6061</option>
+                  <option value="steel">Steel 1018</option>
+                  <option value="stainless">Stainless 304</option>
+                  <option value="brass">Brass</option>
+                  <option value="plastic">Plastic (Delrin)</option>
+                  <option value="wood">Wood</option>
+                </select>
+              </div>
+              
+              <div className="setup-section">
+                <h4>Stock Position</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label>X Offset</label>
+                    <input 
+                      type="number" 
+                      value={setupConfig.stock.position.x}
+                      onChange={(e) => setSetupConfig(prev => ({
+                        ...prev,
+                        stock: { 
+                          ...prev.stock, 
+                          position: { ...prev.stock.position, x: parseFloat(e.target.value) }
+                        }
+                      }))}
+                      style={{ width: '100%', padding: '5px' }}
+                    />
+                  </div>
+                  <div>
+                    <label>Y Offset</label>
+                    <input 
+                      type="number" 
+                      value={setupConfig.stock.position.y}
+                      onChange={(e) => setSetupConfig(prev => ({
+                        ...prev,
+                        stock: { 
+                          ...prev.stock, 
+                          position: { ...prev.stock.position, y: parseFloat(e.target.value) }
+                        }
+                      }))}
+                      style={{ width: '100%', padding: '5px' }}
+                    />
+                  </div>
+                  <div>
+                    <label>Z Offset</label>
+                    <input 
+                      type="number" 
+                      value={setupConfig.stock.position.z}
+                      onChange={(e) => setSetupConfig(prev => ({
+                        ...prev,
+                        stock: { 
+                          ...prev.stock, 
+                          position: { ...prev.stock.position, z: parseFloat(e.target.value) }
+                        }
+                      }))}
+                      style={{ width: '100%', padding: '5px' }}
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <button 
+                onClick={() => {
+                  // Apply stock to 3D scene
+                  if (workpieceRef.current) {
+                    const { x, y, z } = setupConfig.stock.dimensions;
+                    workpieceRef.current.scale.set(x/100, y/100, z/50);
+                    workpieceRef.current.position.set(
+                      setupConfig.stock.position.x,
+                      setupConfig.stock.position.y,
+                      setupConfig.stock.position.z + z/2
+                    );
+                  }
+                }}
+                style={{
+                  marginTop: '20px',
+                  padding: '10px 20px',
+                  background: '#00d4ff',
+                  color: '#000',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  width: '100%'
+                }}
+              >
+                Apply Stock Settings
+              </button>
+            </div>
+          )}
+          
+          {renderPanel('fixtureSetup',
+            <div className="setup-panel">
+              <h3 style={{ color: '#00d4ff', marginBottom: '20px' }}>Fixture Configuration</h3>
+              
+              <div className="setup-section">
+                <h4>Fixture Type</h4>
+                <select 
+                  value={setupConfig.fixture.type}
+                  onChange={(e) => setSetupConfig(prev => ({
+                    ...prev,
+                    fixture: { ...prev.fixture, type: e.target.value }
+                  }))}
+                  style={{ width: '100%', padding: '8px', marginBottom: '15px' }}
+                >
+                  <option value="vise">Machine Vise</option>
+                  <option value="chuck">3-Jaw Chuck</option>
+                  <option value="4jaw">4-Jaw Chuck</option>
+                  <option value="collet">Collet Chuck</option>
+                  <option value="magnetic">Magnetic Chuck</option>
+                  <option value="vacuum">Vacuum Table</option>
+                  <option value="custom">Custom Fixture</option>
+                </select>
+              </div>
+              
+              {setupConfig.fixture.type === 'vise' && (
+                <div className="setup-section">
+                  <h4>Vise Settings</h4>
+                  <div>
+                    <label>Jaw Width (mm)</label>
+                    <input 
+                      type="number" 
+                      value={setupConfig.fixture.jawWidth}
+                      onChange={(e) => setSetupConfig(prev => ({
+                        ...prev,
+                        fixture: { ...prev.fixture, jawWidth: parseFloat(e.target.value) }
+                      }))}
+                      style={{ width: '100%', padding: '5px', marginBottom: '10px' }}
+                    />
+                  </div>
+                  <div>
+                    <label>Clamping Force (N)</label>
+                    <input 
+                      type="number" 
+                      value={setupConfig.fixture.clampingForce}
+                      onChange={(e) => setSetupConfig(prev => ({
+                        ...prev,
+                        fixture: { ...prev.fixture, clampingForce: parseFloat(e.target.value) }
+                      }))}
+                      style={{ width: '100%', padding: '5px' }}
+                    />
+                  </div>
+                </div>
+              )}
+              
+              <div className="setup-section">
+                <h4>Fixture Position</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label>X Position</label>
+                    <input 
+                      type="number" 
+                      value={setupConfig.fixture.position.x}
+                      onChange={(e) => setSetupConfig(prev => ({
+                        ...prev,
+                        fixture: { 
+                          ...prev.fixture, 
+                          position: { ...prev.fixture.position, x: parseFloat(e.target.value) }
+                        }
+                      }))}
+                      style={{ width: '100%', padding: '5px' }}
+                    />
+                  </div>
+                  <div>
+                    <label>Y Position</label>
+                    <input 
+                      type="number" 
+                      value={setupConfig.fixture.position.y}
+                      onChange={(e) => setSetupConfig(prev => ({
+                        ...prev,
+                        fixture: { 
+                          ...prev.fixture, 
+                          position: { ...prev.fixture.position, y: parseFloat(e.target.value) }
+                        }
+                      }))}
+                      style={{ width: '100%', padding: '5px' }}
+                    />
+                  </div>
+                  <div>
+                    <label>Z Position</label>
+                    <input 
+                      type="number" 
+                      value={setupConfig.fixture.position.z}
+                      onChange={(e) => setSetupConfig(prev => ({
+                        ...prev,
+                        fixture: { 
+                          ...prev.fixture, 
+                          position: { ...prev.fixture.position, z: parseFloat(e.target.value) }
+                        }
+                      }))}
+                      style={{ width: '100%', padding: '5px' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {renderPanel('machineSetup',
+            <div className="setup-panel">
+              <h3 style={{ color: '#00d4ff', marginBottom: '20px' }}>Machine Configuration</h3>
+              
+              <div className="setup-section">
+                <h4>Machine Type</h4>
+                <select 
+                  value={setupConfig.machine.type}
+                  onChange={(e) => setSetupConfig(prev => ({
+                    ...prev,
+                    machine: { ...prev.machine, type: e.target.value }
+                  }))}
+                  style={{ width: '100%', padding: '8px', marginBottom: '15px' }}
+                >
+                  <option value="3-axis">3-Axis Mill</option>
+                  <option value="4-axis">4-Axis Mill</option>
+                  <option value="5-axis">5-Axis Mill</option>
+                  <option value="lathe">CNC Lathe</option>
+                  <option value="mill-turn">Mill-Turn</option>
+                </select>
+              </div>
+              
+              <div className="setup-section">
+                <h4>Work Envelope (mm)</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label>X Travel</label>
+                    <input 
+                      type="number" 
+                      value={setupConfig.machine.workEnvelope.x}
+                      onChange={(e) => setSetupConfig(prev => ({
+                        ...prev,
+                        machine: { 
+                          ...prev.machine, 
+                          workEnvelope: { ...prev.machine.workEnvelope, x: parseFloat(e.target.value) }
+                        }
+                      }))}
+                      style={{ width: '100%', padding: '5px' }}
+                    />
+                  </div>
+                  <div>
+                    <label>Y Travel</label>
+                    <input 
+                      type="number" 
+                      value={setupConfig.machine.workEnvelope.y}
+                      onChange={(e) => setSetupConfig(prev => ({
+                        ...prev,
+                        machine: { 
+                          ...prev.machine, 
+                          workEnvelope: { ...prev.machine.workEnvelope, y: parseFloat(e.target.value) }
+                        }
+                      }))}
+                      style={{ width: '100%', padding: '5px' }}
+                    />
+                  </div>
+                  <div>
+                    <label>Z Travel</label>
+                    <input 
+                      type="number" 
+                      value={setupConfig.machine.workEnvelope.z}
+                      onChange={(e) => setSetupConfig(prev => ({
+                        ...prev,
+                        machine: { 
+                          ...prev.machine, 
+                          workEnvelope: { ...prev.machine.workEnvelope, z: parseFloat(e.target.value) }
+                        }
+                      }))}
+                      style={{ width: '100%', padding: '5px' }}
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="setup-section">
+                <h4>Spindle Settings</h4>
+                <div>
+                  <label>Max Spindle Speed (RPM)</label>
+                  <input 
+                    type="number" 
+                    value={setupConfig.machine.spindleMax}
+                    onChange={(e) => setSetupConfig(prev => ({
+                      ...prev,
+                      machine: { ...prev.machine, spindleMax: parseInt(e.target.value) }
+                    }))}
+                    style={{ width: '100%', padding: '5px', marginBottom: '10px' }}
+                  />
+                </div>
+                <div>
+                  <label>Rapid Feed Rate (mm/min)</label>
+                  <input 
+                    type="number" 
+                    value={setupConfig.machine.rapidFeed}
+                    onChange={(e) => setSetupConfig(prev => ({
+                      ...prev,
+                      machine: { ...prev.machine, rapidFeed: parseInt(e.target.value) }
+                    }))}
+                    style={{ width: '100%', padding: '5px', marginBottom: '10px' }}
+                  />
+                </div>
+                <div>
+                  <label>Max Feed Rate (mm/min)</label>
+                  <input 
+                    type="number" 
+                    value={setupConfig.machine.maxFeed}
+                    onChange={(e) => setSetupConfig(prev => ({
+                      ...prev,
+                      machine: { ...prev.machine, maxFeed: parseInt(e.target.value) }
+                    }))}
+                    style={{ width: '100%', padding: '5px' }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {renderPanel('partSetup',
+            <div className="setup-panel">
+              <h3 style={{ color: '#00d4ff', marginBottom: '20px' }}>Part Setup</h3>
+              
+              <div className="setup-section">
+                <h4>Part Information</h4>
+                <div>
+                  <label>Part Name</label>
+                  <input 
+                    type="text" 
+                    placeholder="Enter part name"
+                    style={{ width: '100%', padding: '5px', marginBottom: '10px' }}
+                  />
+                </div>
+                <div>
+                  <label>Part Number</label>
+                  <input 
+                    type="text" 
+                    placeholder="Enter part number"
+                    style={{ width: '100%', padding: '5px', marginBottom: '10px' }}
+                  />
+                </div>
+                <div>
+                  <label>Operation</label>
+                  <select style={{ width: '100%', padding: '8px' }}>
+                    <option>OP10 - Roughing</option>
+                    <option>OP20 - Semi-Finishing</option>
+                    <option>OP30 - Finishing</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="setup-section">
+                <h4>Work Coordinate System</h4>
+                <select style={{ width: '100%', padding: '8px', marginBottom: '15px' }}>
+                  <option>G54 - Work Offset 1</option>
+                  <option>G55 - Work Offset 2</option>
+                  <option>G56 - Work Offset 3</option>
+                  <option>G57 - Work Offset 4</option>
+                </select>
+              </div>
+              
+              <div className="setup-section">
+                <h4>Part Zero Location</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                  <button style={{ padding: '8px', background: '#1a1f2e', border: '1px solid #00d4ff' }}>
+                    Top Left Corner
+                  </button>
+                  <button style={{ padding: '8px', background: '#1a1f2e', border: '1px solid #333' }}>
+                    Top Right Corner
+                  </button>
+                  <button style={{ padding: '8px', background: '#1a1f2e', border: '1px solid #333' }}>
+                    Center
+                  </button>
+                  <button style={{ padding: '8px', background: '#1a1f2e', border: '1px solid #333' }}>
+                    Bottom Left Corner
+                  </button>
+                </div>
+              </div>
+              
+              <div className="setup-section">
+                <h4>Safety Settings</h4>
+                <div>
+                  <label>Safe Z Height (mm)</label>
+                  <input 
+                    type="number" 
+                    defaultValue="25"
+                    style={{ width: '100%', padding: '5px', marginBottom: '10px' }}
+                  />
+                </div>
+                <div>
+                  <label>Clearance Plane (mm)</label>
+                  <input 
+                    type="number" 
+                    defaultValue="5"
+                    style={{ width: '100%', padding: '5px' }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
       
