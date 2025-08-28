@@ -407,6 +407,7 @@ M30 ; End`
   const workpieceRef = useRef(null);
   const toolRef = useRef(null);
   const toolpathRef = useRef(null);
+  const updateToolpathRef = useRef(null);
 
   // Simple G-code parser
   const parseGCodePositions = (gcode) => {
@@ -597,37 +598,94 @@ M30 ; End`
     scene.add(toolGroup);
     toolRef.current = toolGroup;
     
-    // Example Toolpath - Pocket milling pattern
-    const toolpathPoints = [];
-    const steps = 20;
-    const width = 80;
-    const height = 50;
+    // Create dynamic toolpath from G-code
+    const updateToolpath = () => {
+      // Remove old toolpath
+      if (toolpathRef.current) {
+        scene.remove(toolpathRef.current);
+        toolpathRef.current = null;
+      }
+      
+      // Parse G-code positions
+      const positions = parseGCodePositions(project.gcode.channel1);
+      if (positions.length > 1) {
+        const toolpathGroup = new THREE.Group();
+        
+        // Create feed moves (green solid lines)
+        const feedPoints = [];
+        const rapidPoints = [];
+        
+        for (let i = 1; i < positions.length; i++) {
+          const prev = positions[i-1];
+          const curr = positions[i];
+          
+          if (curr.rapid) {
+            // Rapid moves (yellow dashed)
+            rapidPoints.push(
+              new THREE.Vector3(prev.x, prev.y, prev.z),
+              new THREE.Vector3(curr.x, curr.y, curr.z)
+            );
+          } else {
+            // Feed moves (green solid)
+            feedPoints.push(
+              new THREE.Vector3(prev.x, prev.y, prev.z),
+              new THREE.Vector3(curr.x, curr.y, curr.z)
+            );
+          }
+        }
+        
+        // Create feed move lines
+        if (feedPoints.length > 0) {
+          const feedGeometry = new THREE.BufferGeometry().setFromPoints(feedPoints);
+          const feedMaterial = new THREE.LineBasicMaterial({ 
+            color: 0x00ff33,  // Bright green for cuts
+            linewidth: 2,
+            transparent: true,
+            opacity: 0.9
+          });
+          const feedLines = new THREE.LineSegments(feedGeometry, feedMaterial);
+          toolpathGroup.add(feedLines);
+        }
+        
+        // Create rapid move lines
+        if (rapidPoints.length > 0) {
+          const rapidGeometry = new THREE.BufferGeometry().setFromPoints(rapidPoints);
+          const rapidMaterial = new THREE.LineDashedMaterial({
+            color: 0xffff00,  // Yellow for rapids
+            linewidth: 1,
+            scale: 1,
+            dashSize: 5,
+            gapSize: 5,
+            transparent: true,
+            opacity: 0.6
+          });
+          const rapidLines = new THREE.LineSegments(rapidGeometry, rapidMaterial);
+          rapidLines.computeLineDistances();
+          toolpathGroup.add(rapidLines);
+        }
+        
+        // Add start/end markers
+        const startGeometry = new THREE.SphereGeometry(2, 8, 8);
+        const startMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const startMarker = new THREE.Mesh(startGeometry, startMaterial);
+        startMarker.position.set(positions[0].x, positions[0].y, positions[0].z);
+        toolpathGroup.add(startMarker);
+        
+        const endGeometry = new THREE.SphereGeometry(2, 8, 8);
+        const endMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const endMarker = new THREE.Mesh(endGeometry, endMaterial);
+        const lastPos = positions[positions.length - 1];
+        endMarker.position.set(lastPos.x, lastPos.y, lastPos.z);
+        toolpathGroup.add(endMarker);
+        
+        scene.add(toolpathGroup);
+        toolpathRef.current = toolpathGroup;
+      }
+    };
     
-    // Spiral pocket pattern
-    for (let i = 0; i <= steps; i++) {
-      const t = i / steps;
-      const offset = t * 30;
-      const points = [
-        new THREE.Vector3(-width/2 + offset, -height/2 + offset, 40 - t * 15),
-        new THREE.Vector3(width/2 - offset, -height/2 + offset, 40 - t * 15),
-        new THREE.Vector3(width/2 - offset, height/2 - offset, 40 - t * 15),
-        new THREE.Vector3(-width/2 + offset, height/2 - offset, 40 - t * 15),
-        new THREE.Vector3(-width/2 + offset, -height/2 + offset, 40 - t * 15)
-      ];
-      toolpathPoints.push(...points);
-    }
-    
-    const toolpathGeometry = new THREE.BufferGeometry().setFromPoints(toolpathPoints);
-    const toolpathMaterial = new THREE.LineBasicMaterial({ 
-      color: 0x00ff33,  // Changed to bright green
-      linewidth: 3,
-      transparent: true,
-      opacity: 0.9  // More opaque
-    });
-    const toolpath = new THREE.Line(toolpathGeometry, toolpathMaterial);
-    toolpath.position.z = 1; // Slightly raise it to avoid z-fighting
-    scene.add(toolpath);
-    toolpathRef.current = toolpath;
+    // Initial toolpath
+    updateToolpath();
+    updateToolpathRef.current = updateToolpath;
     
     // Add coordinate labels
     const addAxisLabel = (text, position, color) => {
@@ -685,6 +743,13 @@ M30 ; End`
       renderer.dispose();
     };
   }, []); // Only initialize once
+  
+  // Update toolpath when G-code changes
+  useEffect(() => {
+    if (updateToolpathRef.current && project.gcode.channel1) {
+      updateToolpathRef.current();
+    }
+  }, [project.gcode.channel1]);
   
   // Update tool position when simulation changes
   useEffect(() => {
@@ -1927,14 +1992,64 @@ M30 ; End`
               <button 
                 onClick={() => {
                   // Apply stock to 3D scene
-                  if (workpieceRef.current) {
+                  if (workpieceRef.current && sceneRef.current) {
+                    const scene = sceneRef.current;
+                    
+                    // Remove old workpiece
+                    scene.remove(workpieceRef.current);
+                    
+                    // Create new workpiece based on type
+                    let geometry;
                     const { x, y, z } = setupConfig.stock.dimensions;
-                    workpieceRef.current.scale.set(x/100, y/100, z/50);
-                    workpieceRef.current.position.set(
+                    
+                    if (setupConfig.stock.type === 'cylinder') {
+                      geometry = new THREE.CylinderGeometry(x/2, x/2, z, 32);
+                    } else if (setupConfig.stock.type === 'tube') {
+                      geometry = new THREE.CylinderGeometry(x/2, x/2, z, 32, 1, false, 0, Math.PI * 2);
+                      const innerGeometry = new THREE.CylinderGeometry(x/2 - 10, x/2 - 10, z, 32);
+                      // This would need CSG for proper tube
+                    } else {
+                      // Default block
+                      geometry = new THREE.BoxGeometry(x, y, z);
+                    }
+                    
+                    // Material based on selection
+                    const materialColors = {
+                      aluminum: 0xc0c0c0,
+                      steel: 0x808080,
+                      stainless: 0xe0e0e0,
+                      brass: 0xb8860b,
+                      plastic: 0xffffff,
+                      wood: 0x8b4513
+                    };
+                    
+                    const material = new THREE.MeshPhongMaterial({
+                      color: materialColors[setupConfig.stock.material] || 0xc0c0c0,
+                      metalness: 0.7,
+                      roughness: 0.3
+                    });
+                    
+                    const workpiece = new THREE.Mesh(geometry, material);
+                    workpiece.position.set(
                       setupConfig.stock.position.x,
                       setupConfig.stock.position.y,
                       setupConfig.stock.position.z + z/2
                     );
+                    
+                    if (setupConfig.stock.type === 'cylinder' || setupConfig.stock.type === 'tube') {
+                      workpiece.rotation.x = Math.PI / 2;
+                    }
+                    
+                    workpiece.castShadow = true;
+                    workpiece.receiveShadow = true;
+                    
+                    scene.add(workpiece);
+                    workpieceRef.current = workpiece;
+                    
+                    // Update toolpath if exists
+                    if (updateToolpathRef.current) {
+                      updateToolpathRef.current();
+                    }
                   }
                 }}
                 style={{
