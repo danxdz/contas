@@ -481,10 +481,10 @@ const ModularToolSystemV2 = ({ onAssemblyCreate }) => {
               <option value="ER32">ER32 (2-20mm)</option>
               <option value="ER40">ER40 (3-26mm)</option>
             </optgroup>
-            <optgroup label="Precision">
-              <option value="Shrink Fit">Shrink Fit (< 0.003mm runout)</option>
-              <option value="Hydraulic">Hydraulic Chuck</option>
-            </optgroup>
+                          <optgroup label="Precision">
+                <option value="Shrink Fit">Shrink Fit (&lt; 0.003mm runout)</option>
+                <option value="Hydraulic">Hydraulic Chuck</option>
+              </optgroup>
             <optgroup label="Heavy Duty">
               <option value="Weldon">Weldon Side Lock</option>
             </optgroup>
