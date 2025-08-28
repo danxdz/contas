@@ -7,7 +7,7 @@ import './CNCProSuite.css';
 // Components
 import DualChannelDebugger from './components/DualChannelDebugger';
 import StepProcessor from './components/StepProcessor';
-import GCodeEditor from './components/GCodeEditor';
+import GCodeEditorEnhanced from './components/GCodeEditorEnhanced';
 import ToolManagerProEnhanced from './components/ToolManagerProEnhanced';
 import MachineControl from './components/MachineControl';
 import FeatureTree from './components/FeatureTree';
@@ -1964,10 +1964,10 @@ M30 ; End`
     file: {
       label: 'File',
       items: [
-        { id: 'new', label: 'New Project', shortcut: 'Ctrl+N', action: newProject },
-        { id: 'open', label: 'Open...', shortcut: 'Ctrl+O', action: () => document.getElementById('file-input').click() },
-        { id: 'save', label: 'Save', shortcut: 'Ctrl+S', action: saveProject },
-        { id: 'saveAs', label: 'Save As...', shortcut: 'Ctrl+Shift+S', action: saveProject },
+        { id: 'new', label: 'New Project', action: newProject },
+        { id: 'open', label: 'Open...', action: () => document.getElementById('file-input').click() },
+        { id: 'save', label: 'Save', action: saveProject },
+        { id: 'saveAs', label: 'Save As...', action: saveProject },
         { divider: true },
         { id: 'import', label: 'Import STEP...', action: () => document.getElementById('step-file-input').click() },
         { id: 'export', label: 'Export G-Code...', action: () => {
@@ -1988,15 +1988,15 @@ M30 ; End`
     edit: {
       label: 'Edit',
       items: [
-        { id: 'undo', label: 'Undo', shortcut: 'Ctrl+Z', action: () => document.execCommand('undo') },
-        { id: 'redo', label: 'Redo', shortcut: 'Ctrl+Y', action: () => document.execCommand('redo') },
+        { id: 'undo', label: 'Undo', action: () => document.execCommand('undo') },
+        { id: 'redo', label: 'Redo', action: () => document.execCommand('redo') },
         { divider: true },
-        { id: 'cut', label: 'Cut', shortcut: 'Ctrl+X', action: () => document.execCommand('cut') },
-        { id: 'copy', label: 'Copy', shortcut: 'Ctrl+C', action: () => document.execCommand('copy') },
-        { id: 'paste', label: 'Paste', shortcut: 'Ctrl+V', action: () => document.execCommand('paste') },
+        { id: 'cut', label: 'Cut', action: () => document.execCommand('cut') },
+        { id: 'copy', label: 'Copy', action: () => document.execCommand('copy') },
+        { id: 'paste', label: 'Paste', action: () => document.execCommand('paste') },
         { divider: true },
-        { id: 'find', label: 'Find...', shortcut: 'Ctrl+F', action: () => {} },
-        { id: 'replace', label: 'Replace...', shortcut: 'Ctrl+H', action: () => {} }
+        { id: 'find', label: 'Find...', action: () => {} },
+        { id: 'replace', label: 'Replace...', action: () => {} }
       ]
     },
     view: {
@@ -2019,10 +2019,10 @@ M30 ; End`
     simulation: {
       label: 'Simulation',
       items: [
-        { id: 'play', label: simulation.isPlaying ? 'Pause' : 'Play', shortcut: 'Space', action: () => setSimulation(prev => ({ ...prev, isPlaying: !prev.isPlaying })) },
+        { id: 'play', label: simulation.isPlaying ? 'Pause' : 'Play', action: () => setSimulation(prev => ({ ...prev, isPlaying: !prev.isPlaying })) },
         { id: 'stop', label: 'Stop', action: stopSimulation },
-        { id: 'stepForward', label: 'Step Forward', shortcut: 'F10', action: stepForward },
-        { id: 'stepBackward', label: 'Step Backward', shortcut: 'F9', action: stepBackward },
+        { id: 'stepForward', label: 'Step Forward', action: stepForward },
+        { id: 'stepBackward', label: 'Step Backward', action: stepBackward },
         { divider: true },
         { id: 'speed', label: `Speed: ${simulation.speed}x`, submenu: true },
         { divider: true },
@@ -2268,10 +2268,17 @@ M30 ; End`
     switch(activeMobilePanel) {
       case 'gcode':
         content = (
-          <GCodeEditor 
-            gcode={project.gcode}
-            onChange={(gcode) => setProject(prev => ({ ...prev, gcode }))}
+          <GCodeEditorEnhanced 
+            code={project.gcode.channel1}
+            onChange={(newCode) => setProject(prev => ({ 
+              ...prev, 
+              gcode: { ...prev.gcode, channel1: newCode } 
+            }))}
             currentLine={simulation.currentLine}
+            onLineClick={(lineNum) => setSimulation(prev => ({ 
+              ...prev, 
+              currentLine: lineNum 
+            }))}
           />
         );
         break;
@@ -2504,10 +2511,17 @@ M30 ; End`
       {!isMobile && (
         <>
           {renderPanel('gcode', 
-            <GCodeEditor 
-              gcode={project.gcode}
-              onChange={(gcode) => setProject(prev => ({ ...prev, gcode }))}
+            <GCodeEditorEnhanced 
+              code={project.gcode.channel1}
+              onChange={(newCode) => setProject(prev => ({ 
+                ...prev, 
+                gcode: { ...prev.gcode, channel1: newCode } 
+              }))}
               currentLine={simulation.currentLine}
+              onLineClick={(lineNum) => setSimulation(prev => ({ 
+                ...prev, 
+                currentLine: lineNum 
+              }))}
             />
           )}
           

@@ -262,132 +262,22 @@ const ToolManagerProEnhanced = ({
               />
 
               {/* Assembly List */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {assemblies
                   .filter(a => !searchTerm || 
                     a.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                     a.tNumber?.toLowerCase().includes(searchTerm.toLowerCase()))
                   .map(assembly => (
-                    <div
+                    <AssemblyCard
                       key={assembly.id}
-                      style={{
-                        padding: '15px',
-                        background: selectedAssembly?.id === assembly.id ? 
-                          'linear-gradient(135deg, #1a3f3e, #1a1f2e)' : '#1a1f2e',
-                        border: selectedAssembly?.id === assembly.id ? 
-                          '2px solid #00ff88' : '1px solid #333',
-                        borderRadius: '8px',
-                        cursor: 'pointer'
-                      }}
-                      onClick={() => selectAssembly(assembly)}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                        <div>
-                          <div style={{ 
-                            fontSize: '16px', 
-                            fontWeight: 'bold',
-                            color: assembly.inUse ? '#00ff88' : '#fff',
-                            marginBottom: '5px'
-                          }}>
-                            {assembly.tNumber} - {assembly.name || 'Tool Assembly'}
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#888' }}>
-                            {assembly.components?.tool?.partNumber || 'No tool'} | 
-                            {assembly.components?.holder || 'No holder'}
-                          </div>
-                          <div style={{ fontSize: '11px', color: '#666', marginTop: '5px' }}>
-                            Used: {assembly.usageCount}x | 
-                            Wear: {assembly.wearLevel || 0}% | 
-                            Time: {assembly.totalCuttingTime || 0}min
-                          </div>
-                        </div>
-                        
-                        {/* Action Buttons */}
-                        <div style={{ display: 'flex', gap: '5px' }}>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              editAssembly(assembly);
-                            }}
-                            style={{
-                              padding: '5px 10px',
-                              background: '#2a3f5f',
-                              color: '#00d4ff',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '12px'
-                            }}
-                            title="Edit"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              duplicateAssembly(assembly);
-                            }}
-                            style={{
-                              padding: '5px 10px',
-                              background: '#2a5f3f',
-                              color: '#00ff88',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '12px'
-                            }}
-                            title="Duplicate"
-                          >
-                            📋
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteAssembly(assembly.id);
-                            }}
-                            style={{
-                              padding: '5px 10px',
-                              background: '#5f2a2a',
-                              color: '#ff4444',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '12px'
-                            }}
-                            title="Delete"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Wear Level Bar */}
-                      <div style={{ marginTop: '10px' }}>
-                        <div style={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between',
-                          fontSize: '11px',
-                          marginBottom: '3px'
-                        }}>
-                          <span>Tool Wear</span>
-                          <span>{assembly.wearLevel || 0}%</span>
-                        </div>
-                        <div style={{
-                          height: '4px',
-                          background: '#333',
-                          borderRadius: '2px',
-                          overflow: 'hidden'
-                        }}>
-                          <div style={{
-                            width: `${assembly.wearLevel || 0}%`,
-                            height: '100%',
-                            background: assembly.wearLevel > 80 ? '#ff4444' :
-                                       assembly.wearLevel > 50 ? '#ffaa00' : '#00ff88',
-                            transition: 'width 0.3s'
-                          }} />
-                        </div>
-                      </div>
-                    </div>
+                      assembly={assembly}
+                      isSelected={selectedAssembly?.id === assembly.id}
+                      onSelect={selectAssembly}
+                      onEdit={editAssembly}
+                      onDuplicate={duplicateAssembly}
+                      onDelete={deleteAssembly}
+                      onUpdateWear={updateWearLevel}
+                    />
                   ))}
               </div>
 
