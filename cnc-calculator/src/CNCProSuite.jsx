@@ -91,8 +91,8 @@ const CNCProSuite = () => {
       visible: true,
       floating: false,
       docked: 'right',
-      position: { x: window.innerWidth - 350, y: 100 },
-      size: { width: 320, height: 500 },
+      position: { x: window.innerWidth - 1250, y: 60 },
+      size: { width: 1200, height: 700 },
       zIndex: 1,
       minimized: false,
       title: 'Tool Manager'

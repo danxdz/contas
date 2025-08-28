@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ModularToolSystemV2 from './ModularToolSystemV2';
+import AssemblyCard from './AssemblyCard';
 
 const ToolManagerProEnhanced = ({ 
   onToolSelect, 
