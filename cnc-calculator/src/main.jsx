@@ -1,17 +1,17 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 
-// Truly Modular CAM System - Clean, Expandable, Real
-import CNCProSuite from './CNCProSuite'
-import './CNCProSuite.css'
+// CNC Pro Suite with FreeCAD-like Workbench System
+import CNCProSuiteModular from './CNCProSuiteModular'
+import './CNCProSuiteModular.css'
 
 // Other versions available:
-// import ModularCAM from './ModularCAM'        // Modular version
+// import CNCProSuite from './CNCProSuite'       // Original monolithic version
+// import ModularCAM from './ModularCAM'        // Simple modular version
 // import AIMachiningSystem from './AIMachiningSystem'  // AI version
-// import App from './App'                      // Experimental modular
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <CNCProSuite />
+    <CNCProSuiteModular />
   </React.StrictMode>,
 )

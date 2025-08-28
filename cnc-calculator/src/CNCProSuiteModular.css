@@ -1,0 +1,341 @@
+.cnc-pro-suite-modular {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #0a0a0a;
+  color: #e0e0e0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+}
+
+/* Workbench Bar - FreeCAD Style */
+.workbench-bar {
+  display: flex;
+  align-items: center;
+  background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 100%);
+  border-bottom: 1px solid #333;
+  padding: 0;
+  height: 48px;
+  z-index: 1000;
+}
+
+.workbench-switcher {
+  display: flex;
+  height: 100%;
+  border-right: 1px solid #333;
+}
+
+.workbench-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  transition: all 0.2s;
+  height: 100%;
+  border-right: 1px solid #222;
+  position: relative;
+}
+
+.workbench-button:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.workbench-button.active {
+  background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%);
+  color: #00ff88;
+  border-bottom: 2px solid #00ff88;
+}
+
+.workbench-button.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #00ff88;
+  box-shadow: 0 0 10px #00ff88;
+}
+
+.workbench-icon {
+  font-size: 20px;
+  margin-bottom: 2px;
+}
+
+.workbench-name {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.workbench-info {
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  flex: 1;
+}
+
+.app-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  margin-right: 20px;
+}
+
+.workbench-description {
+  font-size: 12px;
+  color: #888;
+  font-style: italic;
+}
+
+/* Viewport */
+.viewport-container {
+  flex: 1;
+  position: relative;
+  background: #0a0a0a;
+}
+
+.viewport-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Floating Panels */
+.floating-panel {
+  position: absolute;
+  background: rgba(30, 30, 30, 0.95);
+  border: 1px solid #444;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  min-width: 200px;
+  min-height: 150px;
+  resize: both;
+  overflow: auto;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 15px;
+  background: linear-gradient(180deg, #333 0%, #2a2a2a 100%);
+  border-bottom: 1px solid #444;
+  border-radius: 8px 8px 0 0;
+  cursor: move;
+  user-select: none;
+}
+
+.panel-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.panel-close {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  border-radius: 4px;
+}
+
+.panel-close:hover {
+  background: rgba(255, 0, 0, 0.2);
+  color: #ff4444;
+}
+
+.panel-content {
+  flex: 1;
+  overflow: auto;
+  padding: 15px;
+}
+
+/* Control Bar */
+.control-bar {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 10px 20px;
+  background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 100%);
+  border-top: 1px solid #333;
+  z-index: 1000;
+}
+
+.control-button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 16px;
+  background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%);
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.control-button:hover {
+  background: linear-gradient(180deg, #4a4a4a 0%, #3a3a3a 100%);
+  border-color: #555;
+  transform: translateY(-1px);
+}
+
+.control-button:active {
+  transform: translateY(0);
+}
+
+.status-text {
+  font-size: 12px;
+  color: #888;
+  padding: 5px 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  border: 1px solid #333;
+}
+
+/* Tool-specific panels */
+.tool-panel {
+  background: rgba(40, 40, 40, 0.95);
+  border-color: #00ff88;
+}
+
+.tool-panel .panel-header {
+  background: linear-gradient(180deg, #2a4a2a 0%, #1a3a1a 100%);
+  border-bottom-color: #00ff88;
+}
+
+/* CAM-specific panels */
+.cam-panel {
+  background: rgba(40, 30, 30, 0.95);
+  border-color: #ff8800;
+}
+
+.cam-panel .panel-header {
+  background: linear-gradient(180deg, #4a3a2a 0%, #3a2a1a 100%);
+  border-bottom-color: #ff8800;
+}
+
+/* Setup-specific panels */
+.setup-panel {
+  background: rgba(30, 30, 40, 0.95);
+  border-color: #8888ff;
+}
+
+.setup-panel .panel-header {
+  background: linear-gradient(180deg, #2a2a4a 0%, #1a1a3a 100%);
+  border-bottom-color: #8888ff;
+}
+
+/* Simulation-specific panels */
+.simulation-panel {
+  background: rgba(40, 30, 40, 0.95);
+  border-color: #ff88ff;
+}
+
+.simulation-panel .panel-header {
+  background: linear-gradient(180deg, #4a2a4a 0%, #3a1a3a 100%);
+  border-bottom-color: #ff88ff;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .workbench-bar {
+    height: 40px;
+  }
+  
+  .workbench-button {
+    padding: 6px 12px;
+  }
+  
+  .workbench-icon {
+    font-size: 16px;
+  }
+  
+  .workbench-name {
+    display: none;
+  }
+  
+  .workbench-description {
+    display: none;
+  }
+  
+  .floating-panel {
+    position: fixed;
+    left: 10px !important;
+    right: 10px !important;
+    top: 50px !important;
+    width: auto !important;
+    max-height: calc(100vh - 120px);
+  }
+  
+  .control-bar {
+    flex-wrap: wrap;
+    padding: 8px 10px;
+    gap: 10px;
+  }
+  
+  .control-button {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}
+
+/* Animations */
+@keyframes panelSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.floating-panel {
+  animation: panelSlideIn 0.3s ease-out;
+}
+
+/* Scrollbar Styling */
+.panel-content::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.panel-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.panel-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.panel-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
