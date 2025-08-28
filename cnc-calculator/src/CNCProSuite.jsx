@@ -35,7 +35,7 @@ const CNCProSuite = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeMobilePanel, setActiveMobilePanel] = useState(null);
-  const [materialRemoval, setMaterialRemoval] = useState(null);
+  const materialRemovalRef = useRef(null);
   const [showMaterialRemoval, setShowMaterialRemoval] = useState(true);
   const [collisionDetection, setCollisionDetection] = useState(true);
   const [keyboardShortcuts, setKeyboardShortcuts] = useState(null);
@@ -633,11 +633,15 @@ M30 ; End`
     // Main stock (top surface at Z=0, extends down to Z=-50)
     const stockDimensions = { x: 150, y: 100, z: 50 };
     
-    // Initialize material removal simulation if enabled
-    let materialSim = null;
+    // Initialize material removal simulation
     if (showMaterialRemoval) {
-      materialSim = new MaterialRemovalSimulation(scene, stockDimensions);
-      setMaterialRemoval(materialSim);
+      console.log('Initializing material removal simulation...');
+      const materialSim = new MaterialRemovalSimulation(scene, stockDimensions);
+      materialRemovalRef.current = materialSim;
+      // Position the stock mesh correctly
+      if (materialSim.stockMesh) {
+        materialSim.stockMesh.position.z = -25;
+      }
     } else {
       // Regular stock mesh
       const stockGeometry = new THREE.BoxGeometry(stockDimensions.x, stockDimensions.y, stockDimensions.z);
@@ -1267,7 +1271,7 @@ M30 ; End`
         mountRef.current.removeChild(renderer.domElement);
       }
       renderer.dispose();
-      if (materialSim) materialSim.dispose();
+      if (materialRemovalRef.current) materialRemovalRef.current.dispose();
       if (shortcuts) shortcuts.dispose();
     };
   }, []); // Only initialize once
