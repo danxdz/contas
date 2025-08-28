@@ -12,7 +12,7 @@ import ToolManager from './components/ToolManager';
 import MachineControl from './components/MachineControl';
 import FeatureTree from './components/FeatureTree';
 import ToolHolderSystem from './components/ToolHolderSystem';
-import RealToolSystem from './components/RealToolSystem';
+import ProfessionalToolSystem from './components/ProfessionalToolSystem';
 import ToolOffsetTable from './components/ToolOffsetTable';
 
 // Import all calculator modules
@@ -83,8 +83,8 @@ const CNCProSuite = () => {
       visible: true,
       floating: false,
       docked: 'left',
-      position: { x: 20, y: 60 },
-      size: { width: 400, height: 600 },
+      position: { x: 20, y: 80 },
+      size: { width: 400, height: 500 },
       zIndex: 1,
       minimized: false,
       title: 'G-Code Editor'
@@ -93,8 +93,8 @@ const CNCProSuite = () => {
       visible: true,
       floating: false,
       docked: 'right',
-      position: { x: window.innerWidth - 350, y: 150 },
-      size: { width: 280, height: 350 },
+      position: { x: window.innerWidth - 350, y: 100 },
+      size: { width: 320, height: 500 },
       zIndex: 1,
       minimized: false,
       title: 'Tool Manager'
@@ -2013,7 +2013,7 @@ M30 ; End`
         { id: 'pocketwizard', label: 'Pocket Milling Wizard', action: () => togglePanel('pocketMilling') },
         { id: 'shopfloor', label: 'Shop Floor Utilities', action: () => togglePanel('shopFloor') },
         { divider: true },
-        { id: 'tooldatabase', label: '🛠️ Real Tool System (Professional)', action: () => togglePanel('toolDatabase') },
+        { id: 'tooldatabase', label: '🛠️ Professional Tool System', action: () => togglePanel('toolDatabase') },
         { id: 'machineconfig', label: 'Machine Configurator', action: () => togglePanel('machineConfig') },
         { id: 'setupmanager', label: 'Setup Manager', action: () => togglePanel('setupManager') }
       ]
@@ -3232,7 +3232,7 @@ M30 ; End`
           )}
           
           {renderPanel('toolDatabase',
-            <RealToolSystem 
+            <ProfessionalToolSystem 
               onToolAssemblyChange={(assembly) => {
                 console.log('Tool assembly updated:', assembly);
                 // Update simulation with new tool assembly
