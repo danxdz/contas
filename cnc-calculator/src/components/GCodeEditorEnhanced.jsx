@@ -264,8 +264,7 @@ const GCodeEditorEnhanced = ({
               cursor: 'pointer',
               textAlign: 'right',
               paddingRight: '8px',
-              color: currentLine === num - 1 ? '#00ff88' : '#444',
-              background: currentLine === num - 1 ? 'rgba(0, 255, 136, 0.1)' : 'transparent'
+              color: currentLine === num - 1 ? '#00ff88' : '#444'
             }}
           >
             {num}
@@ -273,28 +272,69 @@ const GCodeEditorEnhanced = ({
         ))}
       </div>
 
-      {/* Code Editor */}
-      <textarea
-        ref={textareaRef}
-        value={code}
-        onChange={handleInputChange}
-        onContextMenu={handleContextMenu}
-        onScroll={handleScroll}
-        spellCheck={false}
-        style={{
-          flex: 1,
-          padding: '10px',
-          background: 'transparent',
-          border: 'none',
-          outline: 'none',
-          fontFamily: 'monospace',
-          fontSize: '13px',
-          lineHeight: '20px',
-          color: '#e0e0e0',
-          resize: 'none'
-        }}
-        placeholder="Enter G-code here... Right-click for templates"
-      />
+      {/* Code Editor Container */}
+      <div style={{ 
+        flex: 1, 
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
+        {/* Highlighted Lines Display */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            padding: '10px',
+            fontFamily: 'monospace',
+            fontSize: '13px',
+            lineHeight: '20px',
+            pointerEvents: 'none',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-all'
+          }}
+        >
+          {lines.map((line, index) => (
+            <div
+              key={index}
+              style={{
+                color: currentLine === index ? '#00ff88' : 'transparent',
+                height: '20px'
+              }}
+            >
+              {line || ' '}
+            </div>
+          ))}
+        </div>
+        
+        {/* Actual Textarea */}
+        <textarea
+          ref={textareaRef}
+          value={code}
+          onChange={handleInputChange}
+          onContextMenu={handleContextMenu}
+          onScroll={handleScroll}
+          spellCheck={false}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            padding: '10px',
+            background: 'transparent',
+            border: 'none',
+            outline: 'none',
+            fontFamily: 'monospace',
+            fontSize: '13px',
+            lineHeight: '20px',
+            color: '#e0e0e0',
+            resize: 'none',
+            mixBlendMode: 'screen'
+          }}
+          placeholder="Enter G-code here... Right-click for templates"
+        />
+      </div>
 
       {/* Autocomplete Dropdown */}
       {showAutocomplete && getSuggestions().length > 0 && (
@@ -404,21 +444,7 @@ const GCodeEditorEnhanced = ({
         </div>
       )}
 
-      {/* Current line highlight overlay */}
-      {currentLine >= 0 && (
-        <div
-          style={{
-            position: 'absolute',
-            left: '50px',
-            top: `${10 + currentLine * 20}px`,
-            right: '10px',
-            height: '20px',
-            background: 'rgba(0, 255, 136, 0.1)',
-            pointerEvents: 'none',
-            transition: 'top 0.1s'
-          }}
-        />
-      )}
+
     </div>
   );
 };
