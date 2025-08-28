@@ -8,12 +8,17 @@ import {
   CUTTING_TOOLS 
 } from './ModularToolSystem';
 
-const ModularToolSystemV2 = ({ onAssemblyCreate }) => {
-  const [selectedComponents, setSelectedComponents] = useState({
-    tool: null,
-    holder: null,
-    collet: null,
-    extension: null
+const ModularToolSystemV2 = ({ onAssemblyCreate, editingAssembly }) => {
+  const [selectedComponents, setSelectedComponents] = useState(() => {
+    if (editingAssembly?.components) {
+      return editingAssembly.components;
+    }
+    return {
+      tool: null,
+      holder: null,
+      collet: null,
+      extension: null
+    };
   });
   
   const [expandedSection, setExpandedSection] = useState('tool');

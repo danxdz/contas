@@ -1,0 +1,806 @@
+import React, { useState, useEffect, useRef } from 'react';
+import ModularToolSystemV2 from './ModularToolSystemV2';
+
+const ToolManagerProEnhanced = ({ 
+  onToolSelect, 
+  onAssemblyCreate,
+  activeAssemblies = [],
+  onAssemblySelect,
+  onAssemblyDelete
+}) => {
+  const [viewMode, setViewMode] = useState('assemblies');
+  const [assemblies, setAssemblies] = useState(activeAssemblies);
+  const [selectedAssembly, setSelectedAssembly] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [editingAssembly, setEditingAssembly] = useState(null);
+  const [rightPanelTab, setRightPanelTab] = useState('calculator');
+
+  // Cutting parameters state
+  const [cuttingParams, setCuttingParams] = useState({
+    material: 'steel',
+    hardness: 'HRC30',
+    operation: 'roughing',
+    doc: 5, // Depth of cut
+    woc: 10, // Width of cut
+    coolant: 'flood'
+  });
+
+  // Load saved assemblies
+  useEffect(() => {
+    const saved = localStorage.getItem('toolAssemblies');
+    if (saved) {
+      setAssemblies(JSON.parse(saved));
+    }
+  }, []);
+
+  // Save assemblies
+  useEffect(() => {
+    if (assemblies.length > 0) {
+      localStorage.setItem('toolAssemblies', JSON.stringify(assemblies));
+    }
+  }, [assemblies]);
+
+  // Handle assembly creation
+  const handleAssemblyCreate = (assembly) => {
+    const newAssembly = {
+      ...assembly,
+      id: Date.now(),
+      tNumber: `T${assemblies.length + 1}`,
+      inUse: false,
+      lastUsed: null,
+      usageCount: 0,
+      notes: '',
+      wearLevel: 0,
+      totalCuttingTime: 0,
+      created: new Date().toISOString()
+    };
+    
+    const updatedAssemblies = [...assemblies, newAssembly];
+    setAssemblies(updatedAssemblies);
+    
+    if (onAssemblyCreate) {
+      onAssemblyCreate(newAssembly);
+    }
+    
+    setViewMode('assemblies');
+    setSelectedAssembly(newAssembly);
+  };
+
+  // Edit assembly
+  const editAssembly = (assembly) => {
+    setEditingAssembly(assembly);
+    setViewMode('builder');
+  };
+
+  // Duplicate assembly
+  const duplicateAssembly = (assembly) => {
+    const duplicate = {
+      ...assembly,
+      id: Date.now(),
+      tNumber: `T${assemblies.length + 1}`,
+      name: `${assembly.name || 'Assembly'} (Copy)`,
+      inUse: false,
+      usageCount: 0,
+      wearLevel: 0,
+      totalCuttingTime: 0,
+      created: new Date().toISOString()
+    };
+    
+    const updatedAssemblies = [...assemblies, duplicate];
+    setAssemblies(updatedAssemblies);
+    setSelectedAssembly(duplicate);
+  };
+
+  // Select assembly
+  const selectAssembly = (assembly) => {
+    setSelectedAssembly(assembly);
+    
+    const updated = assemblies.map(a => ({
+      ...a,
+      inUse: a.id === assembly.id,
+      lastUsed: a.id === assembly.id ? new Date().toISOString() : a.lastUsed,
+      usageCount: a.id === assembly.id ? a.usageCount + 1 : a.usageCount
+    }));
+    setAssemblies(updated);
+    
+    if (onAssemblySelect) {
+      onAssemblySelect(assembly);
+    }
+  };
+
+  // Delete assembly
+  const deleteAssembly = (id) => {
+    if (confirm('Delete this tool assembly?')) {
+      setAssemblies(assemblies.filter(a => a.id !== id));
+      if (selectedAssembly?.id === id) {
+        setSelectedAssembly(null);
+      }
+      if (onAssemblyDelete) {
+        onAssemblyDelete(id);
+      }
+    }
+  };
+
+  // Update wear level
+  const updateWearLevel = (id, wearLevel) => {
+    setAssemblies(assemblies.map(a => 
+      a.id === id ? { ...a, wearLevel } : a
+    ));
+  };
+
+  // Calculate cutting parameters
+  const calculateCuttingParams = () => {
+    if (!selectedAssembly?.components?.tool) return null;
+    
+    const tool = selectedAssembly.components.tool;
+    const diameter = tool.diameter || 10;
+    const flutes = tool.flutes || 2;
+    
+    // Material factors
+    const materialFactors = {
+      aluminum: { vc: 300, fz: 0.15, power: 0.7 },
+      steel: { vc: 80, fz: 0.08, power: 1.2 },
+      stainless: { vc: 60, fz: 0.06, power: 1.4 },
+      titanium: { vc: 40, fz: 0.05, power: 1.6 },
+      plastic: { vc: 400, fz: 0.2, power: 0.5 }
+    };
+    
+    const factor = materialFactors[cuttingParams.material] || materialFactors.steel;
+    
+    // Calculate RPM
+    const rpm = Math.round((factor.vc * 1000) / (Math.PI * diameter));
+    
+    // Calculate feed
+    const feedPerTooth = cuttingParams.operation === 'finishing' ? factor.fz * 0.6 : factor.fz;
+    const feedRate = Math.round(rpm * feedPerTooth * flutes);
+    
+    // Calculate power
+    const mrr = (cuttingParams.doc * cuttingParams.woc * feedRate) / 1000; // Material removal rate
+    const power = Math.round(mrr * factor.power * 10) / 10;
+    
+    // Calculate tool life
+    const toolLife = Math.round(100 / (factor.power * (cuttingParams.doc / 5)));
+    
+    return {
+      rpm: Math.min(rpm, selectedAssembly.maxRPM || 20000),
+      feedRate,
+      feedPerTooth,
+      power,
+      mrr: Math.round(mrr * 10) / 10,
+      toolLife,
+      chipLoad: Math.round(feedPerTooth * 1000) / 1000
+    };
+  };
+
+  const cuttingResults = calculateCuttingParams();
+
+  return (
+    <div style={{
+      height: '100%',
+      display: 'flex',
+      background: '#0a0e1a',
+      color: '#e0e0e0'
+    }}>
+      {/* Left Panel - Tool Management */}
+      <div style={{
+        flex: '1 1 60%',
+        display: 'flex',
+        flexDirection: 'column',
+        borderRight: '2px solid #1a1f2e'
+      }}>
+        {/* Tabs */}
+        <div style={{
+          display: 'flex',
+          borderBottom: '2px solid #00d4ff',
+          background: '#1a1f2e'
+        }}>
+          <button
+            onClick={() => setViewMode('assemblies')}
+            style={{
+              padding: '12px 20px',
+              background: viewMode === 'assemblies' ? '#00d4ff' : 'transparent',
+              color: viewMode === 'assemblies' ? '#000' : '#888',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: viewMode === 'assemblies' ? 'bold' : 'normal'
+            }}
+          >
+            📦 My Assemblies
+          </button>
+          <button
+            onClick={() => setViewMode('builder')}
+            style={{
+              padding: '12px 20px',
+              background: viewMode === 'builder' ? '#00d4ff' : 'transparent',
+              color: viewMode === 'builder' ? '#000' : '#888',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: viewMode === 'builder' ? 'bold' : 'normal'
+            }}
+          >
+            🔨 Build New
+          </button>
+          <button
+            onClick={() => setViewMode('library')}
+            style={{
+              padding: '12px 20px',
+              background: viewMode === 'library' ? '#00d4ff' : 'transparent',
+              color: viewMode === 'library' ? '#000' : '#888',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: viewMode === 'library' ? 'bold' : 'normal'
+            }}
+          >
+            📚 Component Library
+          </button>
+        </div>
+
+        {/* Content */}
+        <div style={{ flex: 1, overflow: 'auto' }}>
+          {/* Assemblies View */}
+          {viewMode === 'assemblies' && (
+            <div style={{ padding: '15px' }}>
+              {/* Search */}
+              <input
+                type="text"
+                placeholder="Search assemblies..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  background: '#1a1f2e',
+                  border: '1px solid #333',
+                  borderRadius: '6px',
+                  color: '#e0e0e0',
+                  marginBottom: '15px'
+                }}
+              />
+
+              {/* Assembly List */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {assemblies
+                  .filter(a => !searchTerm || 
+                    a.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    a.tNumber?.toLowerCase().includes(searchTerm.toLowerCase()))
+                  .map(assembly => (
+                    <div
+                      key={assembly.id}
+                      style={{
+                        padding: '15px',
+                        background: selectedAssembly?.id === assembly.id ? 
+                          'linear-gradient(135deg, #1a3f3e, #1a1f2e)' : '#1a1f2e',
+                        border: selectedAssembly?.id === assembly.id ? 
+                          '2px solid #00ff88' : '1px solid #333',
+                        borderRadius: '8px',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => selectAssembly(assembly)}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                        <div>
+                          <div style={{ 
+                            fontSize: '16px', 
+                            fontWeight: 'bold',
+                            color: assembly.inUse ? '#00ff88' : '#fff',
+                            marginBottom: '5px'
+                          }}>
+                            {assembly.tNumber} - {assembly.name || 'Tool Assembly'}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#888' }}>
+                            {assembly.components?.tool?.partNumber || 'No tool'} | 
+                            {assembly.components?.holder || 'No holder'}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#666', marginTop: '5px' }}>
+                            Used: {assembly.usageCount}x | 
+                            Wear: {assembly.wearLevel || 0}% | 
+                            Time: {assembly.totalCuttingTime || 0}min
+                          </div>
+                        </div>
+                        
+                        {/* Action Buttons */}
+                        <div style={{ display: 'flex', gap: '5px' }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              editAssembly(assembly);
+                            }}
+                            style={{
+                              padding: '5px 10px',
+                              background: '#2a3f5f',
+                              color: '#00d4ff',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px'
+                            }}
+                            title="Edit"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              duplicateAssembly(assembly);
+                            }}
+                            style={{
+                              padding: '5px 10px',
+                              background: '#2a5f3f',
+                              color: '#00ff88',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px'
+                            }}
+                            title="Duplicate"
+                          >
+                            📋
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteAssembly(assembly.id);
+                            }}
+                            style={{
+                              padding: '5px 10px',
+                              background: '#5f2a2a',
+                              color: '#ff4444',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px'
+                            }}
+                            title="Delete"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Wear Level Bar */}
+                      <div style={{ marginTop: '10px' }}>
+                        <div style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between',
+                          fontSize: '11px',
+                          marginBottom: '3px'
+                        }}>
+                          <span>Tool Wear</span>
+                          <span>{assembly.wearLevel || 0}%</span>
+                        </div>
+                        <div style={{
+                          height: '4px',
+                          background: '#333',
+                          borderRadius: '2px',
+                          overflow: 'hidden'
+                        }}>
+                          <div style={{
+                            width: `${assembly.wearLevel || 0}%`,
+                            height: '100%',
+                            background: assembly.wearLevel > 80 ? '#ff4444' :
+                                       assembly.wearLevel > 50 ? '#ffaa00' : '#00ff88',
+                            transition: 'width 0.3s'
+                          }} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+
+              {assemblies.length === 0 && (
+                <div style={{
+                  textAlign: 'center',
+                  padding: '40px',
+                  color: '#666'
+                }}>
+                  No tool assemblies yet.
+                  <br />
+                  <button
+                    onClick={() => setViewMode('builder')}
+                    style={{
+                      marginTop: '20px',
+                      padding: '10px 20px',
+                      background: 'linear-gradient(135deg, #00ff88, #00d4ff)',
+                      color: '#000',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    Create First Assembly
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Builder View */}
+          {viewMode === 'builder' && (
+            <ModularToolSystemV2 
+              onAssemblyCreate={handleAssemblyCreate}
+              editingAssembly={editingAssembly}
+            />
+          )}
+
+          {/* Library View */}
+          {viewMode === 'library' && (
+            <div style={{ padding: '15px' }}>
+              <h3 style={{ color: '#00d4ff', marginBottom: '15px' }}>
+                Component Library
+              </h3>
+              <p style={{ color: '#888', fontSize: '14px' }}>
+                Browse available tools, holders, and accessories
+              </p>
+              {/* Component library content would go here */}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Right Panel - Utilities */}
+      <div style={{
+        flex: '1 1 40%',
+        display: 'flex',
+        flexDirection: 'column',
+        background: '#0f1420'
+      }}>
+        {/* Right Panel Tabs */}
+        <div style={{
+          display: 'flex',
+          borderBottom: '1px solid #333',
+          background: '#1a1f2e'
+        }}>
+          <button
+            onClick={() => setRightPanelTab('calculator')}
+            style={{
+              padding: '10px 15px',
+              background: rightPanelTab === 'calculator' ? '#2a3f5f' : 'transparent',
+              color: rightPanelTab === 'calculator' ? '#00d4ff' : '#666',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '12px'
+            }}
+          >
+            🧮 Calculator
+          </button>
+          <button
+            onClick={() => setRightPanelTab('wear')}
+            style={{
+              padding: '10px 15px',
+              background: rightPanelTab === 'wear' ? '#2a3f5f' : 'transparent',
+              color: rightPanelTab === 'wear' ? '#00d4ff' : '#666',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '12px'
+            }}
+          >
+            📊 Wear Track
+          </button>
+          <button
+            onClick={() => setRightPanelTab('notes')}
+            style={{
+              padding: '10px 15px',
+              background: rightPanelTab === 'notes' ? '#2a3f5f' : 'transparent',
+              color: rightPanelTab === 'notes' ? '#00d4ff' : '#666',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '12px'
+            }}
+          >
+            📝 Notes
+          </button>
+          <button
+            onClick={() => setRightPanelTab('compare')}
+            style={{
+              padding: '10px 15px',
+              background: rightPanelTab === 'compare' ? '#2a3f5f' : 'transparent',
+              color: rightPanelTab === 'compare' ? '#00d4ff' : '#666',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '12px'
+            }}
+          >
+            ⚖️ Compare
+          </button>
+        </div>
+
+        {/* Right Panel Content */}
+        <div style={{ flex: 1, overflow: 'auto', padding: '15px' }}>
+          {/* Cutting Parameters Calculator */}
+          {rightPanelTab === 'calculator' && (
+            <div>
+              <h3 style={{ color: '#00d4ff', marginBottom: '15px' }}>
+                Cutting Parameters Calculator
+              </h3>
+              
+              {selectedAssembly ? (
+                <>
+                  {/* Input Parameters */}
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', marginBottom: '10px' }}>
+                      <span style={{ fontSize: '12px', color: '#888' }}>Material</span>
+                      <select
+                        value={cuttingParams.material}
+                        onChange={(e) => setCuttingParams({...cuttingParams, material: e.target.value})}
+                        style={{
+                          width: '100%',
+                          padding: '8px',
+                          background: '#1a1f2e',
+                          border: '1px solid #333',
+                          borderRadius: '4px',
+                          color: '#e0e0e0',
+                          marginTop: '5px'
+                        }}
+                      >
+                        <option value="aluminum">Aluminum</option>
+                        <option value="steel">Steel</option>
+                        <option value="stainless">Stainless Steel</option>
+                        <option value="titanium">Titanium</option>
+                        <option value="plastic">Plastic</option>
+                      </select>
+                    </label>
+
+                    <label style={{ display: 'block', marginBottom: '10px' }}>
+                      <span style={{ fontSize: '12px', color: '#888' }}>Operation</span>
+                      <select
+                        value={cuttingParams.operation}
+                        onChange={(e) => setCuttingParams({...cuttingParams, operation: e.target.value})}
+                        style={{
+                          width: '100%',
+                          padding: '8px',
+                          background: '#1a1f2e',
+                          border: '1px solid #333',
+                          borderRadius: '4px',
+                          color: '#e0e0e0',
+                          marginTop: '5px'
+                        }}
+                      >
+                        <option value="roughing">Roughing</option>
+                        <option value="finishing">Finishing</option>
+                        <option value="slotting">Slotting</option>
+                      </select>
+                    </label>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <label>
+                        <span style={{ fontSize: '12px', color: '#888' }}>DOC (mm)</span>
+                        <input
+                          type="number"
+                          value={cuttingParams.doc}
+                          onChange={(e) => setCuttingParams({...cuttingParams, doc: parseFloat(e.target.value)})}
+                          style={{
+                            width: '100%',
+                            padding: '8px',
+                            background: '#1a1f2e',
+                            border: '1px solid #333',
+                            borderRadius: '4px',
+                            color: '#e0e0e0',
+                            marginTop: '5px'
+                          }}
+                        />
+                      </label>
+                      <label>
+                        <span style={{ fontSize: '12px', color: '#888' }}>WOC (mm)</span>
+                        <input
+                          type="number"
+                          value={cuttingParams.woc}
+                          onChange={(e) => setCuttingParams({...cuttingParams, woc: parseFloat(e.target.value)})}
+                          style={{
+                            width: '100%',
+                            padding: '8px',
+                            background: '#1a1f2e',
+                            border: '1px solid #333',
+                            borderRadius: '4px',
+                            color: '#e0e0e0',
+                            marginTop: '5px'
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Results */}
+                  {cuttingResults && (
+                    <div style={{
+                      padding: '15px',
+                      background: 'linear-gradient(135deg, #1a3f3e, #1a1f2e)',
+                      borderRadius: '8px',
+                      border: '1px solid #00ff88'
+                    }}>
+                      <h4 style={{ color: '#00ff88', marginBottom: '15px' }}>
+                        Recommended Parameters
+                      </h4>
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                        <div>
+                          <div style={{ fontSize: '11px', color: '#888' }}>Spindle Speed</div>
+                          <div style={{ fontSize: '20px', color: '#00d4ff', fontWeight: 'bold' }}>
+                            {cuttingResults.rpm} RPM
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '11px', color: '#888' }}>Feed Rate</div>
+                          <div style={{ fontSize: '20px', color: '#00d4ff', fontWeight: 'bold' }}>
+                            {cuttingResults.feedRate} mm/min
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '11px', color: '#888' }}>Chip Load</div>
+                          <div style={{ fontSize: '20px', color: '#ffaa00', fontWeight: 'bold' }}>
+                            {cuttingResults.chipLoad} mm/tooth
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '11px', color: '#888' }}>MRR</div>
+                          <div style={{ fontSize: '20px', color: '#ffaa00', fontWeight: 'bold' }}>
+                            {cuttingResults.mrr} cm³/min
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '11px', color: '#888' }}>Power Required</div>
+                          <div style={{ fontSize: '20px', color: '#ff88ff', fontWeight: 'bold' }}>
+                            {cuttingResults.power} kW
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '11px', color: '#888' }}>Tool Life</div>
+                          <div style={{ fontSize: '20px', color: '#00ff88', fontWeight: 'bold' }}>
+                            ~{cuttingResults.toolLife} min
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* G-code snippet */}
+                      <div style={{ marginTop: '15px' }}>
+                        <div style={{ fontSize: '11px', color: '#888', marginBottom: '5px' }}>
+                          G-Code Template
+                        </div>
+                        <div style={{
+                          padding: '10px',
+                          background: '#0a0e1a',
+                          borderRadius: '4px',
+                          fontFamily: 'monospace',
+                          fontSize: '12px',
+                          color: '#00ff88'
+                        }}>
+                          {selectedAssembly.tNumber} M6<br/>
+                          S{cuttingResults.rpm} M3<br/>
+                          G43 H{selectedAssembly.tNumber.replace('T', '')}<br/>
+                          F{cuttingResults.feedRate}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ 
+                  textAlign: 'center', 
+                  padding: '40px',
+                  color: '#666'
+                }}>
+                  Select a tool assembly to calculate cutting parameters
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Wear Tracking */}
+          {rightPanelTab === 'wear' && selectedAssembly && (
+            <div>
+              <h3 style={{ color: '#00d4ff', marginBottom: '15px' }}>
+                Tool Wear Tracking
+              </h3>
+              
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ fontSize: '12px', color: '#888' }}>
+                  Current Wear Level: {selectedAssembly.wearLevel || 0}%
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={selectedAssembly.wearLevel || 0}
+                  onChange={(e) => updateWearLevel(selectedAssembly.id, parseInt(e.target.value))}
+                  style={{ width: '100%', marginTop: '10px' }}
+                />
+              </div>
+
+              <div style={{
+                padding: '15px',
+                background: '#1a1f2e',
+                borderRadius: '8px',
+                marginBottom: '15px'
+              }}>
+                <div style={{ fontSize: '12px', color: '#888', marginBottom: '10px' }}>
+                  Wear Indicators
+                </div>
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <input type="checkbox" />
+                    <span style={{ fontSize: '13px' }}>Excessive vibration</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <input type="checkbox" />
+                    <span style={{ fontSize: '13px' }}>Poor surface finish</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <input type="checkbox" />
+                    <span style={{ fontSize: '13px' }}>Increased cutting forces</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <input type="checkbox" />
+                    <span style={{ fontSize: '13px' }}>Visible tool damage</span>
+                  </label>
+                </div>
+              </div>
+
+              <button
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  background: selectedAssembly.wearLevel > 80 ? '#ff4444' : '#2a3f5f',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                {selectedAssembly.wearLevel > 80 ? 'Replace Tool' : 'Log Inspection'}
+              </button>
+            </div>
+          )}
+
+          {/* Notes */}
+          {rightPanelTab === 'notes' && selectedAssembly && (
+            <div>
+              <h3 style={{ color: '#00d4ff', marginBottom: '15px' }}>
+                Assembly Notes
+              </h3>
+              <textarea
+                value={selectedAssembly.notes || ''}
+                onChange={(e) => {
+                  const updated = assemblies.map(a => 
+                    a.id === selectedAssembly.id ? 
+                    { ...a, notes: e.target.value } : a
+                  );
+                  setAssemblies(updated);
+                  setSelectedAssembly({ ...selectedAssembly, notes: e.target.value });
+                }}
+                placeholder="Add notes about this tool assembly..."
+                style={{
+                  width: '100%',
+                  height: '200px',
+                  padding: '10px',
+                  background: '#1a1f2e',
+                  border: '1px solid #333',
+                  borderRadius: '6px',
+                  color: '#e0e0e0',
+                  resize: 'vertical'
+                }}
+              />
+            </div>
+          )}
+
+          {/* Compare Tools */}
+          {rightPanelTab === 'compare' && (
+            <div>
+              <h3 style={{ color: '#00d4ff', marginBottom: '15px' }}>
+                Compare Assemblies
+              </h3>
+              <p style={{ color: '#666', fontSize: '12px' }}>
+                Select 2+ assemblies to compare specifications
+              </p>
+              {/* Comparison table would go here */}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ToolManagerProEnhanced;

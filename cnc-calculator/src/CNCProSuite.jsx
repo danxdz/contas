@@ -8,7 +8,7 @@ import './CNCProSuite.css';
 import DualChannelDebugger from './components/DualChannelDebugger';
 import StepProcessor from './components/StepProcessor';
 import GCodeEditor from './components/GCodeEditor';
-import ToolManagerPro from './components/ToolManagerPro';
+import ToolManagerProEnhanced from './components/ToolManagerProEnhanced';
 import MachineControl from './components/MachineControl';
 import FeatureTree from './components/FeatureTree';
 import ToolOffsetTable from './components/ToolOffsetTable';
@@ -2277,7 +2277,7 @@ M30 ; End`
         break;
       case 'tools':
         content = (
-          <ToolManagerPro
+                      <ToolManagerProEnhanced
             activeAssemblies={toolAssemblies}
             onAssemblyCreate={(assembly) => {
               setToolAssemblies(prev => [...prev, assembly]);
@@ -2512,7 +2512,7 @@ M30 ; End`
           )}
           
           {renderPanel('tools',
-        <ToolManagerPro
+                    <ToolManagerProEnhanced
           activeAssemblies={toolAssemblies}
           onAssemblyCreate={(assembly) => {
             setToolAssemblies(prev => [...prev, assembly]);
