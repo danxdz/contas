@@ -1,0 +1,231 @@
+/* Modular CAM - Clean, Functional, No Nonsense */
+
+.modular-cam {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #1a1f2e;
+  color: #e0e0e0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* Header */
+.cam-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  padding: 0 16px;
+  background: #0a0e1a;
+  border-bottom: 1px solid #333;
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-title h1 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.version {
+  font-size: 11px;
+  color: #666;
+}
+
+/* Module Selector */
+.module-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.module-selector label {
+  font-size: 12px;
+  color: #888;
+}
+
+.module-selector button {
+  padding: 4px 12px;
+  background: #2a2f3e;
+  border: 1px solid #333;
+  color: #888;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.module-selector button:hover {
+  background: #333;
+  color: #fff;
+}
+
+.module-selector button.active {
+  background: #00d4ff;
+  border-color: #00d4ff;
+  color: #000;
+}
+
+.add-module {
+  background: transparent !important;
+  border: 1px dashed #666 !important;
+  color: #666 !important;
+}
+
+.add-module:hover {
+  border-color: #00d4ff !important;
+  color: #00d4ff !important;
+}
+
+/* Layout Controls */
+.layout-controls select {
+  padding: 4px 8px;
+  background: #2a2f3e;
+  border: 1px solid #333;
+  color: #e0e0e0;
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Workspace */
+.cam-workspace {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Panels */
+.panel-left,
+.panel-right {
+  width: 320px;
+  background: #151922;
+  border: 1px solid #333;
+  overflow: auto;
+}
+
+.panel-left {
+  border-right: 1px solid #333;
+}
+
+.panel-right {
+  border-left: 1px solid #333;
+}
+
+.panel-main {
+  flex: 1;
+  background: #0a0e1a;
+  overflow: auto;
+}
+
+.panel-bottom {
+  height: 200px;
+  background: #151922;
+  border-top: 1px solid #333;
+  overflow: auto;
+}
+
+/* Status Bar */
+.cam-status {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 24px;
+  padding: 0 16px;
+  background: #0a0e1a;
+  border-top: 1px solid #333;
+  font-size: 11px;
+  color: #666;
+}
+
+.cam-status .flex-end {
+  margin-left: auto;
+}
+
+/* Module Base Styles */
+.module {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.module-header {
+  padding: 12px;
+  background: #1a1f2e;
+  border-bottom: 1px solid #333;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.module-content {
+  flex: 1;
+  padding: 12px;
+  overflow: auto;
+}
+
+/* Common Elements */
+button {
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+input, textarea, select {
+  background: #2a2f3e;
+  border: 1px solid #333;
+  color: #e0e0e0;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-family: inherit;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: #00d4ff;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1f2e;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .panel-left,
+  .panel-right {
+    width: 280px;
+  }
+}
+
+@media (max-width: 768px) {
+  .cam-workspace {
+    flex-direction: column;
+  }
+  
+  .panel-left,
+  .panel-right {
+    width: 100%;
+    height: 200px;
+  }
+  
+  .panel-main {
+    height: auto;
+  }
+}
