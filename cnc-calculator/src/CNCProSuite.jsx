@@ -11,7 +11,6 @@ import GCodeEditor from './components/GCodeEditor';
 import ToolManagerPro from './components/ToolManagerPro';
 import MachineControl from './components/MachineControl';
 import FeatureTree from './components/FeatureTree';
-import ToolHolderSystem from './components/ToolHolderSystem';
 import ToolOffsetTable from './components/ToolOffsetTable';
 
 // Import all calculator modules
@@ -693,10 +692,10 @@ M30 ; End`
           metalness: 0.9,
           roughness: 0.1
         });
-        const holder = new THREE.Mesh(holderGeometry, holderMaterial);
-        holder.rotation.x = Math.PI / 2;
-        holder.position.z = 20;
-        toolGroup.add(holder);
+        const holderMesh = new THREE.Mesh(holderGeometry, holderMaterial);
+        holderMesh.rotation.x = Math.PI / 2;
+        holderMesh.position.z = 20;
+        toolGroup.add(holderMesh);
         
         const toolGeometry = new THREE.CylinderGeometry(5, 5, 30, 32);
         const toolMaterial = new THREE.MeshPhongMaterial({ 
@@ -704,10 +703,10 @@ M30 ; End`
           emissive: 0x00ff00,
           emissiveIntensity: 0.3
         });
-        const tool = new THREE.Mesh(toolGeometry, toolMaterial);
-        tool.rotation.x = Math.PI / 2;
-        tool.position.z = -5;
-        toolGroup.add(tool);
+        const toolMesh = new THREE.Mesh(toolGeometry, toolMaterial);
+        toolMesh.rotation.x = Math.PI / 2;
+        toolMesh.position.z = -5;
+        toolGroup.add(toolMesh);
         return;
       }
       
@@ -743,10 +742,10 @@ M30 ; End`
         metalness: 0.95,
         roughness: 0.05
       });
-      const holder = new THREE.Mesh(holderGeometry, holderMaterial);
-      holder.rotation.x = Math.PI / 2;
-      holder.position.z = holderSize / 2;
-      toolGroup.add(holder);
+      const holderMesh = new THREE.Mesh(holderGeometry, holderMaterial);
+      holderMesh.rotation.x = Math.PI / 2;
+      holderMesh.position.z = holderSize / 2;
+      toolGroup.add(holderMesh);
       
       // Collet/Chuck
       const colletRadius = (toolData.diameter / 2) + 2;
@@ -2446,18 +2445,7 @@ M30 ; End`
         />
       )}
       
-      {renderPanel('toolHolders',
-        <ToolHolderSystem 
-          onHolderSelect={(assembly) => {
-            console.log('Holder selected:', assembly);
-            // Update tool assembly in simulation
-            setSimulation(prev => ({
-              ...prev,
-              toolAssembly: assembly
-            }));
-          }}
-        />
-      )}
+
       
       {renderPanel('toolOffsetTable',
         <ToolOffsetTable 
