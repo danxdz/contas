@@ -1,17 +1,17 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 
-// CNC Pro Suite with FreeCAD-like Workbench System
-import CNCProSuiteModular from './CNCProSuiteModular'
-import './CNCProSuiteModular.css'
+// Original CNCProSuite - Complete version
+import CNCProSuite from './CNCProSuite'
+import './CNCProSuite.css'
 
 // Other versions available:
-// import CNCProSuite from './CNCProSuite'       // Original monolithic version
+// import CNCProSuiteModular from './CNCProSuiteModular'  // FreeCAD-like workbench version
 // import ModularCAM from './ModularCAM'        // Simple modular version
 // import AIMachiningSystem from './AIMachiningSystem'  // AI version
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <CNCProSuiteModular />
+    <CNCProSuite />
   </React.StrictMode>,
 )
