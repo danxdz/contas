@@ -35,6 +35,7 @@ const CNCProSuite = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeMobilePanel, setActiveMobilePanel] = useState(null);
+  const [mobileBottomSheet, setMobileBottomSheet] = useState(false);
   const materialRemovalRef = useRef(null);
   const [showMaterialRemoval, setShowMaterialRemoval] = useState(true);
   const [collisionDetection, setCollisionDetection] = useState(true);
@@ -1185,6 +1186,29 @@ M30 ; End`
         endMarker.position.set(lastPos.x + offsetX, lastPos.y + offsetY, lastPos.z + offsetZ);
         toolpathGroup.add(endMarker);
         
+        // Add current position marker (will be updated during simulation)
+        if (!toolpathMarkerRef.current) {
+          const markerGeometry = new THREE.SphereGeometry(4, 16, 16);
+          const markerMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x00ffff,  // Cyan for current position
+            emissive: 0x00ffff,
+            emissiveIntensity: 0.5,
+            transparent: true,
+            opacity: 0.8
+          });
+          const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+          toolpathMarkerRef.current = marker;
+          scene.add(marker);
+        }
+        
+        // Position marker at start
+        toolpathMarkerRef.current.position.set(
+          positions[0].x + offsetX, 
+          positions[0].y + offsetY, 
+          positions[0].z + offsetZ
+        );
+        toolpathMarkerRef.current.visible = true;
+        
         scene.add(toolpathGroup);
         toolpathRef.current = toolpathGroup;
       }
@@ -1332,6 +1356,11 @@ M30 ; End`
       
       toolRef.current.position.set(toolPosition.x, toolPosition.y, toolPosition.z);
       
+      // Update toolpath marker to follow current position
+      if (toolpathMarkerRef.current) {
+        toolpathMarkerRef.current.position.set(toolPosition.x, toolPosition.y, toolPosition.z);
+      }
+      
       // Material removal simulation
       if (materialRemovalRef.current && showMaterialRemoval && simulation.isPlaying) {
         const toolDiameter = simulation.toolAssembly?.components?.tool?.diameter || 10;
@@ -1435,6 +1464,15 @@ M30 ; End`
           currentY + activeOffset.y,
           toolControlZ
         );
+        
+        // Update toolpath marker during tweening
+        if (toolpathMarkerRef.current) {
+          toolpathMarkerRef.current.position.set(
+            currentX + activeOffset.x,
+            currentY + activeOffset.y,
+            toolControlZ
+          );
+        }
       }
       
       animationId = requestAnimationFrame(animate);
@@ -2379,50 +2417,172 @@ M30 ; End`
     }
   };
 
-  // Mobile Toolbar Component
+  // Mobile Toolbar Component - Bottom Navigation
   const MobileToolbar = () => (
-    <div className="mobile-toolbar">
+    <div style={{
+      position: 'fixed',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      background: 'linear-gradient(to top, #0a0e1a, rgba(10,14,26,0.95))',
+      borderTop: '1px solid #333',
+      display: 'flex',
+      justifyContent: 'space-around',
+      padding: '8px 0',
+      zIndex: 1000,
+      backdropFilter: 'blur(10px)'
+    }}>
       <button 
         onClick={() => setMobileMenuOpen(true)}
-        className={mobileMenuOpen ? 'active' : ''}
+        style={{
+          background: 'none',
+          border: 'none',
+          color: mobileMenuOpen ? '#00d4ff' : '#888',
+          padding: '8px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          fontSize: '20px',
+          gap: '4px'
+        }}
       >
-        ☰<span>Menu</span>
+        <span>☰</span>
+        <span style={{ fontSize: '10px' }}>Menu</span>
       </button>
       <button 
         onClick={() => setActiveMobilePanel(activeMobilePanel === 'gcode' ? null : 'gcode')}
-        className={activeMobilePanel === 'gcode' ? 'active' : ''}
+        style={{
+          background: 'none',
+          border: 'none',
+          color: activeMobilePanel === 'gcode' ? '#00d4ff' : '#888',
+          padding: '8px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          fontSize: '20px',
+          gap: '4px'
+        }}
       >
-        📝<span>Code</span>
+        <span>📝</span>
+        <span style={{ fontSize: '10px' }}>Code</span>
       </button>
       <button 
-        onClick={() => setSimulation(prev => ({ ...prev, isPlaying: !prev.isPlaying }))}
-        className={simulation.isPlaying ? 'active' : ''}
+        onClick={playPauseSimulation}
+        style={{
+          background: simulation.isPlaying ? '#00d4ff22' : 'none',
+          border: simulation.isPlaying ? '2px solid #00d4ff' : 'none',
+          borderRadius: '50%',
+          color: simulation.isPlaying ? '#00d4ff' : '#888',
+          padding: '12px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          fontSize: '24px',
+          gap: '4px',
+          transform: 'translateY(-10px)'
+        }}
       >
-        {simulation.isPlaying ? '⏸️' : '▶️'}<span>Play</span>
+        <span>{simulation.isPlaying ? '⏸️' : '▶️'}</span>
       </button>
       <button 
         onClick={() => setActiveMobilePanel(activeMobilePanel === 'tools' ? null : 'tools')}
-        className={activeMobilePanel === 'tools' ? 'active' : ''}
+        style={{
+          background: 'none',
+          border: 'none',
+          color: activeMobilePanel === 'tools' ? '#00d4ff' : '#888',
+          padding: '8px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          fontSize: '20px',
+          gap: '4px'
+        }}
       >
-        🔧<span>Tools</span>
+        <span>🔧</span>
+        <span style={{ fontSize: '10px' }}>Tools</span>
       </button>
       <button 
-        onClick={() => setActiveMobilePanel(activeMobilePanel === 'setup' ? null : 'setup')}
-        className={activeMobilePanel === 'setup' ? 'active' : ''}
+        onClick={() => setMobileBottomSheet(!mobileBottomSheet)}
+        style={{
+          background: 'none',
+          border: 'none',
+          color: mobileBottomSheet ? '#00d4ff' : '#888',
+          padding: '8px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          fontSize: '20px',
+          gap: '4px'
+        }}
       >
-        ⚙️<span>Setup</span>
+        <span>⬆️</span>
+        <span style={{ fontSize: '10px' }}>More</span>
       </button>
     </div>
   );
   
-  // Mobile Menu Component
+  // Mobile Menu Component - Slide-out Drawer
   const MobileMenu = () => (
-    <div className={`mobile-menu ${mobileMenuOpen ? 'active' : ''}`}>
-      <div className="mobile-menu-header">
-        <h3>CNC Pro Suite</h3>
-        <button onClick={() => setMobileMenuOpen(false)}>✖</button>
-      </div>
-      <div className="mobile-menu-items">
+    <>
+      {/* Backdrop */}
+      {mobileMenuOpen && (
+        <div 
+          onClick={() => setMobileMenuOpen(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 1001,
+            opacity: mobileMenuOpen ? 1 : 0,
+            transition: 'opacity 0.3s ease'
+          }}
+        />
+      )}
+      
+      {/* Menu Drawer */}
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        bottom: 0,
+        width: '280px',
+        background: 'linear-gradient(to right, #1a1f2e, #0a0e1a)',
+        boxShadow: '4px 0 20px rgba(0,0,0,0.5)',
+        transform: mobileMenuOpen ? 'translateX(0)' : 'translateX(-100%)',
+        transition: 'transform 0.3s ease',
+        zIndex: 1002,
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        <div style={{
+          padding: '20px',
+          borderBottom: '1px solid #333',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <h3 style={{ color: '#00d4ff', margin: 0 }}>CNC Pro Suite</h3>
+          <button 
+            onClick={() => setMobileMenuOpen(false)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#888',
+              fontSize: '24px',
+              cursor: 'pointer'
+            }}
+          >
+            ✖
+          </button>
+        </div>
+        <div style={{ 
+          flex: 1, 
+          overflowY: 'auto',
+          padding: '10px'
+        }}>
         <div className="mobile-menu-item" onClick={() => { togglePanel('feedsSpeeds'); setMobileMenuOpen(false); }}>
           Feeds & Speeds Optimizer
         </div>
@@ -2457,13 +2617,115 @@ M30 ; End`
     </div>
   );
   
-  // Mobile Panel Component
+  // Mobile Panel Component - Modern Bottom Sheet
   const MobilePanel = () => {
-    if (!activeMobilePanel) return null;
+    const isOpen = activeMobilePanel || mobileBottomSheet;
+    
+    if (!isOpen) return null;
     
     let content = null;
-    switch(activeMobilePanel) {
-      case 'gcode':
+    if (mobileBottomSheet && !activeMobilePanel) {
+      // Show quick access grid when bottom sheet is open
+      content = (
+        <div style={{ padding: '20px' }}>
+          <h3 style={{ color: '#00d4ff', marginBottom: '20px' }}>Quick Access</h3>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(2, 1fr)', 
+            gap: '15px' 
+          }}>
+            <button 
+              onClick={() => { setActiveMobilePanel('gcode'); setMobileBottomSheet(false); }}
+              style={{
+                padding: '20px',
+                background: 'linear-gradient(135deg, #1a1f2e, #0f1420)',
+                border: '1px solid #333',
+                borderRadius: '10px',
+                color: '#00d4ff',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '10px',
+                fontSize: '14px'
+              }}
+            >
+              <span style={{ fontSize: '30px' }}>📝</span>
+              G-Code Editor
+            </button>
+            <button 
+              onClick={() => { setActiveMobilePanel('tools'); setMobileBottomSheet(false); }}
+              style={{
+                padding: '20px',
+                background: 'linear-gradient(135deg, #1a1f2e, #0f1420)',
+                border: '1px solid #333',
+                borderRadius: '10px',
+                color: '#00d4ff',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '10px',
+                fontSize: '14px'
+              }}
+            >
+              <span style={{ fontSize: '30px' }}>🔧</span>
+              Tool Manager
+            </button>
+            <button 
+              onClick={() => { setPanels(prev => ({ ...prev, stock: { ...prev.stock, visible: true }})); setMobileBottomSheet(false); }}
+              style={{
+                padding: '20px',
+                background: 'linear-gradient(135deg, #1a1f2e, #0f1420)',
+                border: '1px solid #333',
+                borderRadius: '10px',
+                color: '#00d4ff',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '10px',
+                fontSize: '14px'
+              }}
+            >
+              <span style={{ fontSize: '30px' }}>📦</span>
+              Stock Setup
+            </button>
+            <button 
+              onClick={() => { setCameraView('iso'); setMobileBottomSheet(false); }}
+              style={{
+                padding: '20px',
+                background: 'linear-gradient(135deg, #1a1f2e, #0f1420)',
+                border: '1px solid #333',
+                borderRadius: '10px',
+                color: '#00d4ff',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '10px',
+                fontSize: '14px'
+              }}
+            >
+              <span style={{ fontSize: '30px' }}>📷</span>
+              Camera Views
+            </button>
+          </div>
+          <div style={{ marginTop: '20px' }}>
+            <h4 style={{ color: '#888', marginBottom: '10px' }}>Simulation Status</h4>
+            <div style={{ 
+              padding: '15px', 
+              background: '#0f1420', 
+              borderRadius: '8px',
+              fontSize: '12px',
+              color: '#ccc'
+            }}>
+              <div>Line: {simulation.currentLine}/{project.gcode.channel1.split('\n').filter(l => l.trim() && !l.trim().startsWith(';')).length}</div>
+              <div>Position: X{simulation.position.x.toFixed(2)} Y{simulation.position.y.toFixed(2)} Z{simulation.position.z.toFixed(2)}</div>
+              <div>Feed: {simulation.feedRate} mm/min | Spindle: {simulation.spindleSpeed} RPM</div>
+            </div>
+          </div>
+        </div>
+      );
+    } else {
+      switch(activeMobilePanel) {
+        case 'gcode':
         content = (
           <GCodeSyntaxHighlighter 
             code={project.gcode.channel1}
@@ -2606,16 +2868,84 @@ M30 ; End`
       default:
         content = null;
     }
+    }
     
     return (
-      <div className={`mobile-panel ${activeMobilePanel ? 'active' : ''}`}>
-        <div className="panel-header">
-          <span>{activeMobilePanel === 'gcode' ? 'G-Code Editor' : 
-                activeMobilePanel === 'tools' ? 'Tool Manager' : 
-                activeMobilePanel === 'setup' ? 'Setup Configuration' : ''}</span>
-          <button onClick={() => setActiveMobilePanel(null)}>✖</button>
+      <div style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        background: 'linear-gradient(to top, #0a0e1a, #1a1f2e)',
+        borderTopLeftRadius: '20px',
+        borderTopRightRadius: '20px',
+        boxShadow: '0 -4px 20px rgba(0,0,0,0.5)',
+        transform: isOpen ? 'translateY(0)' : 'translateY(100%)',
+        transition: 'transform 0.3s ease',
+        zIndex: 999,
+        maxHeight: '80vh',
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        {/* Handle */}
+        <div 
+          onClick={() => {
+            if (mobileBottomSheet) setMobileBottomSheet(false);
+            else if (activeMobilePanel) setActiveMobilePanel(null);
+          }}
+          style={{
+            padding: '12px',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            borderBottom: '1px solid #333'
+          }}
+        >
+          <div style={{
+            width: '40px',
+            height: '4px',
+            background: '#555',
+            borderRadius: '2px',
+            marginBottom: '8px'
+          }} />
+          {activeMobilePanel && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between',
+              width: '100%',
+              paddingX: '20px'
+            }}>
+              <span style={{ color: '#00d4ff', fontWeight: 'bold' }}>
+                {activeMobilePanel === 'gcode' ? '📝 G-Code Editor' : 
+                 activeMobilePanel === 'tools' ? '🔧 Tool Manager' : 
+                 activeMobilePanel === 'setup' ? '⚙️ Setup Configuration' : ''}
+              </span>
+              <button 
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  setActiveMobilePanel(null); 
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#888',
+                  fontSize: '20px',
+                  cursor: 'pointer'
+                }}
+              >
+                ✖
+              </button>
+            </div>
+          )}
         </div>
-        <div className="panel-content">
+        
+        {/* Content */}
+        <div style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: activeMobilePanel ? '0' : '0'
+        }}>
           {content}
         </div>
       </div>
