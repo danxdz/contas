@@ -521,6 +521,7 @@ M30 ; End`
   const toolpathRef = useRef(null);
   const updateToolpathRef = useRef(null);
   const originMarkerRef = useRef(null);
+  const toolpathMarkerRef = useRef(null);  // Marker showing current position on toolpath
 
   // Enhanced G-code parser with tool compensation
   const parseGCodePositions = (gcode) => {
@@ -2008,23 +2009,37 @@ M30 ; End`
   const loadGCodeFile = (file) => {
     const reader = new FileReader();
     reader.onload = (e) => {
+      const newGCode = e.target.result;
+      
+      // Update project with new G-code
       setProject(prev => ({
         ...prev,
-        gcode: { ...prev.gcode, channel1: e.target.result }
+        gcode: { ...prev.gcode, channel1: newGCode }
       }));
-      // Reset simulation when loading new G-code
+      
+      // Parse the new G-code to get starting position
+      const positions = parseGCodePositions(newGCode);
+      const startPos = positions.length > 0 ? positions[0] : { x: 0, y: 0, z: 50 };
+      
+      // Reset simulation with proper starting position
       setSimulation(prev => ({
         ...prev,
         currentLine: 0,
         isPlaying: false,
-        position: { x: 0, y: 0, z: 0, a: 0, b: 0, c: 0 }
-      }));
-      // Force toolpath update after loading
-      setTimeout(() => {
-        if (updateToolpathRef.current) {
-          updateToolpathRef.current(setupConfig.workOffsets);
+        position: { 
+          x: startPos.x, 
+          y: startPos.y, 
+          z: startPos.z, 
+          a: 0, 
+          b: 0, 
+          c: 0 
         }
-      }, 100);
+      }));
+      
+      // Force immediate toolpath update
+      if (updateToolpathRef.current) {
+        updateToolpathRef.current(setupConfig.workOffsets);
+      }
     };
     reader.readAsText(file);
   };
