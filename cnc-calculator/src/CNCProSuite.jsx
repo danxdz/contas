@@ -306,7 +306,11 @@ const CNCProSuite = () => {
     position: { x: 0, y: 0, z: 0, a: 0, b: 0, c: 0 },
     feedRate: 500,
     spindleSpeed: 12000,
-    tool: 1
+    tool: 1,
+    toolLengthCompActive: false,  // G43 active
+    activeHCode: 0,  // H code (tool length register)
+    machinePosition: { x: 0, y: 0, z: 0 },  // Machine coordinates
+    workPosition: { x: 0, y: 0, z: 0 }  // Work coordinates
   });
   
   const [toolDatabase, setToolDatabase] = useState([
