@@ -829,12 +829,17 @@ M30 ; End`
     };
   }, []); // Only initialize once
   
-  // Update toolpath when G-code changes
+  // Update toolpath when G-code or work offset changes
   useEffect(() => {
     if (updateToolpathRef.current && project.gcode.channel1) {
       updateToolpathRef.current();
     }
-  }, [project.gcode.channel1]);
+    // Also update origin marker position
+    if (originMarkerRef.current) {
+      const activeOffset = setupConfig.workOffsets[setupConfig.workOffsets.activeOffset];
+      originMarkerRef.current.position.set(activeOffset.x, activeOffset.y, activeOffset.z);
+    }
+  }, [project.gcode.channel1, setupConfig.workOffsets.activeOffset, setupConfig.workOffsets.G54, setupConfig.workOffsets.G55, setupConfig.workOffsets.G56, setupConfig.workOffsets.G57, setupConfig.workOffsets.G58, setupConfig.workOffsets.G59]);
   
   // Update tool position when simulation changes
   useEffect(() => {
@@ -848,16 +853,21 @@ M30 ; End`
     
     // Always update position to the last known coordinates (even on comment lines)
     if (currentPos) {
-      // Position tool at actual cutting position (add small offset for tool length)
+      // Position tool at actual cutting position with work offset
+      const activeOffset = setupConfig.workOffsets[setupConfig.workOffsets.activeOffset];
       const toolLength = 30; // Tool sticks down from holder
-      toolRef.current.position.set(currentPos.x, currentPos.y, currentPos.z + toolLength);
+      toolRef.current.position.set(
+        currentPos.x + activeOffset.x, 
+        currentPos.y + activeOffset.y, 
+        currentPos.z + activeOffset.z + toolLength
+      );
       
       // Update spindle speed from G-code
       if (currentPos.s !== undefined && currentPos.s !== simulation.spindleSpeed) {
         setSimulation(prev => ({ ...prev, spindleSpeed: currentPos.s }));
       }
     }
-  }, [simulation.currentLine, project.gcode.channel1]);
+  }, [simulation.currentLine, project.gcode.channel1, setupConfig.workOffsets]);
   
   // Simple playback timer
   useEffect(() => {
@@ -2632,10 +2642,6 @@ M30 ; End`
                               [offset]: { ...prev.workOffsets[offset], x: value }
                             }
                           }));
-                          // Update origin marker in 3D scene
-                          if (originMarkerRef.current && offset === setupConfig.workOffsets.activeOffset) {
-                            originMarkerRef.current.position.x = value;
-                          }
                         }}
                         style={{ width: '100%', padding: '5px' }}
                       />
@@ -2654,10 +2660,6 @@ M30 ; End`
                               [offset]: { ...prev.workOffsets[offset], y: value }
                             }
                           }));
-                          // Update origin marker in 3D scene
-                          if (originMarkerRef.current && offset === setupConfig.workOffsets.activeOffset) {
-                            originMarkerRef.current.position.y = value;
-                          }
                         }}
                         style={{ width: '100%', padding: '5px' }}
                       />
@@ -2676,10 +2678,6 @@ M30 ; End`
                               [offset]: { ...prev.workOffsets[offset], z: value }
                             }
                           }));
-                          // Update origin marker in 3D scene
-                          if (originMarkerRef.current && offset === setupConfig.workOffsets.activeOffset) {
-                            originMarkerRef.current.position.z = value;
-                          }
                         }}
                         style={{ width: '100%', padding: '5px' }}
                       />
@@ -2688,30 +2686,6 @@ M30 ; End`
                   
                   {offset === setupConfig.workOffsets.activeOffset && (
                     <div style={{ marginTop: '10px' }}>
-                      <button 
-                        onClick={() => {
-                          // Apply this offset to the current simulation
-                          if (originMarkerRef.current) {
-                            const currentOffset = setupConfig.workOffsets[offset];
-                            originMarkerRef.current.position.set(currentOffset.x, currentOffset.y, currentOffset.z);
-                          }
-                          // Update toolpath with new offset
-                          if (updateToolpathRef.current) {
-                            updateToolpathRef.current();
-                          }
-                        }}
-                        style={{
-                          padding: '8px 15px',
-                          background: '#00d4ff',
-                          color: '#000',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          marginRight: '10px'
-                        }}
-                      >
-                        Apply to Scene
-                      </button>
                       <button 
                         onClick={() => {
                           // Zero current axis at machine position
@@ -2731,15 +2705,18 @@ M30 ; End`
                         }}
                         style={{
                           padding: '8px 15px',
-                          background: '#333',
-                          color: '#fff',
-                          border: '1px solid #666',
+                          background: '#00d4ff',
+                          color: '#000',
+                          border: 'none',
                           borderRadius: '4px',
                           cursor: 'pointer'
                         }}
                       >
                         Set from Current Position
                       </button>
+                      <span style={{ marginLeft: '10px', fontSize: '12px', color: '#888' }}>
+                        (Changes apply automatically to 3D view)
+                      </span>
                     </div>
                   )}
                 </div>
