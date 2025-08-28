@@ -412,8 +412,8 @@ S12000 M03 ; Spindle ON, 12000 RPM
 M08 ; Coolant ON
 
 ; Rapid to start position
-G00 X-40 Y-25 ; Move to pocket corner
-G00 Z5 ; Safe height
+G0 X-40 Y-25 ; Move to pocket corner
+G0 Z5 ; Safe height
 
 ; Pocket roughing - Layer 1 (Z-5)
 G01 Z-5 F300 ; Plunge
@@ -430,8 +430,8 @@ G01 Y25 ; Final pass
 G01 X-40 ; Return
 
 ; Pocket roughing - Layer 2 (Z-10)
-G00 Z1 ; Lift
-G00 X-35 Y-20 ; Reposition
+G0 Z1 ; Lift
+G0 X-35 Y-20 ; Reposition
 G01 Z-10 F300 ; Plunge deeper
 G01 X35 F800 ; Cut
 G01 Y-10 ; Step
@@ -444,8 +444,8 @@ G01 Y20 ; Final
 G01 X35 ; Cut
 
 ; Finishing pass
-G00 Z1 ; Lift
-G00 X-40 Y-25 ; Corner
+G0 Z1 ; Lift
+G0 X-40 Y-25 ; Corner
 G01 Z-10 F200 ; Plunge
 G01 X40 Y-25 F600 ; Bottom edge
 G01 X40 Y25 ; Right edge
@@ -453,8 +453,8 @@ G01 X-40 Y25 ; Top edge
 G01 X-40 Y-25 ; Left edge
 
 ; Drilling cycle for corner holes
-G00 Z5 ; Safe height
-G00 X-50 Y-30 ; Hole 1
+G0 Z5 ; Safe height
+G0 X-50 Y-30 ; Hole 1
 G81 Z-25 R2 F150 ; Drill cycle
 X50 ; Hole 2
 Y30 ; Hole 3
@@ -462,7 +462,7 @@ X-50 ; Hole 4
 G80 ; Cancel cycle
 
 ; Program end
-G00 Z100 ; Retract
+G0 Z100 ; Retract
 M09 ; Coolant OFF
 M05 ; Spindle OFF
 G28 G91 Z0 ; Home Z
@@ -476,7 +476,7 @@ G21 G90 G94
 G55 ; Second work offset
 T11 M06
 S8000 M03
-G00 X0 Y0 Z5
+G0 X0 Y0 Z5
 
 ; Waiting for main spindle
 M00 ; Optional stop
@@ -487,7 +487,7 @@ G01 X20 F500
 G01 Y20
 G01 X-20
 G01 Y-20
-G00 Z5
+G0 Z5
 
 M30 ; End`
     },
@@ -551,8 +551,8 @@ M30 ; End`
       if (h) current.h = parseInt(h[1]);
       if (d) current.d = parseInt(d[1]);
       
-      // Check for rapid move
-      const isRapid = /G0?0\b/i.test(line);
+      // Check for rapid move (G0 or G00)
+      const isRapid = /G0+\b/i.test(line);
       
       positions.push({ ...current, rapid: isRapid, comment: false, line: trimmed });
     });
@@ -623,7 +623,7 @@ M30 ; End`
     // Example Workpiece - Aluminum block
     const workpieceGroup = new THREE.Group();
     
-    // Main stock
+    // Main stock (top surface at Z=0, extends down to Z=-50)
     const stockGeometry = new THREE.BoxGeometry(150, 100, 50);
     const stockMaterial = new THREE.MeshStandardMaterial({ 
       color: 0x888888,
@@ -631,7 +631,7 @@ M30 ; End`
       roughness: 0.3
     });
     const stock = new THREE.Mesh(stockGeometry, stockMaterial);
-    stock.position.z = 25;
+    stock.position.z = -25; // Center at -25, so top is at 0, bottom at -50
     stock.castShadow = true;
     stock.receiveShadow = true;
     workpieceGroup.add(stock);
