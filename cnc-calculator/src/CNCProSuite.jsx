@@ -310,12 +310,12 @@ const CNCProSuite = () => {
   });
   
   const [toolDatabase, setToolDatabase] = useState([
-    { id: 1, tNumber: 'T1', name: 'End Mill 10mm', diameter: 10, flutes: 4, type: 'endmill', material: 'Carbide', coating: 'TiAlN' },
-    { id: 2, tNumber: 'T2', name: 'End Mill 6mm', diameter: 6, flutes: 3, type: 'endmill', material: 'Carbide', coating: 'TiN' },
-    { id: 3, tNumber: 'T3', name: 'Ball End 8mm', diameter: 8, flutes: 2, type: 'ballend', material: 'HSS', coating: 'None' },
-    { id: 4, tNumber: 'T4', name: 'Drill 5mm', diameter: 5, flutes: 2, type: 'drill', material: 'Carbide', coating: 'TiAlN' },
-    { id: 5, tNumber: 'T5', name: 'Face Mill 50mm', diameter: 50, flutes: 6, type: 'facemill', material: 'Carbide', coating: 'TiAlN' },
-    { id: 6, tNumber: 'T6', name: 'Chamfer Mill 90°', diameter: 12, flutes: 4, type: 'chamfer', material: 'Carbide', coating: 'TiN' }
+    { id: 1, tNumber: 'T1', name: 'End Mill 10mm', diameter: 10, flutes: 4, type: 'endmill', material: 'Carbide', coating: 'TiAlN', lengthOffset: 75.5, wearOffset: 0 },
+    { id: 2, tNumber: 'T2', name: 'End Mill 6mm', diameter: 6, flutes: 3, type: 'endmill', material: 'Carbide', coating: 'TiN', lengthOffset: 65.2, wearOffset: 0 },
+    { id: 3, tNumber: 'T3', name: 'Ball End 8mm', diameter: 8, flutes: 2, type: 'ballend', material: 'HSS', coating: 'None', lengthOffset: 70.0, wearOffset: 0 },
+    { id: 4, tNumber: 'T4', name: 'Drill 5mm', diameter: 5, flutes: 2, type: 'drill', material: 'Carbide', coating: 'TiAlN', lengthOffset: 85.3, wearOffset: 0 },
+    { id: 5, tNumber: 'T5', name: 'Face Mill 50mm', diameter: 50, flutes: 6, type: 'facemill', material: 'Carbide', coating: 'TiAlN', lengthOffset: 50.0, wearOffset: 0 },
+    { id: 6, tNumber: 'T6', name: 'Chamfer Mill 90°', diameter: 12, flutes: 4, type: 'chamfer', material: 'Carbide', coating: 'TiN', lengthOffset: 68.7, wearOffset: 0 }
   ]);
 
   const [project, setProject] = useState({
