@@ -2,26 +2,17 @@ import React, { useState, useRef, useEffect } from 'react';
 
 const GCodeEditor = ({ gcode, onChange, currentLine }) => {
   const [activeChannel, setActiveChannel] = useState(1);
+  const [scrollTop, setScrollTop] = useState(0);
   const textareaRef = useRef(null);
-  const lineNumbersRef = useRef(null);
-  const codeDisplayRef = useRef(null);
+  const containerRef = useRef(null);
   
-  // Synchronize scrolling and highlighting
+  // Auto-scroll to current line
   useEffect(() => {
-    if (currentLine >= 0) {
+    if (textareaRef.current && currentLine >= 0) {
       const lineHeight = 18;
       const scrollTo = currentLine * lineHeight - 100;
-      
-      // Scroll all three elements together
-      if (textareaRef.current) {
-        textareaRef.current.scrollTop = scrollTo;
-      }
-      if (lineNumbersRef.current) {
-        lineNumbersRef.current.scrollTop = scrollTo;
-      }
-      if (codeDisplayRef.current) {
-        codeDisplayRef.current.scrollTop = scrollTo;
-      }
+      textareaRef.current.scrollTop = scrollTo;
+      setScrollTop(scrollTo);
     }
   }, [currentLine, activeChannel]);
   
@@ -100,27 +91,88 @@ const GCodeEditor = ({ gcode, onChange, currentLine }) => {
         </button>
       </div>
       
-      <div style={{ 
-        position: 'relative', 
-        flex: 1, 
-        display: 'flex',
-        backgroundColor: '#0a0e1a',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        borderRadius: '4px',
-        overflow: 'hidden'
-      }}>
-        {/* Line numbers column - synchronized scroll */}
-        <div 
+      <div 
+        ref={containerRef}
+        style={{ 
+          position: 'relative', 
+          flex: 1, 
+          display: 'flex',
+          backgroundColor: '#0a0e1a',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '4px',
+          overflow: 'hidden'
+        }}
+      >
+        {/* Simple line highlight bar that moves behind the text */}
+        {currentLine >= 0 && (
+          <div
+            style={{
+              position: 'absolute',
+              top: `${currentLine * 18 + 10}px`,
+              left: 0,
+              right: 0,
+              height: '18px',
+              backgroundColor: 'rgba(0, 255, 51, 0.15)',
+              borderLeft: '3px solid #00ff33',
+              zIndex: 0,
+              transition: 'top 0.2s ease',
+              transform: `translateY(-${scrollTop}px)`
+            }}
+          />
+        )}
+        
+        {/* Single textarea with line numbers as background */}
+        <textarea
+          ref={textareaRef}
+          className="gcode-textarea"
+          value={gcode[`channel${activeChannel}`] || ''}
+          onChange={handleChange}
+          spellCheck={false}
           style={{
+            width: '100%',
+            height: '100%',
+            padding: '10px 10px 10px 60px',
+            fontSize: '14px',
+            fontFamily: 'Consolas, Courier New, monospace',
+            lineHeight: '18px',
+            backgroundColor: 'transparent',
+            color: '#ffffff',
+            caretColor: '#00ff33',
+            border: 'none',
+            outline: 'none',
+            resize: 'none',
+            overflow: 'auto',
+            zIndex: 1,
+            backgroundImage: `repeating-linear-gradient(
+              transparent,
+              transparent 17px,
+              rgba(255, 255, 255, 0.02) 17px,
+              rgba(255, 255, 255, 0.02) 18px
+            )`,
+            backgroundAttachment: 'local'
+          }}
+          onScroll={(e) => {
+            setScrollTop(e.target.scrollTop);
+          }}
+          placeholder="Enter G-code here..."
+        />
+        
+        {/* Line numbers overlay - non-interactive */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
             width: '50px',
+            height: '100%',
             backgroundColor: '#050810',
             borderRight: '1px solid rgba(255, 255, 255, 0.1)',
-            overflow: 'hidden',
-            position: 'relative'
+            pointerEvents: 'none',
+            zIndex: 2,
+            overflow: 'hidden'
           }}
         >
           <div
-            ref={lineNumbersRef}
             style={{
               padding: '10px 10px 10px 0',
               fontSize: '14px',
@@ -128,7 +180,7 @@ const GCodeEditor = ({ gcode, onChange, currentLine }) => {
               lineHeight: '18px',
               textAlign: 'right',
               color: '#4a5568',
-              userSelect: 'none'
+              transform: `translateY(-${scrollTop}px)`
             }}
           >
             {gcode[`channel${activeChannel}`]?.split('\n').map((_, index) => (
@@ -137,104 +189,13 @@ const GCodeEditor = ({ gcode, onChange, currentLine }) => {
                 style={{
                   height: '18px',
                   color: index === currentLine ? '#00ff33' : '#4a5568',
-                  fontWeight: index === currentLine ? 'bold' : 'normal',
-                  transition: 'color 0.2s ease'
+                  fontWeight: index === currentLine ? 'bold' : 'normal'
                 }}
               >
                 {index + 1}
               </div>
             ))}
           </div>
-        </div>
-        
-        {/* Main editor area */}
-        <div 
-          style={{
-            flex: 1,
-            position: 'relative',
-            overflow: 'hidden'
-          }}
-        >
-          {/* Code display - visible, shows highlighting */}
-          <div
-            ref={codeDisplayRef}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              padding: '10px',
-              fontSize: '14px',
-              fontFamily: 'Consolas, Courier New, monospace',
-              lineHeight: '18px',
-              overflow: 'auto',
-              pointerEvents: 'none', // Let textarea handle interactions
-              zIndex: 1
-            }}
-            onScroll={(e) => {
-              // Sync scroll with line numbers
-              if (lineNumbersRef.current) {
-                lineNumbersRef.current.scrollTop = e.target.scrollTop;
-              }
-            }}
-          >
-            {gcode[`channel${activeChannel}`]?.split('\n').map((line, index) => (
-              <div 
-                key={index}
-                style={{
-                  height: '18px',
-                  color: index === currentLine ? '#00ff33' : '#ffffff',
-                  fontWeight: index === currentLine ? 'bold' : 'normal',
-                  textShadow: index === currentLine ? '0 0 3px #00ff33' : 'none',
-                  transition: 'all 0.2s ease',
-                  whiteSpace: 'pre'
-                }}
-              >
-                {line || '\u00A0'}
-              </div>
-            ))}
-          </div>
-          
-          {/* Actual textarea for editing - transparent but interactive */}
-          <textarea
-            ref={textareaRef}
-            value={gcode[`channel${activeChannel}`] || ''}
-            onChange={handleChange}
-            spellCheck={false}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              width: '100%',
-              height: '100%',
-              padding: '10px',
-              fontSize: '14px',
-              fontFamily: 'Consolas, Courier New, monospace',
-              lineHeight: '18px',
-              backgroundColor: 'transparent',
-              color: 'transparent',
-              caretColor: '#00ff33',
-              border: 'none',
-              outline: 'none',
-              resize: 'none',
-              overflow: 'auto',
-              zIndex: 2
-            }}
-            onScroll={(e) => {
-              // Sync all scrolls together
-              const scrollTop = e.target.scrollTop;
-              if (codeDisplayRef.current) {
-                codeDisplayRef.current.scrollTop = scrollTop;
-              }
-              if (lineNumbersRef.current) {
-                lineNumbersRef.current.scrollTop = scrollTop;
-              }
-            }}
-            placeholder=""
-          />
         </div>
       </div>
       
