@@ -79,20 +79,20 @@ const CNCProSuite = () => {
   const [panels, setPanels] = useState({
     gcode: {
       visible: true,
-      floating: false,
+      floating: true,
       docked: 'left',
       position: { x: 20, y: 80 },
-      size: { width: 400, height: 500 },
+      size: { width: 450, height: 600 },
       zIndex: 1,
       minimized: false,
       title: 'G-Code Editor'
     },
     tools: {
       visible: true,
-      floating: false,
+      floating: true,
       docked: 'right',
-      position: { x: Math.max(50, window.innerWidth - 1600), y: 40 },
-      size: { width: Math.min(1500, window.innerWidth - 100), height: Math.min(850, window.innerHeight - 100) },
+      position: { x: Math.max(100, window.innerWidth - 1400), y: 80 },
+      size: { width: Math.min(1300, window.innerWidth - 200), height: Math.min(750, window.innerHeight - 150) },
       zIndex: 1,
       minimized: false,
       title: 'Tool Manager'
@@ -1501,8 +1501,8 @@ M30 ; End`
           [resizingPanel]: {
             ...prev[resizingPanel],
             size: {
-              width: Math.max(200, e.clientX - panel.position.x),
-              height: Math.max(150, e.clientY - panel.position.y)
+              width: Math.max(400, Math.min(e.clientX - panel.position.x, window.innerWidth - panel.position.x - 20)),
+              height: Math.max(300, Math.min(e.clientY - panel.position.y, window.innerHeight - panel.position.y - 50))
             }
           }
         }));
@@ -1529,52 +1529,113 @@ M30 ; End`
     const panel = panels[panelId];
     if (!panel.visible) return null;
 
-    const panelStyle = panel.floating ? {
+    // Always use inline styles for proper sizing
+    const panelStyle = {
       position: 'fixed',
-      left: panel.position.x,
-      top: panel.position.y,
-      width: panel.size.width,
-      height: panel.minimized ? 35 : panel.size.height,
-      zIndex: panel.zIndex
-    } : {};
-
-    const panelClass = `panel ${panel.floating ? 'floating' : 'docked'} ${panel.docked ? `docked-${panel.docked}` : ''} ${panel.minimized ? 'minimized' : ''}`;
+      left: `${panel.position.x}px`,
+      top: `${panel.position.y}px`,
+      width: `${panel.size.width}px`,
+      height: panel.minimized ? '40px' : `${panel.size.height}px`,
+      zIndex: panel.zIndex,
+      background: '#0a0e1a',
+      border: '1px solid #333',
+      borderRadius: '8px',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden'
+    };
 
     return (
       <div 
         key={panelId}
-        className={panelClass}
         style={panelStyle}
       >
         <div 
-          className="panel-header"
+          style={{
+            padding: '8px 12px',
+            background: 'linear-gradient(135deg, #1a1f2e, #0f1420)',
+            borderBottom: '1px solid #333',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            cursor: 'move',
+            userSelect: 'none'
+          }}
           onMouseDown={(e) => startDragging(e, panelId)}
         >
-          <span className="panel-title">{panel.title}</span>
-          <div className="panel-controls">
-            <button onClick={() => toggleFloating(panelId)} title={panel.floating ? 'Dock' : 'Float'}>
+          <span style={{ 
+            color: '#00d4ff', 
+            fontWeight: 'bold',
+            fontSize: '14px'
+          }}>
+            {panel.title}
+          </span>
+          <div style={{ display: 'flex', gap: '5px' }}>
+            <button 
+              onClick={() => toggleFloating(panelId)} 
+              title={panel.floating ? 'Dock' : 'Float'}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#888',
+                cursor: 'pointer',
+                fontSize: '16px'
+              }}
+            >
               {panel.floating ? '📌' : '📍'}
             </button>
-            <button onClick={() => minimizePanel(panelId)} title="Minimize">
+            <button 
+              onClick={() => minimizePanel(panelId)} 
+              title="Minimize"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#888',
+                cursor: 'pointer',
+                fontSize: '16px'
+              }}
+            >
               {panel.minimized ? '🔼' : '🔽'}
             </button>
-            <button onClick={() => closePanel(panelId)} title="Close">
+            <button 
+              onClick={() => closePanel(panelId)} 
+              title="Close"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#ff4444',
+                cursor: 'pointer',
+                fontSize: '16px'
+              }}
+            >
               ✖
             </button>
           </div>
         </div>
         {!panel.minimized && (
-          <>
-            <div className="panel-content">
-              {content}
-            </div>
-            {panel.floating && (
-              <div 
-                className="panel-resize-handle"
-                onMouseDown={(e) => startResizing(e, panelId)}
-              />
-            )}
-          </>
+          <div style={{
+            flex: 1,
+            overflow: 'auto',
+            position: 'relative'
+          }}>
+            {content}
+          </div>
+        )}
+        {!panel.minimized && panel.floating && (
+          <div 
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              right: 0,
+              width: '20px',
+              height: '20px',
+              cursor: 'nwse-resize',
+              background: 'linear-gradient(135deg, transparent 50%, #333 50%)',
+              borderBottomRightRadius: '8px'
+            }}
+            onMouseDown={(e) => startResizing(e, panelId)}
+          />
         )}
       </div>
     );
