@@ -308,6 +308,15 @@ const CNCProSuite = () => {
     spindleSpeed: 12000,
     tool: 1
   });
+  
+  const [toolDatabase, setToolDatabase] = useState([
+    { id: 1, tNumber: 'T1', name: 'End Mill 10mm', diameter: 10, flutes: 4, type: 'endmill', material: 'Carbide', coating: 'TiAlN' },
+    { id: 2, tNumber: 'T2', name: 'End Mill 6mm', diameter: 6, flutes: 3, type: 'endmill', material: 'Carbide', coating: 'TiN' },
+    { id: 3, tNumber: 'T3', name: 'Ball End 8mm', diameter: 8, flutes: 2, type: 'ballend', material: 'HSS', coating: 'None' },
+    { id: 4, tNumber: 'T4', name: 'Drill 5mm', diameter: 5, flutes: 2, type: 'drill', material: 'Carbide', coating: 'TiAlN' },
+    { id: 5, tNumber: 'T5', name: 'Face Mill 50mm', diameter: 50, flutes: 6, type: 'facemill', material: 'Carbide', coating: 'TiAlN' },
+    { id: 6, tNumber: 'T6', name: 'Chamfer Mill 90°', diameter: 12, flutes: 4, type: 'chamfer', material: 'Carbide', coating: 'TiN' }
+  ]);
 
   const [project, setProject] = useState({
     name: 'Example Pocket Milling',
@@ -2058,8 +2067,8 @@ M30 ; End`
           
           {renderPanel('tools',
         <ToolManager 
-          tools={project.tools}
-          onChange={(tools) => setProject(prev => ({ ...prev, tools }))}
+          tools={toolDatabase}
+          onChange={(tools) => setToolDatabase(tools)}
         />
       )}
       
@@ -2848,14 +2857,7 @@ M30 ; End`
               <div className="setup-section">
                 <h4>Tool Library</h4>
                 <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #333', borderRadius: '4px', padding: '10px' }}>
-                  {[
-                    { id: 1, name: 'End Mill 10mm', type: 'endmill', diameter: 10, flutes: 4, material: 'Carbide', coating: 'TiAlN' },
-                    { id: 2, name: 'End Mill 6mm', type: 'endmill', diameter: 6, flutes: 3, material: 'Carbide', coating: 'TiN' },
-                    { id: 3, name: 'Ball End 8mm', type: 'ballend', diameter: 8, flutes: 2, material: 'HSS', coating: 'None' },
-                    { id: 4, name: 'Drill 5mm', type: 'drill', diameter: 5, flutes: 2, material: 'Carbide', coating: 'TiAlN' },
-                    { id: 5, name: 'Face Mill 50mm', type: 'facemill', diameter: 50, flutes: 6, material: 'Carbide', coating: 'TiAlN' },
-                    { id: 6, name: 'Chamfer Mill 90°', type: 'chamfer', diameter: 12, flutes: 4, material: 'Carbide', coating: 'TiN' }
-                  ].map(tool => (
+                  {toolDatabase.map(tool => (
                     <div key={tool.id} style={{
                       padding: '10px',
                       marginBottom: '8px',
@@ -2993,8 +2995,23 @@ M30 ; End`
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <button 
                     onClick={() => {
-                      // Add new tool
-                      alert('Tool Editor coming soon!');
+                      // Add new tool to database
+                      const newTool = {
+                        id: Date.now(),
+                        tNumber: `T${toolDatabase.length + 1}`,
+                        name: 'New Tool',
+                        diameter: 10,
+                        flutes: 4,
+                        type: 'endmill',
+                        material: 'Carbide',
+                        coating: 'TiAlN'
+                      };
+                      setToolDatabase([...toolDatabase, newTool]);
+                      // Open tools panel for editing
+                      setPanels(prev => ({
+                        ...prev,
+                        tools: { ...prev.tools, visible: true }
+                      }));
                     }}
                     style={{
                       padding: '10px',
@@ -3009,16 +3026,11 @@ M30 ; End`
                   </button>
                   <button 
                     onClick={() => {
-                      // Export tool list
-                      const tools = [
-                        { T: 1, Name: 'End Mill 10mm', Diameter: 10, Flutes: 4 },
-                        { T: 2, Name: 'End Mill 6mm', Diameter: 6, Flutes: 3 },
-                        { T: 3, Name: 'Ball End 8mm', Diameter: 8, Flutes: 2 },
-                        { T: 4, Name: 'Drill 5mm', Diameter: 5, Flutes: 2 },
-                        { T: 5, Name: 'Face Mill 50mm', Diameter: 50, Flutes: 6 },
-                        { T: 6, Name: 'Chamfer Mill 90°', Diameter: 12, Flutes: 4 }
-                      ];
-                      const csv = 'T,Name,Diameter,Flutes\n' + tools.map(t => `${t.T},${t.Name},${t.Diameter},${t.Flutes}`).join('\n');
+                      // Export tool list from actual database
+                      const csv = 'T,Name,Type,Diameter,Flutes,Material,Coating\n' + 
+                        toolDatabase.map(t => 
+                          `${t.tNumber},${t.name},${t.type},${t.diameter},${t.flutes || ''},${t.material || ''},${t.coating || ''}`
+                        ).join('\n');
                       const blob = new Blob([csv], { type: 'text/csv' });
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement('a');
