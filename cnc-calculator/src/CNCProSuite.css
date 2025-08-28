@@ -425,22 +425,25 @@
   color: #00d4ff;
 }
 
-.gcode-textarea {
-  flex: 1;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  color: #ffffff !important;  /* Pure white for maximum visibility */
-  font-family: 'Consolas', 'Courier New', monospace;
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 18px !important;  /* Fixed line height for proper highlighting */
-  padding: 10px;
-  padding-bottom: 20px; /* Extra padding at bottom to prevent cutoff */
-  resize: none;
-  outline: none;
-  caret-color: #00ff64;  /* Green cursor like old CNC */
-  text-shadow: 0 0 1px rgba(255, 255, 255, 0.8);  /* Subtle CRT glow */
-  box-sizing: border-box;
+/* G-code editor with line numbers - Pro CAM style */
+.gcode-editor-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.gcode-line-numbers {
+  background: #050810;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  color: #4a5568;
+  user-select: none;
+}
+
+.gcode-line-active {
+  color: #00ff33 !important;
+  font-weight: bold;
+  text-shadow: 0 0 2px #00ff33;
 }
 
 /* Retro CNC terminal effect */

@@ -3,13 +3,17 @@ import React, { useState, useRef, useEffect } from 'react';
 const GCodeEditor = ({ gcode, onChange, currentLine }) => {
   const [activeChannel, setActiveChannel] = useState(1);
   const textareaRef = useRef(null);
+  const lineNumbersRef = useRef(null);
+  const codeDisplayRef = useRef(null);
   
   useEffect(() => {
-    if (textareaRef.current && currentLine > 0) {
-      const lines = gcode[`channel${activeChannel}`].split('\n');
+    if (codeDisplayRef.current && currentLine > 0) {
       const lineHeight = 18;
       const scrollTo = currentLine * lineHeight - 100;
-      textareaRef.current.scrollTop = scrollTo;
+      codeDisplayRef.current.scrollTop = scrollTo;
+      if (lineNumbersRef.current) {
+        lineNumbersRef.current.scrollTop = scrollTo;
+      }
     }
   }, [currentLine, activeChannel]);
   
@@ -88,54 +92,111 @@ const GCodeEditor = ({ gcode, onChange, currentLine }) => {
         </button>
       </div>
       
-      <div style={{ position: 'relative', flex: 1, display: 'flex' }}>
-        <textarea
-          ref={textareaRef}
-          className="gcode-textarea"
-          value={gcode[`channel${activeChannel}`] || ''}
-          onChange={handleChange}
-          spellCheck={false}
-          placeholder="Enter G-code here..."
+      <div style={{ 
+        position: 'relative', 
+        flex: 1, 
+        display: 'flex',
+        backgroundColor: '#0a0e1a',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        borderRadius: '4px',
+        overflow: 'hidden'
+      }}>
+        {/* Line numbers column */}
+        <div 
+          ref={lineNumbersRef}
           style={{
-            backgroundColor: '#0a0e1a',
-            backgroundImage: currentLine >= 0 ? 
-              `linear-gradient(
-                transparent ${currentLine * 18 + 10}px,
-                rgba(0, 255, 51, 0.1) ${currentLine * 18 + 10}px,
-                rgba(0, 255, 51, 0.1) ${(currentLine + 1) * 18 + 10}px,
-                transparent ${(currentLine + 1) * 18 + 10}px
-              )` : 'none',
-            backgroundAttachment: 'local',
-            borderLeft: currentLine >= 0 ? '4px solid #00ff33' : '1px solid rgba(255, 255, 255, 0.1)',
+            width: '50px',
+            backgroundColor: '#050810',
+            borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+            color: '#4a5568',
+            fontSize: '14px',
+            fontFamily: 'Consolas, Courier New, monospace',
             lineHeight: '18px',
-            paddingLeft: '15px',
-            paddingBottom: '10px',
-            width: '100%',
-            height: '100%',
-            minHeight: '200px',
-            color: '#ffffff',
-            flex: 1,
-            boxSizing: 'border-box'
+            padding: '10px 0',
+            textAlign: 'right',
+            paddingRight: '10px',
+            overflow: 'hidden',
+            userSelect: 'none'
           }}
-        />
-        {/* Current line display */}
-        {currentLine >= 0 && (
+        >
+          {gcode[`channel${activeChannel}`]?.split('\n').map((_, index) => (
+            <div 
+              key={index}
+              style={{
+                color: index === currentLine ? '#00ff33' : '#4a5568',
+                fontWeight: index === currentLine ? 'bold' : 'normal'
+              }}
+            >
+              {index + 1}
+            </div>
+          ))}
+        </div>
+        
+        {/* Code display area */}
+        <div 
+          ref={codeDisplayRef}
+          style={{
+            flex: 1,
+            overflow: 'auto',
+            position: 'relative'
+          }}
+          onScroll={(e) => {
+            if (lineNumbersRef.current) {
+              lineNumbersRef.current.scrollTop = e.target.scrollTop;
+            }
+          }}
+        >
           <div style={{
-            position: 'absolute',
-            top: '5px',
-            right: '10px',
-            backgroundColor: 'rgba(0, 255, 51, 0.2)',
-            color: '#00ff33',
-            padding: '2px 8px',
-            borderRadius: '3px',
-            fontSize: '11px',
-            fontWeight: 'bold',
-            border: '1px solid #00ff33',
-            zIndex: 10
+            padding: '10px',
+            fontSize: '14px',
+            fontFamily: 'Consolas, Courier New, monospace',
+            lineHeight: '18px',
+            whiteSpace: 'pre',
+            minHeight: '200px'
           }}>
-            Line {currentLine + 1}
+            {gcode[`channel${activeChannel}`]?.split('\n').map((line, index) => (
+              <div 
+                key={index}
+                style={{
+                  color: index === currentLine ? '#00ff33' : '#ffffff',
+                  fontWeight: index === currentLine ? 'bold' : 'normal',
+                  textShadow: index === currentLine ? '0 0 2px #00ff33' : 'none'
+                }}
+              >
+                {line || ' '}
+              </div>
+            ))}
           </div>
-        )}
+          
+          {/* Hidden textarea for editing */}
+          <textarea
+            ref={textareaRef}
+            value={gcode[`channel${activeChannel}`] || ''}
+            onChange={handleChange}
+            spellCheck={false}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              width: '100%',
+              height: '100%',
+              padding: '10px',
+              fontSize: '14px',
+              fontFamily: 'Consolas, Courier New, monospace',
+              lineHeight: '18px',
+              backgroundColor: 'transparent',
+              color: 'transparent',
+              caretColor: '#00ff33',
+              border: 'none',
+              outline: 'none',
+              resize: 'none',
+              overflow: 'auto'
+            }}
+            placeholder=""
+          />
+        </div>
       </div>
       
       <div style={{ 
