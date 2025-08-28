@@ -4,13 +4,12 @@ const GCodeEditor = ({ gcode, onChange, currentLine }) => {
   const [activeChannel, setActiveChannel] = useState(1);
   const textareaRef = useRef(null);
   const lineNumbersRef = useRef(null);
-  const codeDisplayRef = useRef(null);
   
   useEffect(() => {
-    if (codeDisplayRef.current && currentLine > 0) {
+    if (textareaRef.current && currentLine > 0) {
       const lineHeight = 18;
       const scrollTo = currentLine * lineHeight - 100;
-      codeDisplayRef.current.scrollTop = scrollTo;
+      textareaRef.current.scrollTop = scrollTo;
       if (lineNumbersRef.current) {
         lineNumbersRef.current.scrollTop = scrollTo;
       }
@@ -132,71 +131,36 @@ const GCodeEditor = ({ gcode, onChange, currentLine }) => {
           ))}
         </div>
         
-        {/* Code display area */}
-        <div 
-          ref={codeDisplayRef}
-          style={{
-            flex: 1,
-            overflow: 'auto',
-            position: 'relative'
-          }}
+        {/* Code textarea with syntax highlighting */}
+        <textarea
+          ref={textareaRef}
+          className="gcode-textarea"
+          value={gcode[`channel${activeChannel}`] || ''}
+          onChange={handleChange}
           onScroll={(e) => {
             if (lineNumbersRef.current) {
               lineNumbersRef.current.scrollTop = e.target.scrollTop;
             }
           }}
-        >
-          <div style={{
+          spellCheck={false}
+          style={{
+            flex: 1,
+            width: '100%',
             padding: '10px',
             fontSize: '14px',
             fontFamily: 'Consolas, Courier New, monospace',
             lineHeight: '18px',
-            whiteSpace: 'pre',
-            minHeight: '200px'
-          }}>
-            {gcode[`channel${activeChannel}`]?.split('\n').map((line, index) => (
-              <div 
-                key={index}
-                style={{
-                  color: index === currentLine ? '#00ff33' : '#ffffff',
-                  fontWeight: index === currentLine ? 'bold' : 'normal',
-                  textShadow: index === currentLine ? '0 0 2px #00ff33' : 'none'
-                }}
-              >
-                {line || ' '}
-              </div>
-            ))}
-          </div>
-          
-          {/* Hidden textarea for editing */}
-          <textarea
-            ref={textareaRef}
-            value={gcode[`channel${activeChannel}`] || ''}
-            onChange={handleChange}
-            spellCheck={false}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              width: '100%',
-              height: '100%',
-              padding: '10px',
-              fontSize: '14px',
-              fontFamily: 'Consolas, Courier New, monospace',
-              lineHeight: '18px',
-              backgroundColor: 'transparent',
-              color: 'transparent',
-              caretColor: '#00ff33',
-              border: 'none',
-              outline: 'none',
-              resize: 'none',
-              overflow: 'auto'
-            }}
-            placeholder=""
-          />
-        </div>
+            backgroundColor: '#0a0e1a',
+            color: '#ffffff',
+            caretColor: '#00ff33',
+            border: 'none',
+            outline: 'none',
+            resize: 'none',
+            overflow: 'auto',
+            whiteSpace: 'pre'
+          }}
+          placeholder="Enter G-code here..."
+        />
       </div>
       
       <div style={{ 

@@ -594,7 +594,7 @@ M30 ; End`
       toolGroup.add(flute);
     }
     
-    toolGroup.position.set(0, 0, 100);
+    toolGroup.position.set(0, 0, 50); // Start at safe height above workpiece
     scene.add(toolGroup);
     toolRef.current = toolGroup;
     
@@ -763,7 +763,9 @@ M30 ; End`
     
     // Always update position to the last known coordinates (even on comment lines)
     if (currentPos) {
-      toolRef.current.position.set(currentPos.x, currentPos.y, currentPos.z + 50);
+      // Position tool at actual cutting position (add small offset for tool length)
+      const toolLength = 30; // Tool sticks down from holder
+      toolRef.current.position.set(currentPos.x, currentPos.y, currentPos.z + toolLength);
       
       // Update spindle speed from G-code
       if (currentPos.s !== undefined && currentPos.s !== simulation.spindleSpeed) {
