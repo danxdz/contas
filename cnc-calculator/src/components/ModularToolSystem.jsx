@@ -933,4 +933,11 @@ const ModularToolSystem = ({ onAssemblyCreate }) => {
   );
 };
 
+export { 
+  TOOL_HOLDER_STANDARDS, 
+  COLLET_SYSTEMS, 
+  EXTENSIONS, 
+  CUTTING_TOOLS 
+};
+
 export default ModularToolSystem;

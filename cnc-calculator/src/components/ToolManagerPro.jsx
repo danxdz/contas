@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import ModularToolSystem from './ModularToolSystem';
+import ModularToolSystemV2 from './ModularToolSystemV2';
 
 const ToolManagerPro = ({ 
   onToolSelect, 
@@ -423,7 +423,7 @@ const ToolManagerPro = ({
 
         {/* Builder View */}
         {viewMode === 'builder' && (
-          <ModularToolSystem onAssemblyCreate={handleAssemblyCreate} />
+          <ModularToolSystemV2 onAssemblyCreate={handleAssemblyCreate} />
         )}
 
         {/* Library View */}
