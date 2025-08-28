@@ -281,8 +281,8 @@ const CNCProSuite = () => {
       visible: false,
       floating: true,
       docked: null,
-      position: { x: 200, y: 100 },
-      size: { width: 700, height: 600 },
+      position: { x: window.innerWidth / 2 - 250, y: 100 },
+      size: { width: 500, height: 500 },
       zIndex: 2,
       minimized: false,
       title: 'Tool Database'
@@ -1569,7 +1569,7 @@ M30 ; End`
         { id: 'iso', label: 'Isometric', action: () => setCameraView('iso') },
         { divider: true },
         { id: 'gcode', label: 'G-Code Editor', checked: panels.gcode.visible, action: () => togglePanel('gcode') },
-        { id: 'tools', label: 'Tool Manager', checked: panels.tools.visible, action: () => togglePanel('tools') },
+        { id: 'tools', label: '🔧 Tool Manager', checked: panels.tools.visible, action: () => togglePanel('tools') },
         { id: 'dual', label: 'Dual Channel', checked: panels.dualChannel.visible, action: () => togglePanel('dualChannel') },
         { id: 'step', label: 'STEP Processor', checked: panels.stepProcessor.visible, action: () => togglePanel('stepProcessor') },
         { id: 'machine', label: 'Machine Control', checked: panels.machineControl.visible, action: () => togglePanel('machineControl') },
@@ -1662,7 +1662,7 @@ M30 ; End`
         { id: 'pocketwizard', label: 'Pocket Milling Wizard', action: () => togglePanel('pocketMilling') },
         { id: 'shopfloor', label: 'Shop Floor Utilities', action: () => togglePanel('shopFloor') },
         { divider: true },
-        { id: 'tooldatabase', label: 'Tool Database', action: () => togglePanel('toolDatabase') },
+        { id: 'tooldatabase', label: '📊 Tool Database (Overview)', action: () => togglePanel('toolDatabase') },
         { id: 'machineconfig', label: 'Machine Configurator', action: () => togglePanel('machineConfig') },
         { id: 'setupmanager', label: 'Setup Manager', action: () => togglePanel('setupManager') }
       ]

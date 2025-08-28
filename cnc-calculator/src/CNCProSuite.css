@@ -261,7 +261,7 @@
 .panel.floating {
   position: fixed !important;
   resize: both;
-  animation: slideIn 0.3s ease-out;
+  /* animation: slideIn 0.3s ease-out; */ /* Removed - causing flashing */
 }
 
 @keyframes slideIn {
