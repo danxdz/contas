@@ -2181,7 +2181,6 @@ M30 ; End`
       {renderPanel('geometry', <GeometryTools />)}
       {renderPanel('pocketMilling', <PocketMillingWizard />)}
       {renderPanel('shopFloor', <ShopFloorUtilities />)}
-      {renderPanel('toolDatabase', <ToolDatabase />)}
       {renderPanel('machineConfig', <MachineConfigurator />)}
           {renderPanel('setupManager', <SetupManager />)}
           
@@ -2910,13 +2909,13 @@ M30 ; End`
           )}
           
           {renderPanel('toolDatabase',
-            <div className="setup-panel">
-              <h3 style={{ color: '#00d4ff', marginBottom: '20px' }}>Tool Database</h3>
+            <div className="setup-panel" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <h3 style={{ color: '#00d4ff', marginBottom: '20px' }}>Tool Database & Offset Table</h3>
               
               {/* Tool Library */}
-              <div className="setup-section">
+              <div className="setup-section" style={{ flex: '0 0 auto', maxHeight: '250px' }}>
                 <h4>Tool Library</h4>
-                <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #333', borderRadius: '4px', padding: '10px' }}>
+                <div style={{ height: '200px', overflowY: 'auto', border: '1px solid #333', borderRadius: '4px', padding: '10px' }}>
                   {toolDatabase.map(tool => (
                     <div key={tool.id} style={{
                       padding: '10px',
