@@ -454,16 +454,14 @@
   box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.1);
 }
 
-/* Current line highlight overlay */
-.gcode-highlight-overlay {
-  mix-blend-mode: screen;
-  z-index: 10;
+/* Current line highlight */
+.gcode-line-highlight {
+  transition: all 0.2s ease;
 }
 
-/* Make textarea transparent where highlighted text appears */
-.gcode-textarea {
-  position: relative;
-  z-index: 1;
+/* Add subtle glow to textarea when line is active */
+.gcode-textarea.has-active-line {
+  box-shadow: inset 0 0 30px rgba(0, 255, 51, 0.05);
 }
 
 /* Tool Manager Specific */

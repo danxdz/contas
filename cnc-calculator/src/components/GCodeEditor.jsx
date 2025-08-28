@@ -96,49 +96,47 @@ const GCodeEditor = ({ gcode, onChange, currentLine }) => {
       </div>
       
       <div style={{ position: 'relative', flex: 1, display: 'flex', minHeight: 0 }}>
+        {/* Line highlight bar */}
+        {currentLine >= 0 && (
+          <div
+            ref={highlightRef}
+            className="gcode-line-highlight"
+            style={{
+              position: 'absolute',
+              top: `${currentLine * 18 + 10}px`,
+              left: '0',
+              right: '0',
+              height: '18px',
+              backgroundColor: 'rgba(0, 255, 51, 0.15)',
+              borderLeft: '3px solid #00ff33',
+              pointerEvents: 'none',
+              transform: textareaRef.current ? `translateY(-${textareaRef.current.scrollTop}px)` : 'none',
+              zIndex: 1,
+              boxShadow: '0 0 20px rgba(0, 255, 51, 0.3)'
+            }}
+          />
+        )}
         <textarea
           ref={textareaRef}
-          className="gcode-textarea"
+          className={`gcode-textarea ${currentLine >= 0 ? 'has-active-line' : ''}`}
           value={gcode[`channel${activeChannel}`] || ''}
           onChange={handleChange}
           onScroll={handleScroll}
           spellCheck={false}
           placeholder="Enter G-code here..."
           style={{
-            backgroundColor: '#0a0e1a',
+            backgroundColor: 'rgba(10, 14, 26, 0.95)',
             lineHeight: '18px',
             paddingLeft: '10px',
             paddingBottom: '10px',
             width: '100%',
             height: '100%',
-            minHeight: '200px'
+            minHeight: '200px',
+            position: 'relative',
+            zIndex: 2,
+            color: currentLine >= 0 ? '#ffffff' : '#e0e0e0'
           }}
         />
-        {currentLine >= 0 && (
-          <div
-            ref={highlightRef}
-            className="gcode-highlight-overlay"
-            style={{
-              position: 'absolute',
-              top: `${currentLine * 18 + 10}px`,
-              left: '10px',
-              right: '10px',
-              height: '18px',
-              pointerEvents: 'none',
-              color: '#00ff33',
-              fontFamily: 'Consolas, Courier New, monospace',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              lineHeight: '18px',
-              textShadow: '0 0 10px #00ff33, 0 0 20px #00ff33, 0 0 30px #00ff33',
-              whiteSpace: 'pre',
-              overflow: 'hidden',
-              transform: textareaRef.current ? `translateY(-${textareaRef.current.scrollTop}px)` : 'none'
-            }}
-          >
-            {gcode[`channel${activeChannel}`]?.split('\n')[currentLine] || ''}
-          </div>
-        )}
       </div>
       
       <div style={{ 
