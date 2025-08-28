@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Tool3DImporter from './Tool3DImporter';
 
 // ISO/DIN Standard Tool Holder Dimensions
 const HOLDER_STANDARDS = {
@@ -234,6 +235,8 @@ const ProfessionalToolSystem = ({ onToolAssemblyChange }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterManufacturer, setFilterManufacturer] = useState('All');
   const [importUrl, setImportUrl] = useState('');
+  const [activeTab, setActiveTab] = useState('library'); // 'library', '3d-import', 'assembly'
+  const [imported3DModel, setImported3DModel] = useState(null);
   
   // Calculate assembly
   const calculateAssembly = () => {
@@ -308,35 +311,94 @@ const ProfessionalToolSystem = ({ onToolAssemblyChange }) => {
         Professional Tool Management System
       </h3>
       
-      {/* Import Section */}
-      <div style={{ 
-        padding: '15px',
-        background: 'linear-gradient(135deg, rgba(0,212,255,0.05), rgba(0,153,204,0.05))',
-        borderBottom: '1px solid #00d4ff'
+      {/* Tab Navigation */}
+      <div style={{
+        display: 'flex',
+        borderBottom: '2px solid #00d4ff',
+        background: '#1a1f2e'
       }}>
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-          <input
-            type="text"
-            placeholder="Paste tool URL or part number..."
-            value={importUrl}
-            onChange={(e) => setImportUrl(e.target.value)}
-            style={{
-              flex: 1,
-              padding: '8px',
-              background: '#1a1f2e',
-              color: '#fff',
-              border: '1px solid #333',
-              borderRadius: '4px'
-            }}
-          />
-          <button
-            onClick={importFromUrl}
-            style={{
-              padding: '8px 20px',
-              background: '#00ff88',
-              color: '#000',
-              border: 'none',
-              borderRadius: '4px',
+        <button
+          onClick={() => setActiveTab('library')}
+          style={{
+            flex: 1,
+            padding: '10px',
+            background: activeTab === 'library' ? '#00d4ff' : 'transparent',
+            color: activeTab === 'library' ? '#000' : '#888',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '12px',
+            fontWeight: activeTab === 'library' ? 'bold' : 'normal',
+            transition: 'all 0.2s'
+          }}
+        >
+          📚 Tool Library
+        </button>
+        <button
+          onClick={() => setActiveTab('3d-import')}
+          style={{
+            flex: 1,
+            padding: '10px',
+            background: activeTab === '3d-import' ? '#00d4ff' : 'transparent',
+            color: activeTab === '3d-import' ? '#000' : '#888',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '12px',
+            fontWeight: activeTab === '3d-import' ? 'bold' : 'normal',
+            transition: 'all 0.2s'
+          }}
+        >
+          🎯 3D Import
+        </button>
+        <button
+          onClick={() => setActiveTab('assembly')}
+          style={{
+            flex: 1,
+            padding: '10px',
+            background: activeTab === 'assembly' ? '#00d4ff' : 'transparent',
+            color: activeTab === 'assembly' ? '#000' : '#888',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '12px',
+            fontWeight: activeTab === 'assembly' ? 'bold' : 'normal',
+            transition: 'all 0.2s'
+          }}
+        >
+          🔧 Assembly Builder
+        </button>
+      </div>
+      
+      {/* Tab Content */}
+      {activeTab === 'library' && (
+        <>
+          {/* Import Section */}
+          <div style={{ 
+            padding: '15px',
+            background: 'linear-gradient(135deg, rgba(0,212,255,0.05), rgba(0,153,204,0.05))',
+            borderBottom: '1px solid #333'
+          }}>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+              <input
+                type="text"
+                placeholder="Paste tool URL or part number..."
+                value={importUrl}
+                onChange={(e) => setImportUrl(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: '8px',
+                  background: '#1a1f2e',
+                  color: '#fff',
+                  border: '1px solid #333',
+                  borderRadius: '4px'
+                }}
+              />
+              <button
+                onClick={importFromUrl}
+                style={{
+                  padding: '8px 20px',
+                  background: '#00ff88',
+                  color: '#000',
+                  border: 'none',
+                  borderRadius: '4px',
               cursor: 'pointer',
               fontWeight: 'bold'
             }}
@@ -616,6 +678,176 @@ const ProfessionalToolSystem = ({ onToolAssemblyChange }) => {
               <div style={{ color: '#00d4ff' }}>{selectedTool.helixAngle}°</div>
             </div>
           </div>
+        </div>
+      )}
+      </>
+      )}
+      
+      {/* 3D Import Tab */}
+      {activeTab === '3d-import' && (
+        <div style={{ padding: '15px' }}>
+          <Tool3DImporter
+            onModelLoaded={(model) => {
+              setImported3DModel(model);
+              // Update the 3D scene if callback exists
+              if (window.updateTool3D) {
+                window.updateTool3D({ model3D: model });
+              }
+            }}
+            onToolDataExtracted={(toolData) => {
+              // Create a tool from extracted data
+              const newTool = {
+                ...toolData,
+                id: Date.now(),
+                price: toolData.price || 0,
+                stock: 'In Stock'
+              };
+              setSelectedTool(newTool);
+              
+              // Auto-switch to assembly tab
+              setActiveTab('assembly');
+            }}
+          />
+        </div>
+      )}
+      
+      {/* Assembly Builder Tab */}
+      {activeTab === 'assembly' && (
+        <div style={{ padding: '15px' }}>
+          <h4 style={{ color: '#00d4ff', marginBottom: '15px' }}>
+            🔧 Tool Assembly Builder
+          </h4>
+          
+          {selectedTool ? (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '15px'
+            }}>
+              {/* Selected Tool Info */}
+              <div style={{
+                padding: '15px',
+                background: '#1a1f2e',
+                borderRadius: '4px',
+                border: '1px solid #00d4ff'
+              }}>
+                <h5 style={{ color: '#00ff88', margin: '0 0 10px 0' }}>
+                  Selected Tool
+                </h5>
+                <div style={{ fontSize: '12px', color: '#ccc' }}>
+                  <div>{selectedTool.manufacturer}</div>
+                  <div style={{ color: '#00d4ff', fontWeight: 'bold' }}>
+                    {selectedTool.partNumber}
+                  </div>
+                  <div>{selectedTool.description}</div>
+                  <div style={{ marginTop: '5px', color: '#888' }}>
+                    Ø{selectedTool.diameter}mm | {selectedTool.flutes}FL
+                  </div>
+                  {imported3DModel && (
+                    <div style={{ color: '#66ff66', marginTop: '5px' }}>
+                      ✅ 3D Model Loaded
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Assembly Configuration */}
+              <div style={{
+                padding: '15px',
+                background: '#1a1f2e',
+                borderRadius: '4px',
+                border: '1px solid #333'
+              }}>
+                <h5 style={{ color: '#888', margin: '0 0 10px 0' }}>
+                  Assembly Configuration
+                </h5>
+                
+                <div style={{ marginBottom: '10px' }}>
+                  <label style={{ fontSize: '11px', color: '#888' }}>Holder</label>
+                  <select
+                    value={selectedHolder}
+                    onChange={(e) => setSelectedHolder(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '6px',
+                      background: '#0a0e1a',
+                      color: '#fff',
+                      border: '1px solid #333',
+                      borderRadius: '4px',
+                      marginTop: '5px'
+                    }}
+                  >
+                    {Object.keys(HOLDER_STANDARDS).map(key => (
+                      <option key={key} value={key}>
+                        {key} - {HOLDER_STANDARDS[key].taper}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div style={{ marginBottom: '10px' }}>
+                  <label style={{ fontSize: '11px', color: '#888' }}>Collet</label>
+                  <select
+                    value={selectedCollet}
+                    onChange={(e) => setSelectedCollet(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '6px',
+                      background: '#0a0e1a',
+                      color: '#fff',
+                      border: '1px solid #333',
+                      borderRadius: '4px',
+                      marginTop: '5px'
+                    }}
+                  >
+                    {Object.keys(COLLET_STANDARDS).map(key => (
+                      <option key={key} value={key}>
+                        {key} ({COLLET_STANDARDS[key].range})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ fontSize: '11px', color: '#888' }}>
+                    Stickout: {stickout}mm
+                  </label>
+                  <input
+                    type="range"
+                    min="20"
+                    max="100"
+                    value={stickout}
+                    onChange={(e) => setStickout(parseInt(e.target.value))}
+                    style={{ width: '100%', marginTop: '5px' }}
+                  />
+                </div>
+                
+                <button
+                  onClick={createAssembly}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    background: 'linear-gradient(135deg, #00ff88, #00d4ff)',
+                    color: '#000',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  Create Assembly
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{
+              padding: '40px',
+              textAlign: 'center',
+              color: '#666'
+            }}>
+              Select a tool from the library or import a 3D model to create an assembly
+            </div>
+          )}
         </div>
       )}
     </div>
