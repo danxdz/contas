@@ -669,52 +669,281 @@ M30 ; End`
     scene.add(workpieceGroup);
     workpieceRef.current = workpieceGroup;
     
-    // Example Tool - End Mill (properly oriented along Z-axis)
+    // Dynamic Tool Visualization (updates based on assembly)
     const toolGroup = new THREE.Group();
     
-    // Tool holder (along Z-axis)
-    const holderGeometry = new THREE.CylinderGeometry(12, 12, 40, 32);
-    const holderMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x333333,
-      metalness: 0.9,
-      roughness: 0.1
-    });
-    const holder = new THREE.Mesh(holderGeometry, holderMaterial);
-    holder.rotation.x = Math.PI / 2; // Rotate to align with Z-axis
-    holder.position.z = 20;
-    toolGroup.add(holder);
-    
-    // Cutting tool (along Z-axis)
-    const toolGeometry = new THREE.CylinderGeometry(5, 5, 30, 32);
-    const toolMaterial = new THREE.MeshPhongMaterial({ 
-      color: 0x00ff00,
-      emissive: 0x00ff00,
-      emissiveIntensity: 0.3
-    });
-    const tool = new THREE.Mesh(toolGeometry, toolMaterial);
-    tool.rotation.x = Math.PI / 2; // Rotate to align with Z-axis
-    tool.position.z = -5;
-    toolGroup.add(tool);
-    
-    // Tool flutes detail
-    const fluteCount = 4;
-    for (let i = 0; i < fluteCount; i++) {
-      const angle = (i * Math.PI * 2) / fluteCount;
-      const fluteGeometry = new THREE.BoxGeometry(1, 1, 30);
-      const fluteMaterial = new THREE.MeshPhongMaterial({ 
-        color: 0x004400,
-        emissive: 0x00ff00,
-        emissiveIntensity: 0.1
+    // Function to rebuild tool geometry based on assembly
+    const rebuildToolGeometry = (assembly) => {
+      // Clear existing tool meshes (keep coordinate system)
+      const coordSystem = toolGroup.getObjectByName('toolCoordSystem');
+      toolGroup.clear();
+      if (coordSystem) toolGroup.add(coordSystem);
+      
+      if (!assembly || !assembly.tool) {
+        // Default tool visualization
+        const holderGeometry = new THREE.CylinderGeometry(12, 12, 40, 32);
+        const holderMaterial = new THREE.MeshStandardMaterial({ 
+          color: 0x333333,
+          metalness: 0.9,
+          roughness: 0.1
+        });
+        const holder = new THREE.Mesh(holderGeometry, holderMaterial);
+        holder.rotation.x = Math.PI / 2;
+        holder.position.z = 20;
+        toolGroup.add(holder);
+        
+        const toolGeometry = new THREE.CylinderGeometry(5, 5, 30, 32);
+        const toolMaterial = new THREE.MeshPhongMaterial({ 
+          color: 0x00ff00,
+          emissive: 0x00ff00,
+          emissiveIntensity: 0.3
+        });
+        const tool = new THREE.Mesh(toolGeometry, toolMaterial);
+        tool.rotation.x = Math.PI / 2;
+        tool.position.z = -5;
+        toolGroup.add(tool);
+        return;
+      }
+      
+      // Build tool based on assembly data
+      const holderType = assembly.holder?.type || 'SK40';
+      const toolData = assembly.tool;
+      
+      // Holder visualization
+      let holderColor = 0x333333;
+      let holderSize = 40;
+      if (holderType.includes('SK40')) {
+        holderColor = 0x2a2a2a;
+        holderSize = 45;
+      } else if (holderType.includes('CAT40')) {
+        holderColor = 0x3a3a3a;
+        holderSize = 48;
+      } else if (holderType.includes('HSK')) {
+        holderColor = 0x4a4a4a;
+        holderSize = 42;
+      }
+      
+      // Create holder with taper
+      const holderTopRadius = 15;
+      const holderBottomRadius = 10;
+      const holderGeometry = new THREE.CylinderGeometry(
+        holderBottomRadius, 
+        holderTopRadius, 
+        holderSize, 
+        32
+      );
+      const holderMaterial = new THREE.MeshStandardMaterial({ 
+        color: holderColor,
+        metalness: 0.95,
+        roughness: 0.05
       });
-      const flute = new THREE.Mesh(fluteGeometry, fluteMaterial);
-      flute.position.x = Math.cos(angle) * 4;
-      flute.position.y = Math.sin(angle) * 4;
-      flute.position.z = -5;
-      toolGroup.add(flute);
-    }
+      const holder = new THREE.Mesh(holderGeometry, holderMaterial);
+      holder.rotation.x = Math.PI / 2;
+      holder.position.z = holderSize / 2;
+      toolGroup.add(holder);
+      
+      // Collet/Chuck
+      const colletRadius = (toolData.diameter / 2) + 2;
+      const colletGeometry = new THREE.CylinderGeometry(
+        colletRadius, 
+        colletRadius + 2, 
+        15, 
+        16
+      );
+      const colletMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x666666,
+        metalness: 0.9,
+        roughness: 0.1
+      });
+      const collet = new THREE.Mesh(colletGeometry, colletMaterial);
+      collet.rotation.x = Math.PI / 2;
+      collet.position.z = -5;
+      toolGroup.add(collet);
+      
+      // Tool visualization based on type
+      const toolRadius = toolData.diameter / 2;
+      const cuttingLength = toolData.cuttingLength || 30;
+      const flutes = toolData.flutes || 2;
+      
+      // Tool shank
+      const shankGeometry = new THREE.CylinderGeometry(
+        toolRadius, 
+        toolRadius, 
+        20, 
+        16
+      );
+      const shankMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x888888,
+        metalness: 0.98,
+        roughness: 0.02
+      });
+      const shank = new THREE.Mesh(shankGeometry, shankMaterial);
+      shank.rotation.x = Math.PI / 2;
+      shank.position.z = -15;
+      toolGroup.add(shank);
+      
+      // Cutting part with coating color
+      let toolColor = 0xcccccc;
+      let emissiveColor = 0x00ff00;
+      if (toolData.coating === 'TiAlN') {
+        toolColor = 0x9966ff;
+        emissiveColor = 0x6633ff;
+      } else if (toolData.coating === 'AlTiN') {
+        toolColor = 0x6666ff;
+        emissiveColor = 0x3333ff;
+      } else if (toolData.coating === 'TiN') {
+        toolColor = 0xffcc00;
+        emissiveColor = 0xff9900;
+      } else if (toolData.coating === 'DLC') {
+        toolColor = 0x111111;
+        emissiveColor = 0x333333;
+      }
+      
+      if (toolData.type === 'End Mill') {
+        // End mill with flutes
+        const cuttingGeometry = new THREE.CylinderGeometry(
+          toolRadius * 0.95, 
+          toolRadius, 
+          cuttingLength, 
+          flutes * 6
+        );
+        const cuttingMaterial = new THREE.MeshPhongMaterial({ 
+          color: toolColor,
+          emissive: emissiveColor,
+          emissiveIntensity: 0.2,
+          metalness: 0.99,
+          roughness: 0.01
+        });
+        const cutting = new THREE.Mesh(cuttingGeometry, cuttingMaterial);
+        cutting.rotation.x = Math.PI / 2;
+        cutting.position.z = -25 - cuttingLength / 2;
+        toolGroup.add(cutting);
+        
+        // Add flute spirals
+        for (let i = 0; i < flutes; i++) {
+          const angle = (i * Math.PI * 2) / flutes;
+          const fluteGeometry = new THREE.BoxGeometry(0.5, 0.5, cuttingLength);
+          const fluteMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x001100,
+            emissive: 0x00ff00,
+            emissiveIntensity: 0.1
+          });
+          const flute = new THREE.Mesh(fluteGeometry, fluteMaterial);
+          flute.position.x = Math.cos(angle) * toolRadius * 0.8;
+          flute.position.y = Math.sin(angle) * toolRadius * 0.8;
+          flute.position.z = -25 - cuttingLength / 2;
+          toolGroup.add(flute);
+        }
+      } else if (toolData.type === 'Ball Mill') {
+        // Ball nose end mill
+        const ballGeometry = new THREE.SphereGeometry(toolRadius, 16, 16);
+        const ballMaterial = new THREE.MeshPhongMaterial({ 
+          color: toolColor,
+          emissive: emissiveColor,
+          emissiveIntensity: 0.2
+        });
+        const ball = new THREE.Mesh(ballGeometry, ballMaterial);
+        ball.position.z = -25 - cuttingLength;
+        toolGroup.add(ball);
+        
+        const neckGeometry = new THREE.CylinderGeometry(
+          toolRadius * 0.9, 
+          toolRadius, 
+          cuttingLength - toolRadius, 
+          16
+        );
+        const neck = new THREE.Mesh(neckGeometry, ballMaterial);
+        neck.rotation.x = Math.PI / 2;
+        neck.position.z = -25 - (cuttingLength - toolRadius) / 2;
+        toolGroup.add(neck);
+      } else if (toolData.type === 'Face Mill') {
+        // Face mill with inserts
+        const faceGeometry = new THREE.CylinderGeometry(
+          toolRadius, 
+          toolRadius * 1.1, 
+          10, 
+          8
+        );
+        const faceMaterial = new THREE.MeshStandardMaterial({ 
+          color: 0x666666,
+          metalness: 0.9,
+          roughness: 0.1
+        });
+        const face = new THREE.Mesh(faceGeometry, faceMaterial);
+        face.rotation.x = Math.PI / 2;
+        face.position.z = -30;
+        toolGroup.add(face);
+        
+        // Add carbide inserts
+        const insertCount = toolData.inserts || 5;
+        for (let i = 0; i < insertCount; i++) {
+          const angle = (i * Math.PI * 2) / insertCount;
+          const insertGeometry = new THREE.BoxGeometry(3, 3, 1.5);
+          const insertMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xffcc00,
+            emissive: 0xffaa00,
+            emissiveIntensity: 0.4
+          });
+          const insert = new THREE.Mesh(insertGeometry, insertMaterial);
+          insert.position.x = Math.cos(angle) * toolRadius * 0.85;
+          insert.position.y = Math.sin(angle) * toolRadius * 0.85;
+          insert.position.z = -30;
+          insert.rotation.z = angle;
+          toolGroup.add(insert);
+        }
+      } else if (toolData.type === 'Drill') {
+        // Drill with point
+        const drillBodyGeometry = new THREE.CylinderGeometry(
+          toolRadius, 
+          toolRadius, 
+          cuttingLength - toolRadius * 2, 
+          16
+        );
+        const drillMaterial = new THREE.MeshPhongMaterial({ 
+          color: toolColor,
+          emissive: emissiveColor,
+          emissiveIntensity: 0.2
+        });
+        const drillBody = new THREE.Mesh(drillBodyGeometry, drillMaterial);
+        drillBody.rotation.x = Math.PI / 2;
+        drillBody.position.z = -25 - (cuttingLength - toolRadius * 2) / 2;
+        toolGroup.add(drillBody);
+        
+        // Drill point
+        const pointGeometry = new THREE.ConeGeometry(toolRadius, toolRadius * 2, 16);
+        const point = new THREE.Mesh(pointGeometry, drillMaterial);
+        point.rotation.x = Math.PI;
+        point.position.z = -25 - cuttingLength + toolRadius;
+        toolGroup.add(point);
+      } else {
+        // Default tool
+        const defaultGeometry = new THREE.CylinderGeometry(
+          toolRadius, 
+          toolRadius, 
+          cuttingLength, 
+          16
+        );
+        const defaultMaterial = new THREE.MeshPhongMaterial({ 
+          color: toolColor,
+          emissive: emissiveColor,
+          emissiveIntensity: 0.2
+        });
+        const defaultTool = new THREE.Mesh(defaultGeometry, defaultMaterial);
+        defaultTool.rotation.x = Math.PI / 2;
+        defaultTool.position.z = -25 - cuttingLength / 2;
+        toolGroup.add(defaultTool);
+      }
+    };
+    
+    // Build initial tool
+    rebuildToolGeometry(simulation.toolAssembly);
+    
+    // Store function for updates
+    window.updateTool3D = rebuildToolGeometry;
     
     // Add tool tip coordinate system (smaller than origin)
     const toolCoordGroup = new THREE.Group();
+    toolCoordGroup.name = 'toolCoordSystem';
     
     // X axis - Red
     const toolXGeometry = new THREE.CylinderGeometry(0.2, 0.2, 10, 4);
@@ -1006,6 +1235,13 @@ M30 ; End`
     }
   }, [project.gcode.channel1, setupConfig.workOffsets.activeOffset, setupConfig.workOffsets.G54, setupConfig.workOffsets.G55, setupConfig.workOffsets.G56, setupConfig.workOffsets.G57, setupConfig.workOffsets.G58, setupConfig.workOffsets.G59]);
   
+  // Update tool 3D visualization when assembly changes
+  useEffect(() => {
+    if (window.updateTool3D && simulation.toolAssembly) {
+      window.updateTool3D(simulation.toolAssembly);
+    }
+  }, [simulation.toolAssembly]);
+
   // Update tool position when simulation changes
   useEffect(() => {
     if (!toolRef.current) return;
@@ -3008,6 +3244,11 @@ M30 ; End`
                   const newTable = { ...toolOffsetTable };
                   newTable.H[simulation.activeHCode].lengthGeometry = assembly.totalLength;
                   setToolOffsetTable(newTable);
+                }
+                
+                // Update 3D tool visualization
+                if (window.updateTool3D) {
+                  window.updateTool3D(assembly);
                 }
               }}
             />
