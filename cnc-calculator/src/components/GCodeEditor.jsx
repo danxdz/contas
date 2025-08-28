@@ -4,14 +4,23 @@ const GCodeEditor = ({ gcode, onChange, currentLine }) => {
   const [activeChannel, setActiveChannel] = useState(1);
   const textareaRef = useRef(null);
   const lineNumbersRef = useRef(null);
+  const codeDisplayRef = useRef(null);
   
+  // Synchronize scrolling and highlighting
   useEffect(() => {
-    if (textareaRef.current && currentLine > 0) {
+    if (currentLine >= 0) {
       const lineHeight = 18;
       const scrollTo = currentLine * lineHeight - 100;
-      textareaRef.current.scrollTop = scrollTo;
+      
+      // Scroll all three elements together
+      if (textareaRef.current) {
+        textareaRef.current.scrollTop = scrollTo;
+      }
       if (lineNumbersRef.current) {
         lineNumbersRef.current.scrollTop = scrollTo;
+      }
+      if (codeDisplayRef.current) {
+        codeDisplayRef.current.scrollTop = scrollTo;
       }
     }
   }, [currentLine, activeChannel]);
@@ -100,59 +109,71 @@ const GCodeEditor = ({ gcode, onChange, currentLine }) => {
         borderRadius: '4px',
         overflow: 'hidden'
       }}>
-        {/* Line numbers column */}
+        {/* Line numbers column - synchronized scroll */}
         <div 
-          ref={lineNumbersRef}
           style={{
             width: '50px',
             backgroundColor: '#050810',
             borderRight: '1px solid rgba(255, 255, 255, 0.1)',
-            color: '#4a5568',
-            fontSize: '14px',
-            fontFamily: 'Consolas, Courier New, monospace',
-            lineHeight: '18px',
-            padding: '10px 0',
-            textAlign: 'right',
-            paddingRight: '10px',
             overflow: 'hidden',
-            userSelect: 'none'
+            position: 'relative'
           }}
         >
-          {gcode[`channel${activeChannel}`]?.split('\n').map((_, index) => (
-            <div 
-              key={index}
-              style={{
-                color: index === currentLine ? '#00ff33' : '#4a5568',
-                fontWeight: index === currentLine ? 'bold' : 'normal'
-              }}
-            >
-              {index + 1}
-            </div>
-          ))}
+          <div
+            ref={lineNumbersRef}
+            style={{
+              padding: '10px 10px 10px 0',
+              fontSize: '14px',
+              fontFamily: 'Consolas, Courier New, monospace',
+              lineHeight: '18px',
+              textAlign: 'right',
+              color: '#4a5568',
+              userSelect: 'none'
+            }}
+          >
+            {gcode[`channel${activeChannel}`]?.split('\n').map((_, index) => (
+              <div 
+                key={index}
+                style={{
+                  height: '18px',
+                  color: index === currentLine ? '#00ff33' : '#4a5568',
+                  fontWeight: index === currentLine ? 'bold' : 'normal',
+                  transition: 'color 0.2s ease'
+                }}
+              >
+                {index + 1}
+              </div>
+            ))}
+          </div>
         </div>
         
-        {/* Code display with active line highlighting */}
+        {/* Main editor area */}
         <div 
           style={{
             flex: 1,
             position: 'relative',
-            overflow: 'hidden',
-            backgroundColor: '#0a0e1a'
+            overflow: 'hidden'
           }}
         >
+          {/* Code display - visible, shows highlighting */}
           <div
-            ref={textareaRef}
+            ref={codeDisplayRef}
             style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
               padding: '10px',
               fontSize: '14px',
               fontFamily: 'Consolas, Courier New, monospace',
               lineHeight: '18px',
-              whiteSpace: 'pre',
-              minHeight: '100%',
               overflow: 'auto',
-              color: '#ffffff'
+              pointerEvents: 'none', // Let textarea handle interactions
+              zIndex: 1
             }}
             onScroll={(e) => {
+              // Sync scroll with line numbers
               if (lineNumbersRef.current) {
                 lineNumbersRef.current.scrollTop = e.target.scrollTop;
               }
@@ -162,19 +183,12 @@ const GCodeEditor = ({ gcode, onChange, currentLine }) => {
               <div 
                 key={index}
                 style={{
+                  height: '18px',
                   color: index === currentLine ? '#00ff33' : '#ffffff',
                   fontWeight: index === currentLine ? 'bold' : 'normal',
                   textShadow: index === currentLine ? '0 0 3px #00ff33' : 'none',
-                  transition: 'all 0.2s ease'
-                }}
-                onClick={() => {
-                  // Allow clicking on lines to edit
-                  const textarea = e.target.parentElement.nextSibling;
-                  if (textarea) {
-                    const lineStart = line.split('\n').slice(0, index).join('\n').length + (index > 0 ? 1 : 0);
-                    textarea.setSelectionRange(lineStart, lineStart);
-                    textarea.focus();
-                  }
+                  transition: 'all 0.2s ease',
+                  whiteSpace: 'pre'
                 }}
               >
                 {line || '\u00A0'}
@@ -182,8 +196,9 @@ const GCodeEditor = ({ gcode, onChange, currentLine }) => {
             ))}
           </div>
           
-          {/* Invisible textarea for editing */}
+          {/* Actual textarea for editing - transparent but interactive */}
           <textarea
+            ref={textareaRef}
             value={gcode[`channel${activeChannel}`] || ''}
             onChange={handleChange}
             spellCheck={false}
@@ -191,6 +206,8 @@ const GCodeEditor = ({ gcode, onChange, currentLine }) => {
               position: 'absolute',
               top: 0,
               left: 0,
+              right: 0,
+              bottom: 0,
               width: '100%',
               height: '100%',
               padding: '10px',
@@ -204,7 +221,17 @@ const GCodeEditor = ({ gcode, onChange, currentLine }) => {
               outline: 'none',
               resize: 'none',
               overflow: 'auto',
-              opacity: 0.01 // Almost invisible but still interactive
+              zIndex: 2
+            }}
+            onScroll={(e) => {
+              // Sync all scrolls together
+              const scrollTop = e.target.scrollTop;
+              if (codeDisplayRef.current) {
+                codeDisplayRef.current.scrollTop = scrollTop;
+              }
+              if (lineNumbersRef.current) {
+                lineNumbersRef.current.scrollTop = scrollTop;
+              }
             }}
             placeholder=""
           />

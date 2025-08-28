@@ -433,17 +433,16 @@
   min-height: 0;
 }
 
-.gcode-line-numbers {
-  background: #050810;
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-  color: #4a5568;
-  user-select: none;
+/* Ensure consistent line heights */
+.gcode-editor-content * {
+  box-sizing: border-box;
 }
 
-.gcode-line-active {
-  color: #00ff33 !important;
-  font-weight: bold;
-  text-shadow: 0 0 2px #00ff33;
+/* Remove any default textarea styling that might interfere */
+.gcode-editor-content textarea {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
 }
 
 /* Retro CNC terminal effect */
