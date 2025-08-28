@@ -2008,33 +2008,27 @@ M30 ; End`
     tools: {
       label: 'Tools',
       items: [
+        { id: 'toolmanager', label: '🔧 Tool Manager Pro', action: () => togglePanel('tools') },
+        { id: 'tooloffsets', label: '📏 Tool Offset Table (H/D)', action: () => togglePanel('toolOffsetTable') },
+        { divider: true },
         { id: 'feedsspeeds', label: 'Feeds & Speeds Optimizer', action: () => togglePanel('feedsSpeeds') },
         { id: 'toollife', label: 'Tool Life Calculator', action: () => togglePanel('toolLife') },
         { id: 'powerTorque', label: 'Power & Torque Calculator', action: () => togglePanel('powerTorque') },
+        { divider: true },
         { id: 'circular', label: 'Circular Interpolation', action: () => togglePanel('circular') },
         { id: 'geometry', label: 'Geometry Tools', action: () => togglePanel('geometry') },
-        { divider: true },
         { id: 'pocketwizard', label: 'Pocket Milling Wizard', action: () => togglePanel('pocketMilling') },
-        { id: 'shopfloor', label: 'Shop Floor Utilities', action: () => togglePanel('shopFloor') },
-        { divider: true },
-        { id: 'tooldatabase', label: '🛠️ Professional Tool System', action: () => togglePanel('toolDatabase') },
-        { id: 'machineconfig', label: 'Machine Configurator', action: () => togglePanel('machineConfig') },
-        { id: 'setupmanager', label: 'Setup Manager', action: () => togglePanel('setupManager') }
+        { id: 'shopfloor', label: 'Shop Floor Utilities', action: () => togglePanel('shopFloor') }
       ]
     },
     machine: {
       label: 'Machine',
       items: [
-        { id: 'connect', label: 'Connect to Machine', action: () => {} },
-        { id: 'disconnect', label: 'Disconnect', disabled: true, action: () => {} },
-        { divider: true },
-        { id: 'jog', label: 'Jog Mode', action: () => {} },
-        { id: 'mdi', label: 'MDI Mode', action: () => {} },
-        { id: 'auto', label: 'Auto Mode', action: () => {} },
+        { id: 'machineconfig', label: '🏭 Machine Configurator', action: () => togglePanel('machineConfig') },
+        { id: 'setupmanager', label: '📐 Setup Manager', action: () => togglePanel('setupManager') },
         { divider: true },
         { id: 'offsets', label: 'Work Offsets (G54-G59)', action: () => togglePanel('workOffsets') },
-        { id: 'tooloffsets', label: 'Tool Offset Table (H/D)', action: () => togglePanel('toolOffsetTable') },
-        { id: 'parameters', label: 'Machine Parameters', action: () => {} }
+        { id: 'machinecontrol', label: 'Machine Control', action: () => togglePanel('machineControl') }
       ]
     },
     setup: {
@@ -3259,34 +3253,7 @@ M30 ; End`
             </div>
           )}
           
-          {renderPanel('toolDatabase',
-            <ProfessionalToolSystem 
-              onToolAssemblyChange={(assembly) => {
-                console.log('Tool assembly updated:', assembly);
-                // Update simulation with new tool assembly
-                setSimulation(prev => ({
-                  ...prev,
-                  toolAssembly: assembly,
-                  currentToolLength: assembly.totalLength
-                }));
-                
-                // Add assembly to list
-                setToolAssemblies(prev => [...prev, assembly]);
-                
-                // Update tool offset table with new length
-                if (assembly.tool && simulation.activeHCode > 0) {
-                  const newTable = { ...toolOffsetTable };
-                  newTable.H[simulation.activeHCode].lengthGeometry = assembly.totalLength;
-                  setToolOffsetTable(newTable);
-                }
-                
-                // Update 3D tool visualization
-                if (window.updateTool3D) {
-                  window.updateTool3D(assembly);
-                }
-              }}
-            />
-          )}
+
         </>
       )}
       
