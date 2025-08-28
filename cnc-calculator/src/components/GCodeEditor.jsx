@@ -95,7 +95,7 @@ const GCodeEditor = ({ gcode, onChange, currentLine }) => {
         </button>
       </div>
       
-      <div style={{ position: 'relative', flex: 1, overflow: 'hidden' }}>
+      <div style={{ position: 'relative', flex: 1, display: 'flex', minHeight: 0 }}>
         <textarea
           ref={textareaRef}
           className="gcode-textarea"
@@ -107,7 +107,11 @@ const GCodeEditor = ({ gcode, onChange, currentLine }) => {
           style={{
             backgroundColor: '#0a0e1a',
             lineHeight: '18px',
-            paddingLeft: '10px'
+            paddingLeft: '10px',
+            paddingBottom: '10px',
+            width: '100%',
+            height: '100%',
+            minHeight: '200px'
           }}
         />
         {currentLine >= 0 && (

@@ -285,7 +285,7 @@
   left: 0;
   top: 40px;
   bottom: 0;
-  width: 400px;
+  width: 350px;
   border-radius: 0 8px 8px 0;
   border-left: none;
 }
@@ -294,7 +294,7 @@
   right: 0;
   top: 40px;
   bottom: 0;
-  width: 350px;
+  width: 280px;
   border-radius: 8px 0 0 8px;
   border-right: none;
 }
@@ -364,6 +364,9 @@
   overflow: auto;
   padding: 10px;
   color: #e0e0e0;
+  min-height: 0; /* Important for nested flex containers */
+  display: flex;
+  flex-direction: column;
 }
 
 /* Minimized Panel */
@@ -396,6 +399,7 @@
   height: 100%;
   display: flex;
   flex-direction: column;
+  min-height: 0; /* Important for flex children */
 }
 
 .gcode-tabs {
@@ -431,10 +435,12 @@
   font-weight: 400;
   line-height: 18px !important;  /* Fixed line height for proper highlighting */
   padding: 10px;
+  padding-bottom: 20px; /* Extra padding at bottom to prevent cutoff */
   resize: none;
   outline: none;
   caret-color: #00ff64;  /* Green cursor like old CNC */
   text-shadow: 0 0 1px rgba(255, 255, 255, 0.8);  /* Subtle CRT glow */
+  box-sizing: border-box;
 }
 
 /* Retro CNC terminal effect */
