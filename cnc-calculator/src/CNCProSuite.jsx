@@ -11,6 +11,7 @@ import GCodeEditor from './components/GCodeEditor';
 import ToolManager from './components/ToolManager';
 import MachineControl from './components/MachineControl';
 import FeatureTree from './components/FeatureTree';
+import ToolHolderSystem from './components/ToolHolderSystem';
 
 // Import all calculator modules
 import {
@@ -296,6 +297,16 @@ const CNCProSuite = () => {
       zIndex: 2,
       minimized: false,
       title: 'Work Offsets (G54-G59)'
+    },
+    toolHolders: {
+      visible: false,
+      floating: true,
+      docked: null,
+      position: { x: 100, y: 80 },
+      size: { width: 450, height: 550 },
+      zIndex: 2,
+      minimized: false,
+      title: 'Tool Holder System'
     }
   });
 
@@ -317,12 +328,42 @@ const CNCProSuite = () => {
   });
   
   const [toolDatabase, setToolDatabase] = useState([
-    { id: 1, tNumber: 'T1', name: 'End Mill 10mm', diameter: 10, flutes: 4, type: 'endmill', material: 'Carbide', coating: 'TiAlN', lengthOffset: 75.5, wearOffset: 0 },
-    { id: 2, tNumber: 'T2', name: 'End Mill 6mm', diameter: 6, flutes: 3, type: 'endmill', material: 'Carbide', coating: 'TiN', lengthOffset: 65.2, wearOffset: 0 },
-    { id: 3, tNumber: 'T3', name: 'Ball End 8mm', diameter: 8, flutes: 2, type: 'ballend', material: 'HSS', coating: 'None', lengthOffset: 70.0, wearOffset: 0 },
-    { id: 4, tNumber: 'T4', name: 'Drill 5mm', diameter: 5, flutes: 2, type: 'drill', material: 'Carbide', coating: 'TiAlN', lengthOffset: 85.3, wearOffset: 0 },
-    { id: 5, tNumber: 'T5', name: 'Face Mill 50mm', diameter: 50, flutes: 6, type: 'facemill', material: 'Carbide', coating: 'TiAlN', lengthOffset: 50.0, wearOffset: 0 },
-    { id: 6, tNumber: 'T6', name: 'Chamfer Mill 90°', diameter: 12, flutes: 4, type: 'chamfer', material: 'Carbide', coating: 'TiN', lengthOffset: 68.7, wearOffset: 0 }
+    { 
+      id: 1, tNumber: 'T1', name: 'End Mill 10mm', diameter: 10, flutes: 4, type: 'endmill', 
+      material: 'Carbide', coating: 'TiAlN', lengthOffset: 75.5, wearOffset: 0,
+      holder: { type: 'SK40/BT40', holderType: 'Collet Chuck', collet: 'ER32-10' },
+      stickout: 35, cuttingLength: 22, overallLength: 72
+    },
+    { 
+      id: 2, tNumber: 'T2', name: 'End Mill 6mm', diameter: 6, flutes: 3, type: 'endmill', 
+      material: 'Carbide', coating: 'TiN', lengthOffset: 65.2, wearOffset: 0,
+      holder: { type: 'SK40/BT40', holderType: 'Hydraulic Chuck', collet: null },
+      stickout: 30, cuttingLength: 18, overallLength: 63
+    },
+    { 
+      id: 3, tNumber: 'T3', name: 'Ball End 8mm', diameter: 8, flutes: 2, type: 'ballend', 
+      material: 'HSS', coating: 'None', lengthOffset: 70.0, wearOffset: 0,
+      holder: { type: 'SK40/BT40', holderType: 'Collet Chuck', collet: 'ER32-8' },
+      stickout: 32, cuttingLength: 16, overallLength: 65
+    },
+    { 
+      id: 4, tNumber: 'T4', name: 'Drill 5mm', diameter: 5, flutes: 2, type: 'drill', 
+      material: 'Carbide', coating: 'TiAlN', lengthOffset: 85.3, wearOffset: 0,
+      holder: { type: 'SK30/BT30', holderType: 'Collet Chuck', collet: 'ER32-5' },
+      stickout: 40, cuttingLength: 28, overallLength: 80
+    },
+    { 
+      id: 5, tNumber: 'T5', name: 'Face Mill 50mm', diameter: 50, flutes: 6, type: 'facemill', 
+      material: 'Carbide', coating: 'TiAlN', lengthOffset: 50.0, wearOffset: 0,
+      holder: { type: 'SK50/BT50', holderType: 'Shell Mill Holder', collet: null },
+      stickout: 0, cuttingLength: 10, overallLength: 45
+    },
+    { 
+      id: 6, tNumber: 'T6', name: 'Chamfer Mill 90°', diameter: 12, flutes: 4, type: 'chamfer', 
+      material: 'Carbide', coating: 'TiN', lengthOffset: 68.7, wearOffset: 0,
+      holder: { type: 'SK40/BT40', holderType: 'End Mill Holder', collet: null },
+      stickout: 28, cuttingLength: 15, overallLength: 60
+    }
   ]);
   
   // Tool Offset Table (like real CNC machine)
@@ -1723,6 +1764,7 @@ M30 ; End`
         { id: 'shopfloor', label: 'Shop Floor Utilities', action: () => togglePanel('shopFloor') },
         { divider: true },
         { id: 'tooldatabase', label: '📊 Tool Database (Overview)', action: () => togglePanel('toolDatabase') },
+        { id: 'toolholders', label: '🔩 Tool Holder System', action: () => togglePanel('toolHolders') },
         { id: 'machineconfig', label: 'Machine Configurator', action: () => togglePanel('machineConfig') },
         { id: 'setupmanager', label: 'Setup Manager', action: () => togglePanel('setupManager') }
       ]
@@ -2129,6 +2171,19 @@ M30 ; End`
         <ToolManager 
           tools={toolDatabase}
           onChange={(tools) => setToolDatabase(tools)}
+        />
+      )}
+      
+      {renderPanel('toolHolders',
+        <ToolHolderSystem 
+          onHolderSelect={(assembly) => {
+            console.log('Holder selected:', assembly);
+            // Update tool assembly in simulation
+            setSimulation(prev => ({
+              ...prev,
+              toolAssembly: assembly
+            }));
+          }}
         />
       )}
       
