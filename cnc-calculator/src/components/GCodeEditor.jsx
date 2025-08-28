@@ -20,6 +20,13 @@ const GCodeEditor = ({ gcode, onChange, currentLine }) => {
     });
   };
   
+  const handleScroll = (e) => {
+    const indicator = e.target.parentElement.querySelector('.line-indicator');
+    if (indicator) {
+      indicator.style.transform = `translateY(-${e.target.scrollTop}px)`;
+    }
+  };
+  
   const insertCommand = (command) => {
     const textarea = textareaRef.current;
     const start = textarea.selectionStart;
@@ -89,29 +96,52 @@ const GCodeEditor = ({ gcode, onChange, currentLine }) => {
       </div>
       
       <div style={{ position: 'relative', flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
+        {/* Active line indicator */}
+        {currentLine >= 0 && (
+          <div 
+            className="line-indicator"
+            style={{
+              position: 'absolute',
+              left: '2px',
+              top: `${currentLine * 18 + 10}px`,
+              width: '3px',
+              height: '18px',
+              backgroundColor: '#00ff33',
+              zIndex: 2,
+              pointerEvents: 'none',
+              transition: 'top 0.2s ease'
+            }}>
+            <div style={{
+              position: 'absolute',
+              left: '8px',
+              top: '0',
+              color: '#00ff33',
+              fontSize: '10px',
+              fontWeight: 'bold',
+              whiteSpace: 'nowrap'
+            }}>
+              ▶ L{currentLine + 1}
+            </div>
+          </div>
+        )}
         <textarea
           ref={textareaRef}
-          className={`gcode-textarea ${currentLine >= 0 ? 'has-active-line' : ''}`}
+          className="gcode-textarea"
           value={gcode[`channel${activeChannel}`] || ''}
           onChange={handleChange}
+          onScroll={handleScroll}
           spellCheck={false}
           placeholder="Enter G-code here..."
           style={{
             backgroundColor: '#0a0e1a',
-            backgroundImage: currentLine >= 0 ? `linear-gradient(
-              transparent ${currentLine * 18 + 10}px,
-              rgba(0, 255, 51, 0.2) ${currentLine * 18 + 10}px,
-              rgba(0, 255, 51, 0.2) ${(currentLine + 1) * 18 + 10}px,
-              transparent ${(currentLine + 1) * 18 + 10}px
-            )` : 'none',
-            backgroundAttachment: 'local',
             lineHeight: '18px',
-            paddingLeft: '10px',
+            paddingLeft: currentLine >= 0 ? '50px' : '10px',
             paddingBottom: '10px',
             width: '100%',
             height: '100%',
             minHeight: '200px',
-            borderLeft: currentLine >= 0 ? '3px solid #00ff33' : 'none'
+            color: '#ffffff',
+            transition: 'padding-left 0.2s ease'
           }}
         />
       </div>

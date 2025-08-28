@@ -579,12 +579,13 @@ M30 ; End`
     
     const toolpathGeometry = new THREE.BufferGeometry().setFromPoints(toolpathPoints);
     const toolpathMaterial = new THREE.LineBasicMaterial({ 
-      color: 0x00ffff,
-      linewidth: 2,
+      color: 0x00ff33,  // Changed to bright green
+      linewidth: 3,
       transparent: true,
-      opacity: 0.7
+      opacity: 0.9  // More opaque
     });
     const toolpath = new THREE.Line(toolpathGeometry, toolpathMaterial);
+    toolpath.position.z = 1; // Slightly raise it to avoid z-fighting
     scene.add(toolpath);
     toolpathRef.current = toolpath;
     
