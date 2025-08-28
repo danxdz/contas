@@ -678,7 +678,7 @@ M30 ; End`
     originMarkerRef.current = originGroup;
     
     // Create dynamic toolpath from G-code
-    const updateToolpath = () => {
+    const updateToolpath = (workOffsets = null) => {
       // Remove old toolpath
       if (toolpathRef.current) {
         scene.remove(toolpathRef.current);
@@ -690,64 +690,80 @@ M30 ; End`
       if (positions.length > 1) {
         const toolpathGroup = new THREE.Group();
         
-        // Apply work offset to toolpath
-        const activeOffset = setupConfig.workOffsets[setupConfig.workOffsets.activeOffset];
-        const offsetX = activeOffset.x;
-        const offsetY = activeOffset.y;
-        const offsetZ = activeOffset.z;
+        // Apply work offset to toolpath - use passed in offsets or default to zero
+        let offsetX = 0, offsetY = 0, offsetZ = 0;
+        if (workOffsets) {
+          const activeOffset = workOffsets[workOffsets.activeOffset];
+          offsetX = activeOffset.x;
+          offsetY = activeOffset.y;
+          offsetZ = activeOffset.z;
+        }
         
-        // Create feed moves (green solid lines)
-        const feedPoints = [];
-        const rapidPoints = [];
+        // Build continuous toolpath with proper segmentation
+        let currentSegment = [];
+        let currentType = null;
+        const segments = [];
+        
+        // First, add the starting position
+        const startPos = positions[0];
         
         for (let i = 1; i < positions.length; i++) {
           const prev = positions[i-1];
           const curr = positions[i];
           
-          if (curr.rapid) {
-            // Rapid moves (yellow dashed) - apply work offset
-            rapidPoints.push(
-              new THREE.Vector3(prev.x + offsetX, prev.y + offsetY, prev.z + offsetZ),
-              new THREE.Vector3(curr.x + offsetX, curr.y + offsetY, curr.z + offsetZ)
-            );
-          } else {
-            // Feed moves (green solid) - apply work offset
-            feedPoints.push(
-              new THREE.Vector3(prev.x + offsetX, prev.y + offsetY, prev.z + offsetZ),
-              new THREE.Vector3(curr.x + offsetX, curr.y + offsetY, curr.z + offsetZ)
-            );
+          // Determine move type
+          const moveType = curr.rapid ? 'rapid' : 'feed';
+          
+          // If type changes or starting new segment, save current and start new
+          if (currentType !== moveType) {
+            if (currentSegment.length > 0) {
+              segments.push({ type: currentType, points: [...currentSegment] });
+            }
+            currentSegment = [new THREE.Vector3(prev.x + offsetX, prev.y + offsetY, prev.z + offsetZ)];
+            currentType = moveType;
           }
+          
+          // Add current point to segment
+          currentSegment.push(new THREE.Vector3(curr.x + offsetX, curr.y + offsetY, curr.z + offsetZ));
         }
         
-        // Create feed move lines
-        if (feedPoints.length > 0) {
-          const feedGeometry = new THREE.BufferGeometry().setFromPoints(feedPoints);
-          const feedMaterial = new THREE.LineBasicMaterial({ 
-            color: 0x00ff33,  // Bright green for cuts
-            linewidth: 2,
-            transparent: true,
-            opacity: 0.9
-          });
-          const feedLines = new THREE.LineSegments(feedGeometry, feedMaterial);
-          toolpathGroup.add(feedLines);
+        // Don't forget the last segment
+        if (currentSegment.length > 0) {
+          segments.push({ type: currentType, points: currentSegment });
         }
         
-        // Create rapid move lines
-        if (rapidPoints.length > 0) {
-          const rapidGeometry = new THREE.BufferGeometry().setFromPoints(rapidPoints);
-          const rapidMaterial = new THREE.LineDashedMaterial({
-            color: 0xffff00,  // Yellow for rapids
-            linewidth: 1,
-            scale: 1,
-            dashSize: 5,
-            gapSize: 5,
-            transparent: true,
-            opacity: 0.6
-          });
-          const rapidLines = new THREE.LineSegments(rapidGeometry, rapidMaterial);
-          rapidLines.computeLineDistances();
-          toolpathGroup.add(rapidLines);
-        }
+        // Render each segment with appropriate style
+        segments.forEach(segment => {
+          if (segment.points.length < 2) return;
+          
+          const geometry = new THREE.BufferGeometry().setFromPoints(segment.points);
+          
+          if (segment.type === 'rapid') {
+            // Yellow dashed lines for rapid moves
+            const material = new THREE.LineDashedMaterial({
+              color: 0xffff00,
+              linewidth: 2,
+              scale: 1,
+              dashSize: 5,
+              gapSize: 3,
+              transparent: true,
+              opacity: 0.7
+            });
+            const line = new THREE.Line(geometry, material);
+            line.computeLineDistances();
+            toolpathGroup.add(line);
+          } else {
+            // Bright green solid lines for feed moves
+            const material = new THREE.LineBasicMaterial({ 
+              color: 0x00ff33,
+              linewidth: 3,
+              transparent: true,
+              opacity: 1.0
+            });
+            const line = new THREE.Line(geometry, material);
+            toolpathGroup.add(line);
+          }
+        });
         
         // Add start/end markers with work offset
         const startGeometry = new THREE.SphereGeometry(2, 8, 8);
@@ -768,8 +784,8 @@ M30 ; End`
       }
     };
     
-    // Initial toolpath
-    updateToolpath();
+    // Initial toolpath with initial work offsets
+    updateToolpath(setupConfig.workOffsets);
     updateToolpathRef.current = updateToolpath;
     
     // Add coordinate labels
@@ -832,7 +848,7 @@ M30 ; End`
   // Update toolpath when G-code or work offset changes
   useEffect(() => {
     if (updateToolpathRef.current && project.gcode.channel1) {
-      updateToolpathRef.current();
+      updateToolpathRef.current(setupConfig.workOffsets);
     }
     // Also update origin marker position
     if (originMarkerRef.current) {
@@ -2250,9 +2266,9 @@ M30 ; End`
                     scene.add(workpiece);
                     workpieceRef.current = workpiece;
                     
-                    // Update toolpath if exists
+                    // Update toolpath if exists with current work offsets
                     if (updateToolpathRef.current) {
-                      updateToolpathRef.current();
+                      updateToolpathRef.current(setupConfig.workOffsets);
                     }
                   }
                 }}
