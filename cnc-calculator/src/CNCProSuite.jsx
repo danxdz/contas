@@ -8,7 +8,7 @@ import './CNCProSuite.css';
 import DualChannelDebugger from './components/DualChannelDebugger';
 import StepProcessor from './components/StepProcessor';
 import GCodeEditor from './components/GCodeEditor';
-import ToolManager from './components/ToolManager';
+import ToolManagerPro from './components/ToolManagerPro';
 import MachineControl from './components/MachineControl';
 import FeatureTree from './components/FeatureTree';
 import ToolHolderSystem from './components/ToolHolderSystem';
@@ -681,7 +681,12 @@ M30 ; End`
       toolGroup.clear();
       if (coordSystem) toolGroup.add(coordSystem);
       
-      if (!assembly || !assembly.tool) {
+      // Check for new assembly structure from ToolManagerPro
+      const hasComponents = assembly?.components;
+      const tool = hasComponents ? assembly.components.tool : assembly?.tool;
+      const holder = hasComponents ? assembly.components.holder : assembly?.holder;
+      
+      if (!assembly || !tool) {
         // Default tool visualization
         const holderGeometry = new THREE.CylinderGeometry(12, 12, 40, 32);
         const holderMaterial = new THREE.MeshStandardMaterial({ 
@@ -708,8 +713,8 @@ M30 ; End`
       }
       
       // Build tool based on assembly data
-      const holderType = assembly.holder?.type || 'SK40';
-      const toolData = assembly.tool;
+      const holderType = holder || 'ISO40';
+      const toolData = tool;
       
       // Holder visualization
       let holderColor = 0x333333;
@@ -2195,9 +2200,22 @@ M30 ; End`
         break;
       case 'tools':
         content = (
-          <ToolManager 
-            tools={project.tools}
-            onChange={(tools) => setProject(prev => ({ ...prev, tools }))}
+          <ToolManagerPro
+            activeAssemblies={toolAssemblies}
+            onAssemblyCreate={(assembly) => {
+              setToolAssemblies(prev => [...prev, assembly]);
+              // Update tool in 3D scene
+              if (assembly.components?.tool) {
+                window.updateTool3D?.(assembly);
+              }
+            }}
+            onAssemblySelect={(assembly) => {
+              setSimulation(prev => ({ ...prev, toolAssembly: assembly }));
+              window.updateTool3D?.(assembly);
+            }}
+            onAssemblyDelete={(id) => {
+              setToolAssemblies(prev => prev.filter(a => a.id !== id));
+            }}
           />
         );
         break;
@@ -2417,10 +2435,21 @@ M30 ; End`
           )}
           
           {renderPanel('tools',
-        <ToolManager 
-          tools={toolDatabase}
-          onChange={(tools) => setToolDatabase(tools)}
-          assemblies={toolAssemblies}
+        <ToolManagerPro
+          activeAssemblies={toolAssemblies}
+          onAssemblyCreate={(assembly) => {
+            setToolAssemblies(prev => [...prev, assembly]);
+            if (assembly.components?.tool) {
+              window.updateTool3D?.(assembly);
+            }
+          }}
+          onAssemblySelect={(assembly) => {
+            setSimulation(prev => ({ ...prev, toolAssembly: assembly }));
+            window.updateTool3D?.(assembly);
+          }}
+          onAssemblyDelete={(id) => {
+            setToolAssemblies(prev => prev.filter(a => a.id !== id));
+          }}
         />
       )}
       
