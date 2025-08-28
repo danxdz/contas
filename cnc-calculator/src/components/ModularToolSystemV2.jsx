@@ -228,7 +228,8 @@ const ModularToolSystemV2 = ({ onAssemblyCreate, editingAssembly }) => {
       display: 'flex',
       flexDirection: 'column',
       background: '#0a0e1a',
-      color: '#e0e0e0'
+      color: '#e0e0e0',
+      overflow: 'hidden'
     }}>
       {/* Header */}
       <div style={{
@@ -256,7 +257,8 @@ const ModularToolSystemV2 = ({ onAssemblyCreate, editingAssembly }) => {
       <div style={{ 
         flex: 1, 
         overflow: 'auto',
-        padding: '20px'
+        padding: '20px',
+        maxHeight: 'calc(100% - 250px)'
       }}>
         {/* 1. Tool Selection */}
         <ComponentSection

@@ -15,6 +15,7 @@ const ToolManagerProEnhanced = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [editingAssembly, setEditingAssembly] = useState(null);
   const [rightPanelTab, setRightPanelTab] = useState('calculator');
+  const [isCompactView, setIsCompactView] = useState(false);
 
   // Cutting parameters state
   const [cuttingParams, setCuttingParams] = useState({
@@ -180,21 +181,27 @@ const ToolManagerProEnhanced = ({
       height: '100%',
       display: 'flex',
       background: '#0a0e1a',
-      color: '#e0e0e0'
+      color: '#e0e0e0',
+      overflow: 'hidden'
     }}>
       {/* Left Panel - Tool Management */}
       <div style={{
-        flex: '1 1 60%',
+        flex: '1 1 65%',
+        minWidth: '500px',
         display: 'flex',
         flexDirection: 'column',
-        borderRight: '2px solid #1a1f2e'
+        borderRight: '2px solid #1a1f2e',
+        overflow: 'hidden'
       }}>
         {/* Tabs */}
         <div style={{
           display: 'flex',
           borderBottom: '2px solid #00d4ff',
-          background: '#1a1f2e'
+          background: '#1a1f2e',
+          justifyContent: 'space-between',
+          alignItems: 'center'
         }}>
+          <div style={{ display: 'flex' }}>
           <button
             onClick={() => setViewMode('assemblies')}
             style={{
@@ -237,13 +244,37 @@ const ToolManagerProEnhanced = ({
           >
             📚 Component Library
           </button>
+          </div>
+          
+          {/* View Toggle */}
+          <button
+            onClick={() => setIsCompactView(!isCompactView)}
+            style={{
+              padding: '8px 15px',
+              background: 'transparent',
+              color: '#888',
+              border: '1px solid #333',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              marginRight: '10px'
+            }}
+            title={isCompactView ? "Expand View" : "Compact View"}
+          >
+            {isCompactView ? '⬜ Expand' : '▣ Compact'}
+          </button>
         </div>
 
         {/* Content */}
-        <div style={{ flex: 1, overflow: 'auto' }}>
+        <div style={{ 
+          flex: 1, 
+          overflow: 'auto',
+          padding: '15px',
+          maxHeight: 'calc(100% - 50px)'
+        }}>
           {/* Assemblies View */}
           {viewMode === 'assemblies' && (
-            <div style={{ padding: '15px' }}>
+            <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
               {/* Search */}
               <input
                 type="text"
@@ -262,7 +293,13 @@ const ToolManagerProEnhanced = ({
               />
 
               {/* Assembly List */}
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ 
+                flex: 1,
+                display: 'flex', 
+                flexDirection: 'column',
+                overflow: 'auto',
+                paddingRight: '10px'
+              }}>
                 {assemblies
                   .filter(a => !searchTerm || 
                     a.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -333,11 +370,15 @@ const ToolManagerProEnhanced = ({
       </div>
 
       {/* Right Panel - Utilities */}
+      {!isCompactView && (
       <div style={{
-        flex: '1 1 40%',
+        flex: '1 1 35%',
+        minWidth: '400px',
+        maxWidth: '600px',
         display: 'flex',
         flexDirection: 'column',
-        background: '#0f1420'
+        background: '#0f1420',
+        overflow: 'hidden'
       }}>
         {/* Right Panel Tabs */}
         <div style={{
@@ -690,6 +731,7 @@ const ToolManagerProEnhanced = ({
           )}
         </div>
       </div>
+      )}
     </div>
   );
 };
