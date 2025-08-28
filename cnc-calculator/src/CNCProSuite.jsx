@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
 import './CNCProSuite.css';
+import MaterialRemovalSimulation from './components/MaterialRemovalSimulation';
+import { setupCNCShortcuts } from './utils/KeyboardShortcuts';
 
 // Components
 import DualChannelDebugger from './components/DualChannelDebugger';
@@ -33,6 +35,11 @@ const CNCProSuite = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeMobilePanel, setActiveMobilePanel] = useState(null);
+  const [materialRemoval, setMaterialRemoval] = useState(null);
+  const [showMaterialRemoval, setShowMaterialRemoval] = useState(true);
+  const [collisionDetection, setCollisionDetection] = useState(true);
+  const [keyboardShortcuts, setKeyboardShortcuts] = useState(null);
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   
   // Setup states for stock, fixture, and machine
   const [setupConfig, setSetupConfig] = useState({
@@ -624,17 +631,27 @@ M30 ; End`
     const workpieceGroup = new THREE.Group();
     
     // Main stock (top surface at Z=0, extends down to Z=-50)
-    const stockGeometry = new THREE.BoxGeometry(150, 100, 50);
-    const stockMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x888888,
-      metalness: 0.7,
-      roughness: 0.3
-    });
-    const stock = new THREE.Mesh(stockGeometry, stockMaterial);
-    stock.position.z = -25; // Center at -25, so top is at 0, bottom at -50
-    stock.castShadow = true;
-    stock.receiveShadow = true;
-    workpieceGroup.add(stock);
+    const stockDimensions = { x: 150, y: 100, z: 50 };
+    
+    // Initialize material removal simulation if enabled
+    let materialSim = null;
+    if (showMaterialRemoval) {
+      materialSim = new MaterialRemovalSimulation(scene, stockDimensions);
+      setMaterialRemoval(materialSim);
+    } else {
+      // Regular stock mesh
+      const stockGeometry = new THREE.BoxGeometry(stockDimensions.x, stockDimensions.y, stockDimensions.z);
+      const stockMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x888888,
+        metalness: 0.7,
+        roughness: 0.3
+      });
+      const stock = new THREE.Mesh(stockGeometry, stockMaterial);
+      stock.position.z = -25; // Center at -25, so top is at 0, bottom at -50
+      stock.castShadow = true;
+      stock.receiveShadow = true;
+      workpieceGroup.add(stock);
+    }
     
     // Machined pocket (cut down from top surface)
     const pocketGeometry = new THREE.BoxGeometry(100, 60, 20);
@@ -1219,12 +1236,39 @@ M30 ; End`
     };
     window.addEventListener('resize', handleResize);
 
+    // Initialize keyboard shortcuts
+    const shortcuts = setupCNCShortcuts({
+      playPause: playPauseSimulation,
+      stop: stopSimulation,
+      stepForward,
+      stepBackward,
+      setView: setCameraView,
+      togglePanel,
+      increaseSpeed: () => setSimulation(prev => ({ ...prev, speed: Math.min(prev.speed * 2, 10) })),
+      decreaseSpeed: () => setSimulation(prev => ({ ...prev, speed: Math.max(prev.speed / 2, 0.1) })),
+      newProject,
+      openFile: () => document.getElementById('file-input')?.click(),
+      saveFile: saveProject,
+      showShortcuts: () => setShowShortcutsHelp(true),
+      jog: (axis, direction) => {
+        if (toolRef.current) {
+          const step = 5 * direction;
+          if (axis === 'X') toolRef.current.position.x += step;
+          if (axis === 'Y') toolRef.current.position.y += step;
+          if (axis === 'Z') toolRef.current.position.z += step;
+        }
+      }
+    });
+    setKeyboardShortcuts(shortcuts);
+
     return () => {
       window.removeEventListener('resize', handleResize);
       if (mountRef.current && renderer.domElement) {
         mountRef.current.removeChild(renderer.domElement);
       }
       renderer.dispose();
+      if (materialSim) materialSim.dispose();
+      if (shortcuts) shortcuts.dispose();
     };
   }, []); // Only initialize once
   
@@ -1247,7 +1291,7 @@ M30 ; End`
     }
   }, [simulation.toolAssembly]);
 
-  // Update tool position when simulation changes
+  // Update tool position and material removal when simulation changes
   useEffect(() => {
     if (!toolRef.current) return;
     
@@ -1274,11 +1318,45 @@ M30 ; End`
         currentPos.z + activeOffset.z - toolLengthComp :  // Compensated position
         currentPos.z + activeOffset.z + 30;  // Default tool visual offset
       
-      toolRef.current.position.set(
-        currentPos.x + activeOffset.x, 
-        currentPos.y + activeOffset.y, 
-        toolControlZ
-      );
+      const toolPosition = {
+        x: currentPos.x + activeOffset.x,
+        y: currentPos.y + activeOffset.y,
+        z: toolControlZ
+      };
+      
+      toolRef.current.position.set(toolPosition.x, toolPosition.y, toolPosition.z);
+      
+      // Material removal simulation
+      if (materialRemoval && showMaterialRemoval && simulation.isPlaying) {
+        const toolDiameter = simulation.toolAssembly?.components?.tool?.diameter || 10;
+        const toolLength = 30; // Default tool length
+        
+        // Check for collision in rapid moves
+        if (collisionDetection && currentPos.rapid) {
+          const collision = materialRemoval.checkCollision(toolPosition, toolDiameter, true);
+          if (collision.collision) {
+            console.warn('⚠️ COLLISION DETECTED:', collision);
+            // Pause simulation on collision
+            setSimulation(prev => ({ ...prev, isPlaying: false }));
+            alert('⚠️ Collision detected! Tool rapid move through material.');
+          }
+        }
+        
+        // Remove material for cutting moves
+        if (!currentPos.rapid && currentPos.z < 0) {
+          const removal = materialRemoval.removeMaterial(
+            toolPosition,
+            toolDiameter,
+            toolLength,
+            currentPos.f || 100
+          );
+          
+          // Update mesh every 10 lines for performance
+          if (simulation.currentLine % 10 === 0) {
+            materialRemoval.updateStockMesh();
+          }
+        }
+      }
       
       // Update simulation state with compensation info
       if (currentPos.g43 !== simulation.toolLengthCompActive || 
@@ -2547,6 +2625,65 @@ M30 ; End`
       {/* Quick Access Toolbar - Desktop Only */}
       {!isMobile && <QuickToolbar />}
       
+      {/* Keyboard Shortcuts Help Modal */}
+      {showShortcutsHelp && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000
+        }}>
+          <div style={{
+            background: '#1a1f2e',
+            borderRadius: '10px',
+            padding: '30px',
+            maxWidth: '600px',
+            maxHeight: '80vh',
+            overflow: 'auto',
+            border: '2px solid #00d4ff'
+          }}>
+            <h2 style={{ color: '#00d4ff', marginBottom: '20px' }}>⌨️ Keyboard Shortcuts</h2>
+            <div style={{ display: 'grid', gap: '10px' }}>
+              <div><kbd>Space</kbd> - Play/Pause simulation</div>
+              <div><kbd>Esc</kbd> - Stop simulation</div>
+              <div><kbd>F10</kbd> - Step forward</div>
+              <div><kbd>F9</kbd> - Step backward</div>
+              <div><kbd>1-4</kbd> - Camera views (Top/Front/Side/Iso)</div>
+              <div><kbd>F</kbd> - Zoom to fit</div>
+              <div><kbd>Arrow Keys</kbd> - Jog X/Y axes</div>
+              <div><kbd>Page Up/Down</kbd> - Jog Z axis</div>
+              <div><kbd>+/-</kbd> - Speed control</div>
+              <div><kbd>G</kbd> - Toggle G-code panel</div>
+              <div><kbd>T</kbd> - Toggle tools panel</div>
+              <div><kbd>Ctrl+S</kbd> - Save project</div>
+              <div><kbd>Ctrl+O</kbd> - Open file</div>
+              <div><kbd>?</kbd> - Show this help</div>
+            </div>
+            <button 
+              onClick={() => setShowShortcutsHelp(false)}
+              style={{
+                marginTop: '20px',
+                padding: '10px 20px',
+                background: '#00d4ff',
+                color: '#000',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Hidden File Inputs */}
       <input 
         id="file-input"
