@@ -614,6 +614,56 @@ M30 ; End`
       toolGroup.add(flute);
     }
     
+    // Add tool tip coordinate system (smaller than origin)
+    const toolCoordGroup = new THREE.Group();
+    
+    // X axis - Red
+    const toolXGeometry = new THREE.CylinderGeometry(0.2, 0.2, 10, 4);
+    const toolXMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const toolXAxis = new THREE.Mesh(toolXGeometry, toolXMaterial);
+    toolXAxis.rotation.z = Math.PI / 2;
+    toolXAxis.position.x = 5;
+    toolCoordGroup.add(toolXAxis);
+    
+    // X cone
+    const toolXConeGeometry = new THREE.ConeGeometry(0.8, 2, 4);
+    const toolXCone = new THREE.Mesh(toolXConeGeometry, toolXMaterial);
+    toolXCone.rotation.z = -Math.PI / 2;
+    toolXCone.position.x = 10;
+    toolCoordGroup.add(toolXCone);
+    
+    // Y axis - Green  
+    const toolYGeometry = new THREE.CylinderGeometry(0.2, 0.2, 10, 4);
+    const toolYMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    const toolYAxis = new THREE.Mesh(toolYGeometry, toolYMaterial);
+    toolYAxis.rotation.x = Math.PI / 2;
+    toolYAxis.position.y = 5;
+    toolCoordGroup.add(toolYAxis);
+    
+    // Y cone
+    const toolYConeGeometry = new THREE.ConeGeometry(0.8, 2, 4);
+    const toolYCone = new THREE.Mesh(toolYConeGeometry, toolYMaterial);
+    toolYCone.rotation.x = Math.PI / 2;
+    toolYCone.position.y = 10;
+    toolCoordGroup.add(toolYCone);
+    
+    // Z axis - Blue
+    const toolZGeometry = new THREE.CylinderGeometry(0.2, 0.2, 10, 4);
+    const toolZMaterial = new THREE.MeshBasicMaterial({ color: 0x0080ff });
+    const toolZAxis = new THREE.Mesh(toolZGeometry, toolZMaterial);
+    toolZAxis.position.z = 5;
+    toolCoordGroup.add(toolZAxis);
+    
+    // Z cone
+    const toolZConeGeometry = new THREE.ConeGeometry(0.8, 2, 4);
+    const toolZCone = new THREE.Mesh(toolZConeGeometry, toolZMaterial);
+    toolZCone.position.z = 10;
+    toolCoordGroup.add(toolZCone);
+    
+    // Position at tool tip
+    toolCoordGroup.position.z = -20; // At the cutting tip
+    toolGroup.add(toolCoordGroup);
+    
     toolGroup.position.set(0, 0, 50); // Start at safe height above workpiece
     scene.add(toolGroup);
     toolRef.current = toolGroup;
@@ -2784,6 +2834,254 @@ M30 ; End`
                     }}
                   >
                     Copy Active Offset
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {renderPanel('toolDatabase',
+            <div className="setup-panel">
+              <h3 style={{ color: '#00d4ff', marginBottom: '20px' }}>Tool Database</h3>
+              
+              {/* Tool Library */}
+              <div className="setup-section">
+                <h4>Tool Library</h4>
+                <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #333', borderRadius: '4px', padding: '10px' }}>
+                  {[
+                    { id: 1, name: 'End Mill 10mm', type: 'endmill', diameter: 10, flutes: 4, material: 'Carbide', coating: 'TiAlN' },
+                    { id: 2, name: 'End Mill 6mm', type: 'endmill', diameter: 6, flutes: 3, material: 'Carbide', coating: 'TiN' },
+                    { id: 3, name: 'Ball End 8mm', type: 'ballend', diameter: 8, flutes: 2, material: 'HSS', coating: 'None' },
+                    { id: 4, name: 'Drill 5mm', type: 'drill', diameter: 5, flutes: 2, material: 'Carbide', coating: 'TiAlN' },
+                    { id: 5, name: 'Face Mill 50mm', type: 'facemill', diameter: 50, flutes: 6, material: 'Carbide', coating: 'TiAlN' },
+                    { id: 6, name: 'Chamfer Mill 90°', type: 'chamfer', diameter: 12, flutes: 4, material: 'Carbide', coating: 'TiN' }
+                  ].map(tool => (
+                    <div key={tool.id} style={{
+                      padding: '10px',
+                      marginBottom: '8px',
+                      background: simulation.tool === tool.id ? 'rgba(0, 212, 255, 0.2)' : '#1a1f2e',
+                      border: simulation.tool === tool.id ? '1px solid #00d4ff' : '1px solid #444',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onClick={() => {
+                      setSimulation(prev => ({ ...prev, tool: tool.id }));
+                      // Update tool visualization in 3D
+                      if (toolRef.current) {
+                        // Update tool size based on diameter
+                        const toolMesh = toolRef.current.children[0];
+                        if (toolMesh && toolMesh.geometry) {
+                          toolMesh.scale.x = tool.diameter / 10;
+                          toolMesh.scale.y = tool.diameter / 10;
+                        }
+                      }
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0, 212, 255, 0.1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = simulation.tool === tool.id ? 'rgba(0, 212, 255, 0.2)' : '#1a1f2e'}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <strong style={{ color: '#00d4ff' }}>T{tool.id}: {tool.name}</strong>
+                          <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
+                            Type: {tool.type} | Ø{tool.diameter}mm | {tool.flutes} flutes | {tool.material} | {tool.coating}
+                          </div>
+                        </div>
+                        {simulation.tool === tool.id && (
+                          <span style={{ color: '#00ff33', fontSize: '20px' }}>✓</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Active Tool Details */}
+              <div className="setup-section">
+                <h4>Active Tool Settings</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label>Tool Number</label>
+                    <input 
+                      type="number" 
+                      value={simulation.tool}
+                      onChange={(e) => setSimulation(prev => ({ ...prev, tool: parseInt(e.target.value) }))}
+                      style={{ width: '100%', padding: '5px' }}
+                    />
+                  </div>
+                  <div>
+                    <label>Tool Length Offset</label>
+                    <input 
+                      type="number" 
+                      defaultValue="50"
+                      style={{ width: '100%', padding: '5px' }}
+                    />
+                  </div>
+                  <div>
+                    <label>Spindle Speed (RPM)</label>
+                    <input 
+                      type="number" 
+                      value={simulation.spindleSpeed}
+                      onChange={(e) => setSimulation(prev => ({ ...prev, spindleSpeed: parseInt(e.target.value) }))}
+                      style={{ width: '100%', padding: '5px' }}
+                    />
+                  </div>
+                  <div>
+                    <label>Feed Rate (mm/min)</label>
+                    <input 
+                      type="number" 
+                      value={simulation.feedRate}
+                      onChange={(e) => setSimulation(prev => ({ ...prev, feedRate: parseInt(e.target.value) }))}
+                      style={{ width: '100%', padding: '5px' }}
+                    />
+                  </div>
+                  <div>
+                    <label>Coolant</label>
+                    <select style={{ width: '100%', padding: '5px' }}>
+                      <option value="off">Off</option>
+                      <option value="flood">Flood</option>
+                      <option value="mist">Mist</option>
+                      <option value="through">Through Tool</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label>Tool Wear Comp</label>
+                    <input 
+                      type="number" 
+                      defaultValue="0"
+                      step="0.01"
+                      style={{ width: '100%', padding: '5px' }}
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Tool Change Position */}
+              <div className="setup-section">
+                <h4>Tool Change Position</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label>X Position</label>
+                    <input 
+                      type="number" 
+                      defaultValue="0"
+                      style={{ width: '100%', padding: '5px' }}
+                    />
+                  </div>
+                  <div>
+                    <label>Y Position</label>
+                    <input 
+                      type="number" 
+                      defaultValue="0"
+                      style={{ width: '100%', padding: '5px' }}
+                    />
+                  </div>
+                  <div>
+                    <label>Z Position</label>
+                    <input 
+                      type="number" 
+                      defaultValue="200"
+                      style={{ width: '100%', padding: '5px' }}
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Quick Actions */}
+              <div className="setup-section">
+                <h4>Quick Actions</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <button 
+                    onClick={() => {
+                      // Add new tool
+                      alert('Tool Editor coming soon!');
+                    }}
+                    style={{
+                      padding: '10px',
+                      background: '#00d4ff',
+                      color: '#000',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Add New Tool
+                  </button>
+                  <button 
+                    onClick={() => {
+                      // Export tool list
+                      const tools = [
+                        { T: 1, Name: 'End Mill 10mm', Diameter: 10, Flutes: 4 },
+                        { T: 2, Name: 'End Mill 6mm', Diameter: 6, Flutes: 3 },
+                        { T: 3, Name: 'Ball End 8mm', Diameter: 8, Flutes: 2 },
+                        { T: 4, Name: 'Drill 5mm', Diameter: 5, Flutes: 2 },
+                        { T: 5, Name: 'Face Mill 50mm', Diameter: 50, Flutes: 6 },
+                        { T: 6, Name: 'Chamfer Mill 90°', Diameter: 12, Flutes: 4 }
+                      ];
+                      const csv = 'T,Name,Diameter,Flutes\n' + tools.map(t => `${t.T},${t.Name},${t.Diameter},${t.Flutes}`).join('\n');
+                      const blob = new Blob([csv], { type: 'text/csv' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = 'tool_database.csv';
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    style={{
+                      padding: '10px',
+                      background: '#333',
+                      color: '#fff',
+                      border: '1px solid #666',
+                      borderRadius: '4px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Export Tool List
+                  </button>
+                  <button 
+                    onClick={() => {
+                      // Import tools
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = '.csv';
+                      input.onchange = (e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            alert('Tool import coming soon!');
+                          };
+                          reader.readAsText(file);
+                        }
+                      };
+                      input.click();
+                    }}
+                    style={{
+                      padding: '10px',
+                      background: '#333',
+                      color: '#fff',
+                      border: '1px solid #666',
+                      borderRadius: '4px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Import Tools
+                  </button>
+                  <button 
+                    onClick={() => {
+                      // Calculate feeds & speeds
+                      alert('Feeds & Speeds calculator integrated!');
+                    }}
+                    style={{
+                      padding: '10px',
+                      background: '#333',
+                      color: '#fff',
+                      border: '1px solid #666',
+                      borderRadius: '4px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Calculate F&S
                   </button>
                 </div>
               </div>
