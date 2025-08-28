@@ -13,6 +13,7 @@ import MachineControl from './components/MachineControl';
 import FeatureTree from './components/FeatureTree';
 import ToolHolderSystem from './components/ToolHolderSystem';
 import RealToolSystem from './components/RealToolSystem';
+import ToolOffsetTable from './components/ToolOffsetTable';
 
 // Import all calculator modules
 import {
@@ -308,6 +309,16 @@ const CNCProSuite = () => {
       zIndex: 2,
       minimized: false,
       title: 'Tool Holder System'
+    },
+    toolOffsetTable: {
+      visible: false,
+      floating: true,
+      docked: null,
+      position: { x: 200, y: 100 },
+      size: { width: 600, height: 500 },
+      zIndex: 2,
+      minimized: false,
+      title: 'Tool Offset Table'
     }
   });
 
@@ -1779,8 +1790,8 @@ M30 ; End`
         { id: 'mdi', label: 'MDI Mode', action: () => {} },
         { id: 'auto', label: 'Auto Mode', action: () => {} },
         { divider: true },
-        { id: 'offsets', label: 'Work Offsets', action: () => {} },
-        { id: 'tooloffsets', label: 'Tool Offsets', action: () => {} },
+        { id: 'offsets', label: 'Work Offsets (G54-G59)', action: () => togglePanel('workOffsets') },
+        { id: 'tooloffsets', label: 'Tool Offset Table (H/D)', action: () => togglePanel('toolOffsetTable') },
         { id: 'parameters', label: 'Machine Parameters', action: () => {} }
       ]
     },
@@ -2183,6 +2194,24 @@ M30 ; End`
               ...prev,
               toolAssembly: assembly
             }));
+          }}
+        />
+      )}
+      
+      {renderPanel('toolOffsetTable',
+        <ToolOffsetTable 
+          offsetTable={toolOffsetTable}
+          setOffsetTable={setToolOffsetTable}
+          activeHCode={simulation.activeHCode}
+          activeDCode={simulation.activeDCode}
+          onApplyOffset={(type, register) => {
+            console.log(`Applying ${type}${register} offset`);
+            // Update simulation with new active offset
+            if (type === 'H') {
+              setSimulation(prev => ({ ...prev, activeHCode: register }));
+            } else {
+              setSimulation(prev => ({ ...prev, activeDCode: register }));
+            }
           }}
         />
       )}
