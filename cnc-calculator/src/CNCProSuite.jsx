@@ -1298,14 +1298,67 @@ M30 ; End`
     }
   }, [simulation.currentLine, project.gcode.channel1, setupConfig.workOffsets, toolOffsetTable]);
   
-  // Simple playback timer
+  // Smooth simulation with tweening
+  const simulationIntervalRef = useRef(null);
+  const lastPositionRef = useRef({ x: 0, y: 0, z: 0 });
+  const targetPositionRef = useRef({ x: 0, y: 0, z: 0 });
+  const tweenProgressRef = useRef(0);
+  
   useEffect(() => {
-    if (!simulation.isPlaying) return;
+    if (!simulation.isPlaying) {
+      if (simulationIntervalRef.current) {
+        clearInterval(simulationIntervalRef.current);
+        simulationIntervalRef.current = null;
+      }
+      return;
+    }
     
-    const interval = setInterval(() => {
-      const lines = project.gcode.channel1.split('\n');
-      const positions = parseGCodePositions(project.gcode.channel1);
+    const lines = project.gcode.channel1.split('\n');
+    const positions = parseGCodePositions(project.gcode.channel1);
+    
+    // Animation frame for smooth motion
+    let animationId;
+    const animate = () => {
+      if (!toolRef.current || !simulation.isPlaying) return;
       
+      // Smooth interpolation between positions
+      if (tweenProgressRef.current < 1) {
+        tweenProgressRef.current = Math.min(1, tweenProgressRef.current + 0.05 * simulation.speed);
+        
+        const t = tweenProgressRef.current;
+        const easeT = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; // Ease in-out
+        
+        const currentX = lastPositionRef.current.x + (targetPositionRef.current.x - lastPositionRef.current.x) * easeT;
+        const currentY = lastPositionRef.current.y + (targetPositionRef.current.y - lastPositionRef.current.y) * easeT;
+        const currentZ = lastPositionRef.current.z + (targetPositionRef.current.z - lastPositionRef.current.z) * easeT;
+        
+        const activeOffset = setupConfig.workOffsets[setupConfig.workOffsets.activeOffset];
+        
+        // Get tool length compensation
+        let toolLengthComp = 0;
+        const currentPos = positions[simulation.currentLine];
+        if (currentPos && currentPos.g43 && currentPos.h > 0 && currentPos.h < toolOffsetTable.H.length) {
+          const hOffset = toolOffsetTable.H[currentPos.h];
+          toolLengthComp = hOffset.lengthGeometry + hOffset.lengthWear;
+        }
+        
+        const toolControlZ = currentPos?.g43 ? 
+          currentZ + activeOffset.z - toolLengthComp :
+          currentZ + activeOffset.z + 30;
+        
+        toolRef.current.position.set(
+          currentX + activeOffset.x,
+          currentY + activeOffset.y,
+          toolControlZ
+        );
+      }
+      
+      animationId = requestAnimationFrame(animate);
+    };
+    animate();
+    
+    // Line advancement timer
+    simulationIntervalRef.current = setInterval(() => {
       setSimulation(prev => {
         if (prev.currentLine >= lines.length - 1) {
           return { ...prev, isPlaying: false };
@@ -1324,18 +1377,32 @@ M30 ; End`
           return { ...prev, isPlaying: false };
         }
         
-        // Update position from parsed data
-        const pos = positions[nextLine] || prev.position;
+        // Set up tweening for next move
+        const currentPos = positions[prev.currentLine] || prev.position;
+        const nextPos = positions[nextLine] || prev.position;
+        
+        lastPositionRef.current = { x: currentPos.x, y: currentPos.y, z: currentPos.z };
+        targetPositionRef.current = { x: nextPos.x, y: nextPos.y, z: nextPos.z };
+        tweenProgressRef.current = 0;
+        
         return { 
           ...prev, 
           currentLine: nextLine,
-          position: { x: pos.x, y: pos.y, z: pos.z, a: 0, b: 0, c: 0 }
+          position: { x: nextPos.x, y: nextPos.y, z: nextPos.z, a: 0, b: 0, c: 0 }
         };
       });
-    }, 100 / simulation.speed); // Adjust speed
+    }, 200 / simulation.speed); // Adjust speed for line advancement
     
-    return () => clearInterval(interval);
-  }, [simulation.isPlaying, simulation.speed, project.gcode.channel1]);
+    return () => {
+      if (simulationIntervalRef.current) {
+        clearInterval(simulationIntervalRef.current);
+        simulationIntervalRef.current = null;
+      }
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+    };
+  }, [simulation.isPlaying, simulation.speed, simulation.currentLine, project.gcode.channel1, setupConfig.workOffsets, toolOffsetTable]);
 
   // Panel management functions
   const togglePanel = (panelId) => {
@@ -1763,6 +1830,19 @@ M30 ; End`
         ...prev,
         gcode: { ...prev.gcode, channel1: e.target.result }
       }));
+      // Reset simulation when loading new G-code
+      setSimulation(prev => ({
+        ...prev,
+        currentLine: 0,
+        isPlaying: false,
+        position: { x: 0, y: 0, z: 0, a: 0, b: 0, c: 0 }
+      }));
+      // Force toolpath update after loading
+      setTimeout(() => {
+        if (updateToolpathRef.current) {
+          updateToolpathRef.current(setupConfig.workOffsets);
+        }
+      }, 100);
     };
     reader.readAsText(file);
   };
@@ -1807,6 +1887,11 @@ M30 ; End`
   };
 
   const stopSimulation = () => {
+    // Actually stop the simulation by clearing the interval
+    if (simulationIntervalRef.current) {
+      clearInterval(simulationIntervalRef.current);
+      simulationIntervalRef.current = null;
+    }
     setSimulation(prev => ({
       ...prev,
       isPlaying: false,
