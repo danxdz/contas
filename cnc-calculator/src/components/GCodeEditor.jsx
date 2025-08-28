@@ -3,7 +3,6 @@ import React, { useState, useRef, useEffect } from 'react';
 const GCodeEditor = ({ gcode, onChange, currentLine }) => {
   const [activeChannel, setActiveChannel] = useState(1);
   const textareaRef = useRef(null);
-  const highlightRef = useRef(null);
   
   useEffect(() => {
     if (textareaRef.current && currentLine > 0) {
@@ -19,12 +18,6 @@ const GCodeEditor = ({ gcode, onChange, currentLine }) => {
       ...gcode,
       [`channel${activeChannel}`]: e.target.value
     });
-  };
-
-  const handleScroll = (e) => {
-    if (highlightRef.current) {
-      highlightRef.current.style.transform = `translateY(-${e.target.scrollTop}px)`;
-    }
   };
   
   const insertCommand = (command) => {
@@ -95,46 +88,30 @@ const GCodeEditor = ({ gcode, onChange, currentLine }) => {
         </button>
       </div>
       
-      <div style={{ position: 'relative', flex: 1, display: 'flex', minHeight: 0 }}>
-        {/* Line highlight bar */}
-        {currentLine >= 0 && (
-          <div
-            ref={highlightRef}
-            className="gcode-line-highlight"
-            style={{
-              position: 'absolute',
-              top: `${currentLine * 18 + 10}px`,
-              left: '0',
-              right: '0',
-              height: '18px',
-              backgroundColor: 'rgba(0, 255, 51, 0.15)',
-              borderLeft: '3px solid #00ff33',
-              pointerEvents: 'none',
-              transform: textareaRef.current ? `translateY(-${textareaRef.current.scrollTop}px)` : 'none',
-              zIndex: 1,
-              boxShadow: '0 0 20px rgba(0, 255, 51, 0.3)'
-            }}
-          />
-        )}
+      <div style={{ position: 'relative', flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
         <textarea
           ref={textareaRef}
           className={`gcode-textarea ${currentLine >= 0 ? 'has-active-line' : ''}`}
           value={gcode[`channel${activeChannel}`] || ''}
           onChange={handleChange}
-          onScroll={handleScroll}
           spellCheck={false}
           placeholder="Enter G-code here..."
           style={{
-            backgroundColor: 'rgba(10, 14, 26, 0.95)',
+            backgroundColor: '#0a0e1a',
+            backgroundImage: currentLine >= 0 ? `linear-gradient(
+              transparent ${currentLine * 18 + 10}px,
+              rgba(0, 255, 51, 0.2) ${currentLine * 18 + 10}px,
+              rgba(0, 255, 51, 0.2) ${(currentLine + 1) * 18 + 10}px,
+              transparent ${(currentLine + 1) * 18 + 10}px
+            )` : 'none',
+            backgroundAttachment: 'local',
             lineHeight: '18px',
             paddingLeft: '10px',
             paddingBottom: '10px',
             width: '100%',
             height: '100%',
             minHeight: '200px',
-            position: 'relative',
-            zIndex: 2,
-            color: currentLine >= 0 ? '#ffffff' : '#e0e0e0'
+            borderLeft: currentLine >= 0 ? '3px solid #00ff33' : 'none'
           }}
         />
       </div>
