@@ -308,9 +308,12 @@ const CNCProSuite = () => {
     spindleSpeed: 12000,
     tool: 1,
     toolLengthCompActive: false,  // G43 active
+    cutterCompActive: false,  // G41/G42 active
     activeHCode: 0,  // H code (tool length register)
+    activeDCode: 0,  // D code (cutter diameter register)
     machinePosition: { x: 0, y: 0, z: 0 },  // Machine coordinates
-    workPosition: { x: 0, y: 0, z: 0 }  // Work coordinates
+    workPosition: { x: 0, y: 0, z: 0 },  // Work coordinates
+    compMode: 'none'  // none, left (G41), right (G42)
   });
   
   const [toolDatabase, setToolDatabase] = useState([
@@ -321,6 +324,22 @@ const CNCProSuite = () => {
     { id: 5, tNumber: 'T5', name: 'Face Mill 50mm', diameter: 50, flutes: 6, type: 'facemill', material: 'Carbide', coating: 'TiAlN', lengthOffset: 50.0, wearOffset: 0 },
     { id: 6, tNumber: 'T6', name: 'Chamfer Mill 90°', diameter: 12, flutes: 4, type: 'chamfer', material: 'Carbide', coating: 'TiN', lengthOffset: 68.7, wearOffset: 0 }
   ]);
+  
+  // Tool Offset Table (like real CNC machine)
+  const [toolOffsetTable, setToolOffsetTable] = useState({
+    // H codes (Tool Length Offsets) - up to 99 in real machines
+    H: Array(100).fill(null).map((_, i) => ({
+      register: i,
+      lengthGeometry: i <= 6 ? [75.5, 65.2, 70.0, 85.3, 50.0, 68.7][i-1] || 0 : 0,
+      lengthWear: 0
+    })),
+    // D codes (Cutter Diameter Compensation) - up to 99 in real machines  
+    D: Array(100).fill(null).map((_, i) => ({
+      register: i,
+      diameterGeometry: i <= 6 ? [10, 6, 8, 5, 50, 12][i-1] || 0 : 0,
+      diameterWear: 0
+    }))
+  });
 
   const [project, setProject] = useState({
     name: 'Example Pocket Milling',
@@ -442,11 +461,11 @@ M30 ; End`
   const updateToolpathRef = useRef(null);
   const originMarkerRef = useRef(null);
 
-  // Simple G-code parser
+  // Enhanced G-code parser with tool compensation
   const parseGCodePositions = (gcode) => {
     const lines = gcode.split('\n');
     const positions = [];
-    let current = { x: 0, y: 0, z: 5, f: 500, s: 0 };
+    let current = { x: 0, y: 0, z: 5, f: 500, s: 0, g43: false, g41: false, g42: false, h: 0, d: 0 };
     
     lines.forEach(line => {
       const trimmed = line.trim();
@@ -461,14 +480,28 @@ M30 ; End`
       const z = line.match(/Z([-\d.]+)/i);
       const f = line.match(/F([\d.]+)/i);
       const s = line.match(/S([\d]+)/i);
+      const h = line.match(/H([\d]+)/i);
+      const d = line.match(/D([\d]+)/i);
+      
+      // Check for tool compensation codes
+      if (/G43/i.test(line)) current.g43 = true;  // Tool length comp on
+      if (/G49/i.test(line)) current.g43 = false; // Tool length comp off
+      if (/G41/i.test(line)) { current.g41 = true; current.g42 = false; } // Cutter comp left
+      if (/G42/i.test(line)) { current.g42 = true; current.g41 = false; } // Cutter comp right
+      if (/G40/i.test(line)) { current.g41 = false; current.g42 = false; } // Cutter comp off
       
       if (x) current.x = parseFloat(x[1]);
       if (y) current.y = parseFloat(y[1]);
       if (z) current.z = parseFloat(z[1]);
       if (f) current.f = parseFloat(f[1]);
       if (s) current.s = parseInt(s[1]);
+      if (h) current.h = parseInt(h[1]);
+      if (d) current.d = parseInt(d[1]);
       
-      positions.push({ ...current, comment: false, line: trimmed });
+      // Check for rapid move
+      const isRapid = /G0?0\b/i.test(line);
+      
+      positions.push({ ...current, rapid: isRapid, comment: false, line: trimmed });
     });
     
     return positions;
@@ -932,21 +965,44 @@ M30 ; End`
     
     // Always update position to the last known coordinates (even on comment lines)
     if (currentPos) {
-      // Position tool at actual cutting position with work offset
+      // Get active tool length compensation
+      let toolLengthComp = 0;
+      if (currentPos.g43 && currentPos.h > 0 && currentPos.h < toolOffsetTable.H.length) {
+        const hOffset = toolOffsetTable.H[currentPos.h];
+        toolLengthComp = hOffset.lengthGeometry + hOffset.lengthWear;
+      }
+      
+      // Position tool at actual cutting position with work offset and tool compensation
       const activeOffset = setupConfig.workOffsets[setupConfig.workOffsets.activeOffset];
-      const toolLength = 30; // Tool sticks down from holder
+      
+      // The tool control point is at the tip when G43 is active
+      const toolControlZ = currentPos.g43 ? 
+        currentPos.z + activeOffset.z - toolLengthComp :  // Compensated position
+        currentPos.z + activeOffset.z + 30;  // Default tool visual offset
+      
       toolRef.current.position.set(
         currentPos.x + activeOffset.x, 
         currentPos.y + activeOffset.y, 
-        currentPos.z + activeOffset.z + toolLength
+        toolControlZ
       );
+      
+      // Update simulation state with compensation info
+      if (currentPos.g43 !== simulation.toolLengthCompActive || 
+          currentPos.h !== simulation.activeHCode) {
+        setSimulation(prev => ({ 
+          ...prev, 
+          toolLengthCompActive: currentPos.g43,
+          activeHCode: currentPos.h,
+          activeDCode: currentPos.d
+        }));
+      }
       
       // Update spindle speed from G-code
       if (currentPos.s !== undefined && currentPos.s !== simulation.spindleSpeed) {
         setSimulation(prev => ({ ...prev, spindleSpeed: currentPos.s }));
       }
     }
-  }, [simulation.currentLine, project.gcode.channel1, setupConfig.workOffsets]);
+  }, [simulation.currentLine, project.gcode.channel1, setupConfig.workOffsets, toolOffsetTable]);
   
   // Simple playback timer
   useEffect(() => {
@@ -2916,10 +2972,11 @@ M30 ; End`
                     />
                   </div>
                   <div>
-                    <label>Tool Length Offset</label>
+                    <label>H Code (Length Register)</label>
                     <input 
                       type="number" 
-                      defaultValue="50"
+                      value={simulation.activeHCode}
+                      onChange={(e) => setSimulation(prev => ({ ...prev, activeHCode: parseInt(e.target.value) || 0 }))}
                       style={{ width: '100%', padding: '5px' }}
                     />
                   </div>
@@ -2959,6 +3016,89 @@ M30 ; End`
                       style={{ width: '100%', padding: '5px' }}
                     />
                   </div>
+                </div>
+              </div>
+              
+              {/* Tool Offset Table Display */}
+              <div className="setup-section">
+                <h4>Tool Offset Table (H/D Codes)</h4>
+                <div style={{ display: 'flex', gap: '20px' }}>
+                  <div style={{ flex: 1 }}>
+                    <h5 style={{ color: '#888', fontSize: '12px', marginBottom: '8px' }}>
+                      H{simulation.activeHCode} - Length Compensation {simulation.toolLengthCompActive ? '(G43 Active)' : '(G49)'}
+                    </h5>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', fontSize: '12px' }}>
+                      <div>
+                        <label style={{ color: '#666' }}>Geometry:</label>
+                        <input 
+                          type="number" 
+                          value={toolOffsetTable.H[simulation.activeHCode]?.lengthGeometry || 0}
+                          onChange={(e) => {
+                            const newTable = { ...toolOffsetTable };
+                            newTable.H[simulation.activeHCode].lengthGeometry = parseFloat(e.target.value) || 0;
+                            setToolOffsetTable(newTable);
+                          }}
+                          step="0.001"
+                          style={{ width: '100%', padding: '3px', fontSize: '11px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ color: '#666' }}>Wear:</label>
+                        <input 
+                          type="number" 
+                          value={toolOffsetTable.H[simulation.activeHCode]?.lengthWear || 0}
+                          onChange={(e) => {
+                            const newTable = { ...toolOffsetTable };
+                            newTable.H[simulation.activeHCode].lengthWear = parseFloat(e.target.value) || 0;
+                            setToolOffsetTable(newTable);
+                          }}
+                          step="0.001"
+                          style={{ width: '100%', padding: '3px', fontSize: '11px' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <h5 style={{ color: '#888', fontSize: '12px', marginBottom: '8px' }}>
+                      D{simulation.activeDCode} - Diameter Comp {simulation.cutterCompActive ? '(G41/G42 Active)' : '(G40)'}
+                    </h5>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', fontSize: '12px' }}>
+                      <div>
+                        <label style={{ color: '#666' }}>Geometry:</label>
+                        <input 
+                          type="number" 
+                          value={toolOffsetTable.D[simulation.activeDCode]?.diameterGeometry || 0}
+                          onChange={(e) => {
+                            const newTable = { ...toolOffsetTable };
+                            newTable.D[simulation.activeDCode].diameterGeometry = parseFloat(e.target.value) || 0;
+                            setToolOffsetTable(newTable);
+                          }}
+                          step="0.001"
+                          style={{ width: '100%', padding: '3px', fontSize: '11px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ color: '#666' }}>Wear:</label>
+                        <input 
+                          type="number" 
+                          value={toolOffsetTable.D[simulation.activeDCode]?.diameterWear || 0}
+                          onChange={(e) => {
+                            const newTable = { ...toolOffsetTable };
+                            newTable.D[simulation.activeDCode].diameterWear = parseFloat(e.target.value) || 0;
+                            setToolOffsetTable(newTable);
+                          }}
+                          step="0.001"
+                          style={{ width: '100%', padding: '3px', fontSize: '11px' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ marginTop: '10px', padding: '8px', background: 'rgba(0, 212, 255, 0.1)', borderRadius: '4px', fontSize: '11px', color: '#888' }}>
+                  <strong>Active Compensation:</strong> 
+                  {simulation.toolLengthCompActive && ` G43 H${simulation.activeHCode} (Length: ${(toolOffsetTable.H[simulation.activeHCode]?.lengthGeometry + toolOffsetTable.H[simulation.activeHCode]?.lengthWear).toFixed(3)}mm)`}
+                  {simulation.cutterCompActive && ` ${simulation.compMode === 'left' ? 'G41' : 'G42'} D${simulation.activeDCode} (Dia: ${(toolOffsetTable.D[simulation.activeDCode]?.diameterGeometry + toolOffsetTable.D[simulation.activeDCode]?.diameterWear).toFixed(3)}mm)`}
+                  {!simulation.toolLengthCompActive && !simulation.cutterCompActive && ' None (G49 G40)'}
                 </div>
               </div>
               
