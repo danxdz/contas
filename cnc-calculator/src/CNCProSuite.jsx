@@ -331,7 +331,7 @@ const CNCProSuite = () => {
     isPlaying: false,
     speed: 1.0,
     currentLine: 0,
-    position: { x: 0, y: 0, z: 0, a: 0, b: 0, c: 0 },
+    position: { x: 0, y: 0, z: 50, a: 0, b: 0, c: 0 },  // Start at safe height above stock
     feedRate: 500,
     spindleSpeed: 12000,
     tool: 1,
