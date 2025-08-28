@@ -378,6 +378,8 @@ const CNCProSuite = () => {
     }
   ]);
   
+  const [toolAssemblies, setToolAssemblies] = useState([]);
+  
   // Tool Offset Table (like real CNC machine)
   const [toolOffsetTable, setToolOffsetTable] = useState({
     // H codes (Tool Length Offsets) - up to 99 in real machines
@@ -2418,6 +2420,7 @@ M30 ; End`
         <ToolManager 
           tools={toolDatabase}
           onChange={(tools) => setToolDatabase(tools)}
+          assemblies={toolAssemblies}
         />
       )}
       
@@ -3238,6 +3241,9 @@ M30 ; End`
                   toolAssembly: assembly,
                   currentToolLength: assembly.totalLength
                 }));
+                
+                // Add assembly to list
+                setToolAssemblies(prev => [...prev, assembly]);
                 
                 // Update tool offset table with new length
                 if (assembly.tool && simulation.activeHCode > 0) {

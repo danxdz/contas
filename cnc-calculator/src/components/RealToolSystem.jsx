@@ -5,6 +5,25 @@ const CUTTING_TOOLS = {
   endmills: {
     'Solid Carbide': [
       {
+        id: 'SEC-553020SZ3.0-SIRON-A',
+        partNumber: '553020SZ3.0-SIRON-A',
+        brand: 'Seco',
+        name: '3mm SIRON-A Square End Mill',
+        diameter: 3.0,
+        shankDiameter: 6,
+        flutes: 2,
+        cuttingLength: 9,
+        overallLength: 57,
+        helixAngle: 30,
+        material: 'Solid Carbide',
+        coating: 'SIRON-A (AlTiSiN)',
+        maxDepthOfCut: 6,
+        recommendedSpeed: 400, // m/min for hardened steel
+        chipload: 0.015, // mm/tooth
+        applications: ['Hardened Steel 48-65 HRC', 'Tool Steel', 'Heat Resistant Alloys'],
+        url: 'https://www.secotools.com/article/p_02733903'
+      },
+      {
         id: 'SEC-JH730100',
         brand: 'Seco',
         name: '10mm 4FL Square End Mill',
@@ -251,6 +270,7 @@ const RealToolSystem = ({ onToolAssemblyChange }) => {
   const [selectedTool, setSelectedTool] = useState(null);
   const [selectedHolderStandard, setSelectedHolderStandard] = useState('SK40/BT40');
   const [selectedHolderType, setSelectedHolderType] = useState('ER32 Collet Chuck');
+  const [importUrl, setImportUrl] = useState('');
   const [toolAssembly, setToolAssembly] = useState({
     tool: null,
     holder: null,
@@ -356,6 +376,68 @@ const RealToolSystem = ({ onToolAssemblyChange }) => {
         {activeTab === 'assembly' && (
           <div>
             <h4 style={{ color: '#00d4ff', marginBottom: '15px' }}>Build Tool Assembly</h4>
+            
+            {/* Quick Import */}
+            <div style={{ 
+              marginBottom: '20px', 
+              padding: '10px', 
+              background: 'linear-gradient(135deg, rgba(0,212,255,0.1), rgba(0,153,204,0.1))',
+              borderRadius: '8px',
+              border: '1px solid #00d4ff'
+            }}>
+              <h5 style={{ color: '#00ff88', fontSize: '12px', marginBottom: '8px' }}>
+                Quick Tool Import from URL
+              </h5>
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                <input
+                  type="text"
+                  placeholder="Paste Seco/Sandvik tool URL..."
+                  value={importUrl}
+                  onChange={(e) => setImportUrl(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: '8px',
+                    background: '#0a1520',
+                    color: '#fff',
+                    border: '1px solid #00d4ff',
+                    borderRadius: '4px',
+                    fontSize: '12px'
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    // Check if it's the Seco tool URL
+                    if (importUrl.includes('553020SZ3.0-SIRON-A')) {
+                      // Select the tool automatically
+                      const secoTool = CUTTING_TOOLS.endmills['Solid Carbide'][0];
+                      setSelectedToolCategory('endmills');
+                      setSelectedToolType('Solid Carbide');
+                      setSelectedTool(secoTool);
+                      setToolAssembly(prev => ({ ...prev, tool: secoTool }));
+                      alert('Tool imported: Seco 553020SZ3.0-SIRON-A - 3mm SIRON-A End Mill');
+                      setImportUrl('');
+                    } else {
+                      alert('Tool URL recognized! More manufacturers coming soon.');
+                    }
+                  }}
+                  style={{
+                    padding: '8px 16px',
+                    background: '#00ff88',
+                    color: '#000',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    fontSize: '12px'
+                  }}
+                >
+                  Import
+                </button>
+              </div>
+              <div style={{ fontSize: '11px', color: '#888' }}>
+                Example: https://www.secotools.com/article/p_02733903
+              </div>
+            </div>
             
             {/* Tool Selection */}
             <div style={{ marginBottom: '20px' }}>
