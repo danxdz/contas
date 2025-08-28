@@ -53,6 +53,15 @@ const CNCProSuite = () => {
       spindleMax: 24000,
       rapidFeed: 15000,
       maxFeed: 10000
+    },
+    workOffsets: {
+      activeOffset: 'G54',
+      G54: { x: 0, y: 0, z: 0, description: 'Primary Setup' },
+      G55: { x: 100, y: 100, z: 0, description: 'Secondary Setup' },
+      G56: { x: 0, y: 0, z: 0, description: 'Third Setup' },
+      G57: { x: 0, y: 0, z: 0, description: 'Fourth Setup' },
+      G58: { x: 0, y: 0, z: 0, description: 'Fifth Setup' },
+      G59: { x: 0, y: 0, z: 0, description: 'Sixth Setup' }
     }
   });
   
@@ -277,6 +286,16 @@ const CNCProSuite = () => {
       zIndex: 2,
       minimized: false,
       title: 'Tool Database'
+    },
+    workOffsets: {
+      visible: false,
+      floating: true,
+      docked: null,
+      position: { x: 150, y: 100 },
+      size: { width: 500, height: 450 },
+      zIndex: 2,
+      minimized: false,
+      title: 'Work Offsets (G54-G59)'
     }
   });
 
@@ -408,6 +427,7 @@ M30 ; End`
   const toolRef = useRef(null);
   const toolpathRef = useRef(null);
   const updateToolpathRef = useRef(null);
+  const originMarkerRef = useRef(null);
 
   // Simple G-code parser
   const parseGCodePositions = (gcode) => {
@@ -598,6 +618,65 @@ M30 ; End`
     scene.add(toolGroup);
     toolRef.current = toolGroup;
     
+    // Add work origin marker (coordinate system axes)
+    const originGroup = new THREE.Group();
+    
+    // X axis - Red
+    const xAxisGeometry = new THREE.CylinderGeometry(0.5, 0.5, 30, 8);
+    const xAxisMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const xAxis = new THREE.Mesh(xAxisGeometry, xAxisMaterial);
+    xAxis.rotation.z = Math.PI / 2;
+    xAxis.position.x = 15;
+    originGroup.add(xAxis);
+    
+    // X cone
+    const xConeGeometry = new THREE.ConeGeometry(2, 5, 8);
+    const xCone = new THREE.Mesh(xConeGeometry, xAxisMaterial);
+    xCone.rotation.z = -Math.PI / 2;
+    xCone.position.x = 30;
+    originGroup.add(xCone);
+    
+    // Y axis - Green
+    const yAxisGeometry = new THREE.CylinderGeometry(0.5, 0.5, 30, 8);
+    const yAxisMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    const yAxis = new THREE.Mesh(yAxisGeometry, yAxisMaterial);
+    yAxis.rotation.x = Math.PI / 2;
+    yAxis.position.y = 15;
+    originGroup.add(yAxis);
+    
+    // Y cone
+    const yConeGeometry = new THREE.ConeGeometry(2, 5, 8);
+    const yCone = new THREE.Mesh(yConeGeometry, yAxisMaterial);
+    yCone.rotation.x = Math.PI / 2;
+    yCone.position.y = 30;
+    originGroup.add(yCone);
+    
+    // Z axis - Blue
+    const zAxisGeometry = new THREE.CylinderGeometry(0.5, 0.5, 30, 8);
+    const zAxisMaterial = new THREE.MeshBasicMaterial({ color: 0x0080ff });
+    const zAxis = new THREE.Mesh(zAxisGeometry, zAxisMaterial);
+    zAxis.position.z = 15;
+    originGroup.add(zAxis);
+    
+    // Z cone
+    const zConeGeometry = new THREE.ConeGeometry(2, 5, 8);
+    const zCone = new THREE.Mesh(zConeGeometry, zAxisMaterial);
+    zCone.position.z = 30;
+    originGroup.add(zCone);
+    
+    // Origin sphere
+    const originSphereGeometry = new THREE.SphereGeometry(2, 16, 16);
+    const originSphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const originSphere = new THREE.Mesh(originSphereGeometry, originSphereMaterial);
+    originGroup.add(originSphere);
+    
+    // Apply initial work offset
+    const activeOffset = setupConfig.workOffsets[setupConfig.workOffsets.activeOffset];
+    originGroup.position.set(activeOffset.x, activeOffset.y, activeOffset.z);
+    
+    scene.add(originGroup);
+    originMarkerRef.current = originGroup;
+    
     // Create dynamic toolpath from G-code
     const updateToolpath = () => {
       // Remove old toolpath
@@ -611,6 +690,12 @@ M30 ; End`
       if (positions.length > 1) {
         const toolpathGroup = new THREE.Group();
         
+        // Apply work offset to toolpath
+        const activeOffset = setupConfig.workOffsets[setupConfig.workOffsets.activeOffset];
+        const offsetX = activeOffset.x;
+        const offsetY = activeOffset.y;
+        const offsetZ = activeOffset.z;
+        
         // Create feed moves (green solid lines)
         const feedPoints = [];
         const rapidPoints = [];
@@ -620,16 +705,16 @@ M30 ; End`
           const curr = positions[i];
           
           if (curr.rapid) {
-            // Rapid moves (yellow dashed)
+            // Rapid moves (yellow dashed) - apply work offset
             rapidPoints.push(
-              new THREE.Vector3(prev.x, prev.y, prev.z),
-              new THREE.Vector3(curr.x, curr.y, curr.z)
+              new THREE.Vector3(prev.x + offsetX, prev.y + offsetY, prev.z + offsetZ),
+              new THREE.Vector3(curr.x + offsetX, curr.y + offsetY, curr.z + offsetZ)
             );
           } else {
-            // Feed moves (green solid)
+            // Feed moves (green solid) - apply work offset
             feedPoints.push(
-              new THREE.Vector3(prev.x, prev.y, prev.z),
-              new THREE.Vector3(curr.x, curr.y, curr.z)
+              new THREE.Vector3(prev.x + offsetX, prev.y + offsetY, prev.z + offsetZ),
+              new THREE.Vector3(curr.x + offsetX, curr.y + offsetY, curr.z + offsetZ)
             );
           }
         }
@@ -664,18 +749,18 @@ M30 ; End`
           toolpathGroup.add(rapidLines);
         }
         
-        // Add start/end markers
+        // Add start/end markers with work offset
         const startGeometry = new THREE.SphereGeometry(2, 8, 8);
         const startMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
         const startMarker = new THREE.Mesh(startGeometry, startMaterial);
-        startMarker.position.set(positions[0].x, positions[0].y, positions[0].z);
+        startMarker.position.set(positions[0].x + offsetX, positions[0].y + offsetY, positions[0].z + offsetZ);
         toolpathGroup.add(startMarker);
         
         const endGeometry = new THREE.SphereGeometry(2, 8, 8);
         const endMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
         const endMarker = new THREE.Mesh(endGeometry, endMaterial);
         const lastPos = positions[positions.length - 1];
-        endMarker.position.set(lastPos.x, lastPos.y, lastPos.z);
+        endMarker.position.set(lastPos.x + offsetX, lastPos.y + offsetY, lastPos.z + offsetZ);
         toolpathGroup.add(endMarker);
         
         scene.add(toolpathGroup);
@@ -1519,6 +1604,7 @@ M30 ; End`
         { id: 'part', label: 'Part Setup...', action: () => togglePanel('partSetup') },
         { id: 'fixture', label: 'Fixture Setup...', action: () => togglePanel('fixtureSetup') },
         { id: 'machine', label: 'Machine Setup...', action: () => togglePanel('machineSetup') },
+        { id: 'workoffsets', label: 'Work Offsets (G54-G59)...', action: () => togglePanel('workOffsets') },
         { divider: true },
         { id: 'setupwizard', label: 'Setup Wizard', action: () => {
           // Open all setup panels in sequence
@@ -2475,6 +2561,237 @@ M30 ; End`
                     defaultValue="5"
                     style={{ width: '100%', padding: '5px' }}
                   />
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {renderPanel('workOffsets',
+            <div className="setup-panel">
+              <h3 style={{ color: '#00d4ff', marginBottom: '20px' }}>Work Coordinate Systems (G54-G59)</h3>
+              
+              <div className="setup-section">
+                <h4>Active Work Offset</h4>
+                <select 
+                  value={setupConfig.workOffsets.activeOffset}
+                  onChange={(e) => setSetupConfig(prev => ({
+                    ...prev,
+                    workOffsets: { ...prev.workOffsets, activeOffset: e.target.value }
+                  }))}
+                  style={{ width: '100%', padding: '8px', marginBottom: '15px', background: '#1a1f2e', color: '#fff', border: '1px solid #00d4ff' }}
+                >
+                  <option value="G54">G54 - Primary Setup</option>
+                  <option value="G55">G55 - Secondary Setup</option>
+                  <option value="G56">G56 - Third Setup</option>
+                  <option value="G57">G57 - Fourth Setup</option>
+                  <option value="G58">G58 - Fifth Setup</option>
+                  <option value="G59">G59 - Sixth Setup</option>
+                </select>
+              </div>
+              
+              {['G54', 'G55', 'G56', 'G57', 'G58', 'G59'].map(offset => (
+                <div key={offset} className="setup-section" style={{ 
+                  background: setupConfig.workOffsets.activeOffset === offset ? 'rgba(0, 212, 255, 0.1)' : 'transparent',
+                  padding: '15px',
+                  marginBottom: '10px',
+                  borderRadius: '4px',
+                  border: setupConfig.workOffsets.activeOffset === offset ? '1px solid #00d4ff' : '1px solid #333'
+                }}>
+                  <h4 style={{ color: setupConfig.workOffsets.activeOffset === offset ? '#00d4ff' : '#888' }}>
+                    {offset} - {setupConfig.workOffsets[offset].description}
+                  </h4>
+                  
+                  <div style={{ marginBottom: '10px' }}>
+                    <label>Description</label>
+                    <input 
+                      type="text" 
+                      value={setupConfig.workOffsets[offset].description}
+                      onChange={(e) => setSetupConfig(prev => ({
+                        ...prev,
+                        workOffsets: { 
+                          ...prev.workOffsets,
+                          [offset]: { ...prev.workOffsets[offset], description: e.target.value }
+                        }
+                      }))}
+                      style={{ width: '100%', padding: '5px', marginBottom: '10px' }}
+                    />
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <label>X Offset (mm)</label>
+                      <input 
+                        type="number" 
+                        value={setupConfig.workOffsets[offset].x}
+                        onChange={(e) => {
+                          const value = parseFloat(e.target.value) || 0;
+                          setSetupConfig(prev => ({
+                            ...prev,
+                            workOffsets: { 
+                              ...prev.workOffsets,
+                              [offset]: { ...prev.workOffsets[offset], x: value }
+                            }
+                          }));
+                          // Update origin marker in 3D scene
+                          if (originMarkerRef.current && offset === setupConfig.workOffsets.activeOffset) {
+                            originMarkerRef.current.position.x = value;
+                          }
+                        }}
+                        style={{ width: '100%', padding: '5px' }}
+                      />
+                    </div>
+                    <div>
+                      <label>Y Offset (mm)</label>
+                      <input 
+                        type="number" 
+                        value={setupConfig.workOffsets[offset].y}
+                        onChange={(e) => {
+                          const value = parseFloat(e.target.value) || 0;
+                          setSetupConfig(prev => ({
+                            ...prev,
+                            workOffsets: { 
+                              ...prev.workOffsets,
+                              [offset]: { ...prev.workOffsets[offset], y: value }
+                            }
+                          }));
+                          // Update origin marker in 3D scene
+                          if (originMarkerRef.current && offset === setupConfig.workOffsets.activeOffset) {
+                            originMarkerRef.current.position.y = value;
+                          }
+                        }}
+                        style={{ width: '100%', padding: '5px' }}
+                      />
+                    </div>
+                    <div>
+                      <label>Z Offset (mm)</label>
+                      <input 
+                        type="number" 
+                        value={setupConfig.workOffsets[offset].z}
+                        onChange={(e) => {
+                          const value = parseFloat(e.target.value) || 0;
+                          setSetupConfig(prev => ({
+                            ...prev,
+                            workOffsets: { 
+                              ...prev.workOffsets,
+                              [offset]: { ...prev.workOffsets[offset], z: value }
+                            }
+                          }));
+                          // Update origin marker in 3D scene
+                          if (originMarkerRef.current && offset === setupConfig.workOffsets.activeOffset) {
+                            originMarkerRef.current.position.z = value;
+                          }
+                        }}
+                        style={{ width: '100%', padding: '5px' }}
+                      />
+                    </div>
+                  </div>
+                  
+                  {offset === setupConfig.workOffsets.activeOffset && (
+                    <div style={{ marginTop: '10px' }}>
+                      <button 
+                        onClick={() => {
+                          // Apply this offset to the current simulation
+                          if (originMarkerRef.current) {
+                            const currentOffset = setupConfig.workOffsets[offset];
+                            originMarkerRef.current.position.set(currentOffset.x, currentOffset.y, currentOffset.z);
+                          }
+                          // Update toolpath with new offset
+                          if (updateToolpathRef.current) {
+                            updateToolpathRef.current();
+                          }
+                        }}
+                        style={{
+                          padding: '8px 15px',
+                          background: '#00d4ff',
+                          color: '#000',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          marginRight: '10px'
+                        }}
+                      >
+                        Apply to Scene
+                      </button>
+                      <button 
+                        onClick={() => {
+                          // Zero current axis at machine position
+                          const currentPos = simulation.position;
+                          setSetupConfig(prev => ({
+                            ...prev,
+                            workOffsets: { 
+                              ...prev.workOffsets,
+                              [offset]: { 
+                                ...prev.workOffsets[offset], 
+                                x: currentPos.x,
+                                y: currentPos.y,
+                                z: currentPos.z
+                              }
+                            }
+                          }));
+                        }}
+                        style={{
+                          padding: '8px 15px',
+                          background: '#333',
+                          color: '#fff',
+                          border: '1px solid #666',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Set from Current Position
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              <div className="setup-section" style={{ marginTop: '20px' }}>
+                <h4>Quick Actions</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <button 
+                    onClick={() => {
+                      // Zero all offsets
+                      const resetOffsets = {};
+                      ['G54', 'G55', 'G56', 'G57', 'G58', 'G59'].forEach(g => {
+                        resetOffsets[g] = { x: 0, y: 0, z: 0, description: setupConfig.workOffsets[g].description };
+                      });
+                      setSetupConfig(prev => ({
+                        ...prev,
+                        workOffsets: { 
+                          ...prev.workOffsets,
+                          ...resetOffsets
+                        }
+                      }));
+                    }}
+                    style={{
+                      padding: '10px',
+                      background: '#333',
+                      color: '#fff',
+                      border: '1px solid #666',
+                      borderRadius: '4px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Zero All Offsets
+                  </button>
+                  <button 
+                    onClick={() => {
+                      // Copy active offset to clipboard
+                      const offset = setupConfig.workOffsets[setupConfig.workOffsets.activeOffset];
+                      const text = `${setupConfig.workOffsets.activeOffset}: X${offset.x} Y${offset.y} Z${offset.z}`;
+                      navigator.clipboard.writeText(text);
+                    }}
+                    style={{
+                      padding: '10px',
+                      background: '#333',
+                      color: '#fff',
+                      border: '1px solid #666',
+                      borderRadius: '4px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Copy Active Offset
+                  </button>
                 </div>
               </div>
             </div>
