@@ -738,6 +738,8 @@ const Tool3DImporter = ({ onModelLoaded, onToolDataExtracted }) => {
           </div>
         </div>
       )}
+        </div>
+      )}
       
       {/* Loading/Error Status */}
       {loading && (
