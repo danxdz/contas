@@ -1361,7 +1361,15 @@ M30 ; End`
         { id: 'saveAs', label: 'Save As...', shortcut: 'Ctrl+Shift+S', action: saveProject },
         { divider: true },
         { id: 'import', label: 'Import STEP...', action: () => document.getElementById('step-file-input').click() },
-        { id: 'export', label: 'Export G-Code...', action: () => {} },
+        { id: 'export', label: 'Export G-Code...', action: () => {
+          const blob = new Blob([project.gcode.channel1], { type: 'text/plain' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${project.name}.nc`;
+          a.click();
+          URL.revokeObjectURL(url);
+        }},
         { divider: true },
         { id: 'recent', label: 'Recent Files', submenu: true },
         { divider: true },
@@ -1371,12 +1379,12 @@ M30 ; End`
     edit: {
       label: 'Edit',
       items: [
-        { id: 'undo', label: 'Undo', shortcut: 'Ctrl+Z', action: () => {} },
-        { id: 'redo', label: 'Redo', shortcut: 'Ctrl+Y', action: () => {} },
+        { id: 'undo', label: 'Undo', shortcut: 'Ctrl+Z', action: () => document.execCommand('undo') },
+        { id: 'redo', label: 'Redo', shortcut: 'Ctrl+Y', action: () => document.execCommand('redo') },
         { divider: true },
-        { id: 'cut', label: 'Cut', shortcut: 'Ctrl+X', action: () => {} },
-        { id: 'copy', label: 'Copy', shortcut: 'Ctrl+C', action: () => {} },
-        { id: 'paste', label: 'Paste', shortcut: 'Ctrl+V', action: () => {} },
+        { id: 'cut', label: 'Cut', shortcut: 'Ctrl+X', action: () => document.execCommand('cut') },
+        { id: 'copy', label: 'Copy', shortcut: 'Ctrl+C', action: () => document.execCommand('copy') },
+        { id: 'paste', label: 'Paste', shortcut: 'Ctrl+V', action: () => document.execCommand('paste') },
         { divider: true },
         { id: 'find', label: 'Find...', shortcut: 'Ctrl+F', action: () => {} },
         { id: 'replace', label: 'Replace...', shortcut: 'Ctrl+H', action: () => {} }
@@ -1409,8 +1417,67 @@ M30 ; End`
         { divider: true },
         { id: 'speed', label: `Speed: ${simulation.speed}x`, submenu: true },
         { divider: true },
-        { id: 'verify', label: 'Verify G-Code', action: () => {} },
-        { id: 'optimize', label: 'Optimize Toolpath', action: () => {} }
+        { id: 'verify', label: 'Verify G-Code', action: () => {
+          const gcode = project.gcode.channel1;
+          const lines = gcode.split('\n');
+          const errors = [];
+          const warnings = [];
+          
+          lines.forEach((line, index) => {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith(';')) return;
+            
+            // Check for valid G/M codes
+            if (!/^[GMXYZIJKFST]/.test(trimmed)) {
+              warnings.push(`Line ${index + 1}: Unusual start character`);
+            }
+            
+            // Check for feedrate in G01/G02/G03
+            if (/^G0[123]/.test(trimmed) && !/F\d+/.test(gcode.substring(0, index * 20))) {
+              warnings.push(`Line ${index + 1}: No feedrate defined for cutting move`);
+            }
+          });
+          
+          alert(`G-Code Verification:\n${errors.length} errors\n${warnings.length} warnings\n\n${warnings.slice(0, 5).join('\n')}`);
+        }},
+        { id: 'optimize', label: 'Optimize Toolpath', action: () => {
+          // Simple optimization: remove redundant moves
+          const gcode = project.gcode.channel1;
+          const lines = gcode.split('\n');
+          const optimized = [];
+          let lastPos = { x: null, y: null, z: null };
+          
+          lines.forEach(line => {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith(';')) {
+              optimized.push(line);
+              return;
+            }
+            
+            // Parse position
+            const x = trimmed.match(/X([-\d.]+)/)?.[1];
+            const y = trimmed.match(/Y([-\d.]+)/)?.[1];
+            const z = trimmed.match(/Z([-\d.]+)/)?.[1];
+            
+            // Skip if moving to same position
+            if (x === lastPos.x && y === lastPos.y && z === lastPos.z) {
+              return;
+            }
+            
+            if (x) lastPos.x = x;
+            if (y) lastPos.y = y;
+            if (z) lastPos.z = z;
+            
+            optimized.push(line);
+          });
+          
+          setProject(prev => ({
+            ...prev,
+            gcode: { ...prev.gcode, channel1: optimized.join('\n') }
+          }));
+          
+          alert(`Toolpath optimized!\nReduced from ${lines.length} to ${optimized.length} lines`);
+        }}
       ]
     },
     tools: {
@@ -1453,9 +1520,48 @@ M30 ; End`
         { id: 'fixture', label: 'Fixture Setup...', action: () => togglePanel('fixtureSetup') },
         { id: 'machine', label: 'Machine Setup...', action: () => togglePanel('machineSetup') },
         { divider: true },
-        { id: 'setupwizard', label: 'Setup Wizard', action: () => {} },
-        { id: 'savesetup', label: 'Save Setup', action: () => {} },
-        { id: 'loadsetup', label: 'Load Setup', action: () => {} }
+        { id: 'setupwizard', label: 'Setup Wizard', action: () => {
+          // Open all setup panels in sequence
+          setPanels(prev => ({
+            ...prev,
+            stockSetup: { ...prev.stockSetup, visible: true },
+            fixtureSetup: { ...prev.fixtureSetup, visible: true },
+            machineSetup: { ...prev.machineSetup, visible: true },
+            partSetup: { ...prev.partSetup, visible: true }
+          }));
+        }},
+        { id: 'savesetup', label: 'Save Setup', action: () => {
+          const setupData = JSON.stringify(setupConfig, null, 2);
+          const blob = new Blob([setupData], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${project.name}_setup.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+        }},
+        { id: 'loadsetup', label: 'Load Setup', action: () => {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = '.json';
+          input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = (event) => {
+                try {
+                  const loaded = JSON.parse(event.target.result);
+                  setSetupConfig(loaded);
+                  alert('Setup loaded successfully!');
+                } catch (err) {
+                  alert('Error loading setup file');
+                }
+              };
+              reader.readAsText(file);
+            }
+          };
+          input.click();
+        }}
       ]
     },
     help: {

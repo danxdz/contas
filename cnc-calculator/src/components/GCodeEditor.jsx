@@ -131,36 +131,84 @@ const GCodeEditor = ({ gcode, onChange, currentLine }) => {
           ))}
         </div>
         
-        {/* Code textarea with syntax highlighting */}
-        <textarea
-          ref={textareaRef}
-          className="gcode-textarea"
-          value={gcode[`channel${activeChannel}`] || ''}
-          onChange={handleChange}
-          onScroll={(e) => {
-            if (lineNumbersRef.current) {
-              lineNumbersRef.current.scrollTop = e.target.scrollTop;
-            }
-          }}
-          spellCheck={false}
+        {/* Code display with active line highlighting */}
+        <div 
           style={{
             flex: 1,
-            width: '100%',
-            padding: '10px',
-            fontSize: '14px',
-            fontFamily: 'Consolas, Courier New, monospace',
-            lineHeight: '18px',
-            backgroundColor: '#0a0e1a',
-            color: '#ffffff',
-            caretColor: '#00ff33',
-            border: 'none',
-            outline: 'none',
-            resize: 'none',
-            overflow: 'auto',
-            whiteSpace: 'pre'
+            position: 'relative',
+            overflow: 'hidden',
+            backgroundColor: '#0a0e1a'
           }}
-          placeholder="Enter G-code here..."
-        />
+        >
+          <div
+            ref={textareaRef}
+            style={{
+              padding: '10px',
+              fontSize: '14px',
+              fontFamily: 'Consolas, Courier New, monospace',
+              lineHeight: '18px',
+              whiteSpace: 'pre',
+              minHeight: '100%',
+              overflow: 'auto',
+              color: '#ffffff'
+            }}
+            onScroll={(e) => {
+              if (lineNumbersRef.current) {
+                lineNumbersRef.current.scrollTop = e.target.scrollTop;
+              }
+            }}
+          >
+            {gcode[`channel${activeChannel}`]?.split('\n').map((line, index) => (
+              <div 
+                key={index}
+                style={{
+                  color: index === currentLine ? '#00ff33' : '#ffffff',
+                  fontWeight: index === currentLine ? 'bold' : 'normal',
+                  textShadow: index === currentLine ? '0 0 3px #00ff33' : 'none',
+                  transition: 'all 0.2s ease'
+                }}
+                onClick={() => {
+                  // Allow clicking on lines to edit
+                  const textarea = e.target.parentElement.nextSibling;
+                  if (textarea) {
+                    const lineStart = line.split('\n').slice(0, index).join('\n').length + (index > 0 ? 1 : 0);
+                    textarea.setSelectionRange(lineStart, lineStart);
+                    textarea.focus();
+                  }
+                }}
+              >
+                {line || '\u00A0'}
+              </div>
+            ))}
+          </div>
+          
+          {/* Invisible textarea for editing */}
+          <textarea
+            value={gcode[`channel${activeChannel}`] || ''}
+            onChange={handleChange}
+            spellCheck={false}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              padding: '10px',
+              fontSize: '14px',
+              fontFamily: 'Consolas, Courier New, monospace',
+              lineHeight: '18px',
+              backgroundColor: 'transparent',
+              color: 'transparent',
+              caretColor: '#00ff33',
+              border: 'none',
+              outline: 'none',
+              resize: 'none',
+              overflow: 'auto',
+              opacity: 0.01 // Almost invisible but still interactive
+            }}
+            placeholder=""
+          />
+        </div>
       </div>
       
       <div style={{ 
