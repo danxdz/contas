@@ -636,7 +636,7 @@ M30 ; End`
     stock.receiveShadow = true;
     workpieceGroup.add(stock);
     
-    // Machined pocket
+    // Machined pocket (cut down from top surface)
     const pocketGeometry = new THREE.BoxGeometry(100, 60, 20);
     const pocketMaterial = new THREE.MeshStandardMaterial({ 
       color: 0x666666,
@@ -644,10 +644,10 @@ M30 ; End`
       roughness: 0.2
     });
     const pocket = new THREE.Mesh(pocketGeometry, pocketMaterial);
-    pocket.position.set(0, 0, 35);
+    pocket.position.set(0, 0, -10); // Top at 0, bottom at -20
     workpieceGroup.add(pocket);
     
-    // Holes
+    // Holes (drilled down from top)
     const holePositions = [
       { x: -50, y: -30 },
       { x: 50, y: -30 },
@@ -661,7 +661,7 @@ M30 ; End`
         color: 0x444444
       });
       const hole = new THREE.Mesh(holeGeometry, holeMaterial);
-      hole.position.set(pos.x, pos.y, 25);
+      hole.position.set(pos.x, pos.y, -25); // Extends from 0 to -50
       hole.rotation.x = Math.PI / 2;
       workpieceGroup.add(hole);
     });

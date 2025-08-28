@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 
-const ToolManager = ({ tools = [], onChange }) => {
+const ToolManager = ({ tools = [], onChange, assemblies = [] }) => {
   const [selectedTool, setSelectedTool] = useState(null);
+  const [viewMode, setViewMode] = useState('assemblies'); // 'assemblies' or 'simple'
   
   const defaultTools = [
     { id: 1, tNumber: 'T1', name: '10mm End Mill', diameter: 10, flutes: 4, type: 'endmill' },
@@ -36,28 +37,141 @@ const ToolManager = ({ tools = [], onChange }) => {
   
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ marginBottom: '10px' }}>
-        <button 
-          onClick={addTool}
+      {/* View Mode Toggle */}
+      <div style={{ 
+        display: 'flex', 
+        gap: '5px', 
+        marginBottom: '10px',
+        borderBottom: '2px solid #00d4ff',
+        paddingBottom: '10px'
+      }}>
+        <button
+          onClick={() => setViewMode('assemblies')}
           style={{
-            padding: '6px 12px',
-            background: 'linear-gradient(135deg, #00d4ff, #0099cc)',
+            flex: 1,
+            padding: '6px',
+            background: viewMode === 'assemblies' ? '#00d4ff' : '#333',
+            color: viewMode === 'assemblies' ? '#000' : '#fff',
             border: 'none',
-            borderRadius: '4px',
-            color: 'white',
+            borderRadius: '4px 0 0 4px',
             cursor: 'pointer',
-            fontSize: '12px',
-            width: '100%'
+            fontSize: '12px'
           }}
         >
-          + Add Tool
+          Tool Assemblies
+        </button>
+        <button
+          onClick={() => setViewMode('simple')}
+          style={{
+            flex: 1,
+            padding: '6px',
+            background: viewMode === 'simple' ? '#00d4ff' : '#333',
+            color: viewMode === 'simple' ? '#000' : '#fff',
+            border: 'none',
+            borderRadius: '0 4px 4px 0',
+            cursor: 'pointer',
+            fontSize: '12px'
+          }}
+        >
+          Simple Tools
+        </button>
+      </div>
+
+      {viewMode === 'assemblies' ? (
+        <>
+          {/* Assembly List */}
+          <div style={{ flex: 1, overflowY: 'auto', marginBottom: '10px' }}>
+            {assemblies && assemblies.length > 0 ? (
+              assemblies.map((assembly, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    padding: '10px',
+                    marginBottom: '5px',
+                    background: selectedTool === assembly ? '#1a3a4a' : '#1a1f2e',
+                    border: selectedTool === assembly ? '1px solid #00d4ff' : '1px solid #333',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => setSelectedTool(assembly)}
+                >
+                  <div style={{ fontWeight: 'bold', color: '#00d4ff' }}>
+                    T{idx + 1}: {assembly.tool?.partNumber || 'Assembly'}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#888', marginTop: '4px' }}>
+                    {assembly.tool?.manufacturer} - {assembly.tool?.type}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>
+                    Ø{assembly.tool?.diameter}mm | {assembly.holder?.type}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#66ff66', marginTop: '2px' }}>
+                    Total Length: {assembly.totalLength?.toFixed(1)}mm
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div style={{ 
+                padding: '20px', 
+                textAlign: 'center', 
+                color: '#666',
+                fontSize: '12px'
+              }}>
+                No tool assemblies created yet.
+                <br />
+                <br />
+                Go to Tools → Real Tool System
+                <br />
+                to build tool assemblies.
+              </div>
+            )}
+          </div>
+
+          {/* Selected Assembly Details */}
+          {selectedTool && viewMode === 'assemblies' && (
+            <div style={{
+              padding: '10px',
+              background: '#0a1520',
+              borderRadius: '4px',
+              border: '1px solid #00d4ff'
+            }}>
+              <h4 style={{ color: '#00d4ff', margin: '0 0 10px 0', fontSize: '14px' }}>
+                Assembly Details
+              </h4>
+              <div style={{ fontSize: '12px', color: '#ccc' }}>
+                <div>Tool: {selectedTool.tool?.partNumber}</div>
+                <div>Holder: {selectedTool.holder?.type}</div>
+                <div>Stickout: {selectedTool.stickout}mm</div>
+                <div>Total Length: {selectedTool.totalLength?.toFixed(1)}mm</div>
+                <div>Cutting Length: {selectedTool.tool?.cuttingLength}mm</div>
+                <div>Coating: {selectedTool.tool?.coating}</div>
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <div style={{ marginBottom: '10px' }}>
+            <button 
+              onClick={addTool}
+              style={{
+                padding: '6px 12px',
+                background: 'linear-gradient(135deg, #00d4ff, #0099cc)',
+                border: 'none',
+                borderRadius: '4px',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '12px',
+                width: '100%'
+              }}
+            >
+                        + Add Simple Tool
         </button>
       </div>
       
-      <div className="tool-list" style={{ flex: 1, overflowY: 'auto' }}>
-        {currentTools.map(tool => (
-          <div 
-            key={tool.id}
+          <div className="tool-list" style={{ flex: 1, overflowY: 'auto' }}>
+            {currentTools.map(tool => (
+              <div 
+                key={tool.id}
             className={`tool-item ${selectedTool?.id === tool.id ? 'selected' : ''}`}
             onClick={() => setSelectedTool(tool)}
           >
@@ -145,6 +259,8 @@ const ToolManager = ({ tools = [], onChange }) => {
             </button>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );
