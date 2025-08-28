@@ -7,7 +7,7 @@ import './CNCProSuite.css';
 // Components
 import DualChannelDebugger from './components/DualChannelDebugger';
 import StepProcessor from './components/StepProcessor';
-import GCodeEditorEnhanced from './components/GCodeEditorEnhanced';
+import GCodeSyntaxHighlighter from './components/GCodeSyntaxHighlighter';
 import ToolManagerProEnhanced from './components/ToolManagerProEnhanced';
 import MachineControl from './components/MachineControl';
 import FeatureTree from './components/FeatureTree';
@@ -2329,7 +2329,7 @@ M30 ; End`
     switch(activeMobilePanel) {
       case 'gcode':
         content = (
-          <GCodeEditorEnhanced 
+          <GCodeSyntaxHighlighter 
             code={project.gcode.channel1}
             onChange={(newCode) => setProject(prev => ({ 
               ...prev, 
@@ -2572,7 +2572,7 @@ M30 ; End`
       {!isMobile && (
         <>
           {renderPanel('gcode', 
-            <GCodeEditorEnhanced 
+            <GCodeSyntaxHighlighter 
               code={project.gcode.channel1}
               onChange={(newCode) => setProject(prev => ({ 
                 ...prev, 
