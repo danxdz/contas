@@ -28,6 +28,43 @@ import {
 } from './components/modules';
 
 const CNCProSuite = () => {
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeMobilePanel, setActiveMobilePanel] = useState(null);
+  
+  // Setup states for stock, fixture, and machine
+  const [setupConfig, setSetupConfig] = useState({
+    stock: {
+      type: 'block', // block, cylinder, custom
+      dimensions: { x: 100, y: 100, z: 50 },
+      material: 'aluminum',
+      position: { x: 0, y: 0, z: 0 }
+    },
+    fixture: {
+      type: 'vise', // vise, chuck, custom
+      jawWidth: 150,
+      clampingForce: 5000,
+      position: { x: 0, y: 0, z: -50 }
+    },
+    machine: {
+      type: '3-axis', // 3-axis, 4-axis, 5-axis
+      workEnvelope: { x: 800, y: 600, z: 500 },
+      spindleMax: 24000,
+      rapidFeed: 15000,
+      maxFeed: 10000
+    }
+  });
+  
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
   // Panel system - each panel can be floating or docked
   const [panels, setPanels] = useState({
     gcode: {
@@ -1314,6 +1351,229 @@ M30 ; End`
     }
   };
 
+  // Mobile Toolbar Component
+  const MobileToolbar = () => (
+    <div className="mobile-toolbar">
+      <button 
+        onClick={() => setMobileMenuOpen(true)}
+        className={mobileMenuOpen ? 'active' : ''}
+      >
+        ☰<span>Menu</span>
+      </button>
+      <button 
+        onClick={() => setActiveMobilePanel(activeMobilePanel === 'gcode' ? null : 'gcode')}
+        className={activeMobilePanel === 'gcode' ? 'active' : ''}
+      >
+        📝<span>Code</span>
+      </button>
+      <button 
+        onClick={() => setSimulation(prev => ({ ...prev, isPlaying: !prev.isPlaying }))}
+        className={simulation.isPlaying ? 'active' : ''}
+      >
+        {simulation.isPlaying ? '⏸️' : '▶️'}<span>Play</span>
+      </button>
+      <button 
+        onClick={() => setActiveMobilePanel(activeMobilePanel === 'tools' ? null : 'tools')}
+        className={activeMobilePanel === 'tools' ? 'active' : ''}
+      >
+        🔧<span>Tools</span>
+      </button>
+      <button 
+        onClick={() => setActiveMobilePanel(activeMobilePanel === 'setup' ? null : 'setup')}
+        className={activeMobilePanel === 'setup' ? 'active' : ''}
+      >
+        ⚙️<span>Setup</span>
+      </button>
+    </div>
+  );
+  
+  // Mobile Menu Component
+  const MobileMenu = () => (
+    <div className={`mobile-menu ${mobileMenuOpen ? 'active' : ''}`}>
+      <div className="mobile-menu-header">
+        <h3>CNC Pro Suite</h3>
+        <button onClick={() => setMobileMenuOpen(false)}>✖</button>
+      </div>
+      <div className="mobile-menu-items">
+        <div className="mobile-menu-item" onClick={() => { togglePanel('feedsSpeeds'); setMobileMenuOpen(false); }}>
+          Feeds & Speeds Optimizer
+        </div>
+        <div className="mobile-menu-item" onClick={() => { togglePanel('toolLife'); setMobileMenuOpen(false); }}>
+          Tool Life Calculator
+        </div>
+        <div className="mobile-menu-item" onClick={() => { togglePanel('powerTorque'); setMobileMenuOpen(false); }}>
+          Power & Torque Calculator
+        </div>
+        <div className="mobile-menu-item" onClick={() => { togglePanel('circular'); setMobileMenuOpen(false); }}>
+          Circular Interpolation
+        </div>
+        <div className="mobile-menu-item" onClick={() => { togglePanel('geometry'); setMobileMenuOpen(false); }}>
+          Geometry Tools
+        </div>
+        <div className="mobile-menu-item" onClick={() => { togglePanel('pocketMilling'); setMobileMenuOpen(false); }}>
+          Pocket Milling Wizard
+        </div>
+        <div className="mobile-menu-item" onClick={() => { togglePanel('dualChannel'); setMobileMenuOpen(false); }}>
+          Dual Channel Debugger
+        </div>
+        <div className="mobile-menu-item" onClick={() => { togglePanel('stepProcessor'); setMobileMenuOpen(false); }}>
+          STEP Processor
+        </div>
+        <div className="mobile-menu-item" onClick={() => { togglePanel('machineConfig'); setMobileMenuOpen(false); }}>
+          Machine Configurator
+        </div>
+        <div className="mobile-menu-item" onClick={() => { togglePanel('setupManager'); setMobileMenuOpen(false); }}>
+          Setup Manager
+        </div>
+      </div>
+    </div>
+  );
+  
+  // Mobile Panel Component
+  const MobilePanel = () => {
+    if (!activeMobilePanel) return null;
+    
+    let content = null;
+    switch(activeMobilePanel) {
+      case 'gcode':
+        content = (
+          <GCodeEditor 
+            gcode={project.gcode}
+            onChange={(gcode) => setProject(prev => ({ ...prev, gcode }))}
+            currentLine={simulation.currentLine}
+          />
+        );
+        break;
+      case 'tools':
+        content = (
+          <ToolManager 
+            tools={project.tools}
+            onChange={(tools) => setProject(prev => ({ ...prev, tools }))}
+          />
+        );
+        break;
+      case 'setup':
+        content = (
+          <div className="setup-panel">
+            <h4>Stock Setup</h4>
+            <div className="setup-group">
+              <label>Type:</label>
+              <select 
+                value={setupConfig.stock.type}
+                onChange={(e) => setSetupConfig(prev => ({
+                  ...prev,
+                  stock: { ...prev.stock, type: e.target.value }
+                }))}
+              >
+                <option value="block">Block</option>
+                <option value="cylinder">Cylinder</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            <div className="setup-group">
+              <label>Dimensions (mm):</label>
+              <input 
+                type="number" 
+                placeholder="X"
+                value={setupConfig.stock.dimensions.x}
+                onChange={(e) => setSetupConfig(prev => ({
+                  ...prev,
+                  stock: { 
+                    ...prev.stock, 
+                    dimensions: { ...prev.stock.dimensions, x: parseFloat(e.target.value) }
+                  }
+                }))}
+              />
+              <input 
+                type="number" 
+                placeholder="Y"
+                value={setupConfig.stock.dimensions.y}
+                onChange={(e) => setSetupConfig(prev => ({
+                  ...prev,
+                  stock: { 
+                    ...prev.stock, 
+                    dimensions: { ...prev.stock.dimensions, y: parseFloat(e.target.value) }
+                  }
+                }))}
+              />
+              <input 
+                type="number" 
+                placeholder="Z"
+                value={setupConfig.stock.dimensions.z}
+                onChange={(e) => setSetupConfig(prev => ({
+                  ...prev,
+                  stock: { 
+                    ...prev.stock, 
+                    dimensions: { ...prev.stock.dimensions, z: parseFloat(e.target.value) }
+                  }
+                }))}
+              />
+            </div>
+            
+            <h4>Fixture Setup</h4>
+            <div className="setup-group">
+              <label>Type:</label>
+              <select 
+                value={setupConfig.fixture.type}
+                onChange={(e) => setSetupConfig(prev => ({
+                  ...prev,
+                  fixture: { ...prev.fixture, type: e.target.value }
+                }))}
+              >
+                <option value="vise">Vise</option>
+                <option value="chuck">Chuck</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            
+            <h4>Machine Setup</h4>
+            <div className="setup-group">
+              <label>Type:</label>
+              <select 
+                value={setupConfig.machine.type}
+                onChange={(e) => setSetupConfig(prev => ({
+                  ...prev,
+                  machine: { ...prev.machine, type: e.target.value }
+                }))}
+              >
+                <option value="3-axis">3-Axis</option>
+                <option value="4-axis">4-Axis</option>
+                <option value="5-axis">5-Axis</option>
+              </select>
+            </div>
+            <div className="setup-group">
+              <label>Max Spindle (RPM):</label>
+              <input 
+                type="number" 
+                value={setupConfig.machine.spindleMax}
+                onChange={(e) => setSetupConfig(prev => ({
+                  ...prev,
+                  machine: { ...prev.machine, spindleMax: parseInt(e.target.value) }
+                }))}
+              />
+            </div>
+          </div>
+        );
+        break;
+      default:
+        content = null;
+    }
+    
+    return (
+      <div className={`mobile-panel ${activeMobilePanel ? 'active' : ''}`}>
+        <div className="panel-header">
+          <span>{activeMobilePanel === 'gcode' ? 'G-Code Editor' : 
+                activeMobilePanel === 'tools' ? 'Tool Manager' : 
+                activeMobilePanel === 'setup' ? 'Setup Configuration' : ''}</span>
+          <button onClick={() => setActiveMobilePanel(null)}>✖</button>
+        </div>
+        <div className="panel-content">
+          {content}
+        </div>
+      </div>
+    );
+  };
+  
   return (
     <div className="cnc-pro-suite">
       {/* Top Menu Bar */}
@@ -1471,6 +1731,15 @@ M30 ; End`
         <div className="menu-separator" />
         <button>Properties</button>
       </div>
+      
+      {/* Mobile UI Components */}
+      {isMobile && (
+        <>
+          <MobileToolbar />
+          <MobileMenu />
+          <MobilePanel />
+        </>
+      )}
     </div>
   );
 };

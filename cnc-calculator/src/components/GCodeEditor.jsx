@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 const GCodeEditor = ({ gcode, onChange, currentLine }) => {
   const [activeChannel, setActiveChannel] = useState(1);
   const textareaRef = useRef(null);
+  const highlightRef = useRef(null);
   
   useEffect(() => {
     if (textareaRef.current && currentLine > 0) {
@@ -18,6 +19,12 @@ const GCodeEditor = ({ gcode, onChange, currentLine }) => {
       ...gcode,
       [`channel${activeChannel}`]: e.target.value
     });
+  };
+
+  const handleScroll = (e) => {
+    if (highlightRef.current) {
+      highlightRef.current.style.transform = `translateY(-${e.target.scrollTop}px)`;
+    }
   };
   
   const insertCommand = (command) => {
@@ -88,31 +95,47 @@ const GCodeEditor = ({ gcode, onChange, currentLine }) => {
         </button>
       </div>
       
-      <textarea
-        ref={textareaRef}
-        className="gcode-textarea"
-        value={gcode[`channel${activeChannel}`] || ''}
-        onChange={handleChange}
-        spellCheck={false}
-        placeholder="Enter G-code here..."
-        style={{
-          backgroundImage: currentLine >= 0 ? 
-            `linear-gradient(
-              to bottom,
-              transparent,
-              transparent ${currentLine * 18}px,
-              #00ff3344 ${currentLine * 18}px,
-              #00ff3344 ${(currentLine + 1) * 18}px,
-              transparent ${(currentLine + 1) * 18}px,
-              transparent
-            )` : 'none',
-          backgroundColor: '#0a0e1a',
-          backgroundAttachment: 'local',
-          lineHeight: '18px',
-          paddingLeft: currentLine >= 0 ? '14px' : '10px',
-          borderLeft: currentLine >= 0 ? '4px solid #00ff64' : 'none'
-        }}
-      />
+      <div style={{ position: 'relative', flex: 1, overflow: 'hidden' }}>
+        <textarea
+          ref={textareaRef}
+          className="gcode-textarea"
+          value={gcode[`channel${activeChannel}`] || ''}
+          onChange={handleChange}
+          onScroll={handleScroll}
+          spellCheck={false}
+          placeholder="Enter G-code here..."
+          style={{
+            backgroundColor: '#0a0e1a',
+            lineHeight: '18px',
+            paddingLeft: '10px'
+          }}
+        />
+        {currentLine >= 0 && (
+          <div
+            ref={highlightRef}
+            className="gcode-highlight-overlay"
+            style={{
+              position: 'absolute',
+              top: `${currentLine * 18 + 10}px`,
+              left: '10px',
+              right: '10px',
+              height: '18px',
+              pointerEvents: 'none',
+              color: '#00ff33',
+              fontFamily: 'Consolas, Courier New, monospace',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              lineHeight: '18px',
+              textShadow: '0 0 10px #00ff33, 0 0 20px #00ff33, 0 0 30px #00ff33',
+              whiteSpace: 'pre',
+              overflow: 'hidden',
+              transform: textareaRef.current ? `translateY(-${textareaRef.current.scrollTop}px)` : 'none'
+            }}
+          >
+            {gcode[`channel${activeChannel}`]?.split('\n')[currentLine] || ''}
+          </div>
+        )}
+      </div>
       
       <div style={{ 
         marginTop: '10px', 
