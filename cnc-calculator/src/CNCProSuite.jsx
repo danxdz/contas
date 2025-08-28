@@ -12,6 +12,7 @@ import ToolManager from './components/ToolManager';
 import MachineControl from './components/MachineControl';
 import FeatureTree from './components/FeatureTree';
 import ToolHolderSystem from './components/ToolHolderSystem';
+import RealToolSystem from './components/RealToolSystem';
 
 // Import all calculator modules
 import {
@@ -1763,8 +1764,7 @@ M30 ; End`
         { id: 'pocketwizard', label: 'Pocket Milling Wizard', action: () => togglePanel('pocketMilling') },
         { id: 'shopfloor', label: 'Shop Floor Utilities', action: () => togglePanel('shopFloor') },
         { divider: true },
-        { id: 'tooldatabase', label: '📊 Tool Database (Overview)', action: () => togglePanel('toolDatabase') },
-        { id: 'toolholders', label: '🔩 Tool Holder System', action: () => togglePanel('toolHolders') },
+        { id: 'tooldatabase', label: '🛠️ Real Tool System (Professional)', action: () => togglePanel('toolDatabase') },
         { id: 'machineconfig', label: 'Machine Configurator', action: () => togglePanel('machineConfig') },
         { id: 'setupmanager', label: 'Setup Manager', action: () => togglePanel('setupManager') }
       ]
@@ -2964,6 +2964,27 @@ M30 ; End`
           )}
           
           {renderPanel('toolDatabase',
+            <RealToolSystem 
+              onToolAssemblyChange={(assembly) => {
+                console.log('Tool assembly updated:', assembly);
+                // Update simulation with new tool assembly
+                setSimulation(prev => ({
+                  ...prev,
+                  toolAssembly: assembly,
+                  currentToolLength: assembly.totalLength
+                }));
+                
+                // Update tool offset table with new length
+                if (assembly.tool && simulation.activeHCode > 0) {
+                  const newTable = { ...toolOffsetTable };
+                  newTable.H[simulation.activeHCode].lengthGeometry = assembly.totalLength;
+                  setToolOffsetTable(newTable);
+                }
+              }}
+            />
+          )}
+          
+          {/* Old tool database panel - removed, replaced with RealToolSystem
             <div className="setup-panel" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
               <h3 style={{ color: '#00d4ff', marginBottom: '20px' }}>Tool Database & Offset Table</h3>
               
