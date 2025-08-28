@@ -1576,8 +1576,9 @@ M30 ; End`
   
   return (
     <div className="cnc-pro-suite">
-      {/* Top Menu Bar */}
-      <div className="top-menu-bar">
+      {/* Top Menu Bar - Desktop Only */}
+      {!isMobile && (
+        <div className="top-menu-bar">
         <div className="menu-items">
           {Object.entries(menuItems).map(([key, menu]) => (
             <div 
@@ -1626,12 +1627,13 @@ M30 ; End`
         </div>
         <div className="menu-title">CNC Pro Suite v2.0</div>
       </div>
+      )}
       
       {/* 3D Viewport - Full screen background */}
       <div ref={mountRef} className="viewport-3d" />
       
-      {/* Quick Access Toolbar */}
-      <QuickToolbar />
+      {/* Quick Access Toolbar - Desktop Only */}
+      {!isMobile && <QuickToolbar />}
       
       {/* Hidden File Inputs */}
       <input 
@@ -1654,16 +1656,18 @@ M30 ; End`
         style={{ display: 'none' }}
       />
       
-      {/* Floating/Docked Panels */}
-      {renderPanel('gcode', 
-        <GCodeEditor 
-          gcode={project.gcode}
-          onChange={(gcode) => setProject(prev => ({ ...prev, gcode }))}
-          currentLine={simulation.currentLine}
-        />
-      )}
-      
-      {renderPanel('tools',
+      {/* Floating/Docked Panels - Desktop Only */}
+      {!isMobile && (
+        <>
+          {renderPanel('gcode', 
+            <GCodeEditor 
+              gcode={project.gcode}
+              onChange={(gcode) => setProject(prev => ({ ...prev, gcode }))}
+              currentLine={simulation.currentLine}
+            />
+          )}
+          
+          {renderPanel('tools',
         <ToolManager 
           tools={project.tools}
           onChange={(tools) => setProject(prev => ({ ...prev, tools }))}
@@ -1721,7 +1725,9 @@ M30 ; End`
       {renderPanel('shopFloor', <ShopFloorUtilities />)}
       {renderPanel('toolDatabase', <ToolDatabase />)}
       {renderPanel('machineConfig', <MachineConfigurator />)}
-      {renderPanel('setupManager', <SetupManager />)}
+          {renderPanel('setupManager', <SetupManager />)}
+        </>
+      )}
       
       {/* Context Menu */}
       <div className="context-menu" style={{ display: 'none' }}>

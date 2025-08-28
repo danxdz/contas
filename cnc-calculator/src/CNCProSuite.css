@@ -792,6 +792,65 @@
   }
 }
 
+/* Setup Panel Styles */
+.setup-panel {
+  padding: 15px;
+}
+
+.setup-panel h4 {
+  color: #00d4ff;
+  margin: 20px 0 10px 0;
+  font-size: 14px;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+  padding-bottom: 5px;
+}
+
+.setup-panel h4:first-child {
+  margin-top: 0;
+}
+
+.setup-group {
+  margin: 10px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.setup-group label {
+  color: #a0aec0;
+  font-size: 12px;
+  min-width: 100px;
+}
+
+.setup-group input,
+.setup-group select {
+  flex: 1;
+  min-width: 80px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #fff;
+  font-size: 12px;
+}
+
+.setup-group input[type="number"] {
+  max-width: 100px;
+}
+
+.setup-group select {
+  cursor: pointer;
+}
+
+.setup-group input:focus,
+.setup-group select:focus {
+  outline: none;
+  border-color: #00d4ff;
+  box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.1);
+}
+
 /* Glass Effect for Panels */
 @supports (backdrop-filter: blur(20px)) {
   .panel {
