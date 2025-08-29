@@ -42,6 +42,12 @@ const CNCProSuite = () => {
   const [keyboardShortcuts, setKeyboardShortcuts] = useState(null);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   
+  // Collision tracking
+  const [collisionCount, setCollisionCount] = useState(0);
+  const [stopOnCollision, setStopOnCollision] = useState(true);
+  const [collisionAlert, setCollisionAlert] = useState(null);
+  const [collisionHistory, setCollisionHistory] = useState([]);
+  
   // Setup states for stock, fixture, and machine
   const [setupConfig, setSetupConfig] = useState({
     stock: {
@@ -1371,9 +1377,24 @@ M30 ; End`
           const collision = materialRemovalRef.current.checkCollision(toolPosition, toolDiameter, true);
           if (collision.collision) {
             console.warn('⚠️ COLLISION DETECTED:', collision);
-            // Pause simulation on collision
-            setSimulation(prev => ({ ...prev, isPlaying: false }));
-            alert('⚠️ Collision detected! Tool rapid move through material.');
+            
+            // Update collision tracking
+            setCollisionCount(prev => prev + 1);
+            const collisionData = {
+              line: simulation.currentLine,
+              position: toolPosition,
+              type: 'Rapid move through material',
+              toolDiameter: toolDiameter,
+              timestamp: new Date().toISOString()
+            };
+            
+            setCollisionHistory(prev => [...prev, collisionData]);
+            setCollisionAlert(collisionData);
+            
+            // Only pause if stopOnCollision is enabled
+            if (stopOnCollision) {
+              setSimulation(prev => ({ ...prev, isPlaying: false }));
+            }
           }
         }
         
@@ -1763,6 +1784,112 @@ M30 ; End`
     );
   };
 
+  // Collision Alert Component
+  const CollisionAlert = () => {
+    if (!collisionAlert) return null;
+    
+    return (
+      <div style={{
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        background: 'linear-gradient(135deg, #ff0000, #ff6600)',
+        border: '2px solid #ff0000',
+        borderRadius: '10px',
+        padding: '20px',
+        zIndex: 10000,
+        boxShadow: '0 0 30px rgba(255,0,0,0.5)',
+        minWidth: '300px',
+        animation: 'pulse 0.5s ease-in-out'
+      }}>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          marginBottom: '15px',
+          color: '#fff'
+        }}>
+          <span style={{ fontSize: '30px', marginRight: '10px' }}>⚠️</span>
+          <div>
+            <h3 style={{ margin: 0 }}>COLLISION DETECTED!</h3>
+            <div style={{ fontSize: '12px', opacity: 0.9 }}>
+              Line {collisionAlert.line} | Total: {collisionCount} collisions
+            </div>
+          </div>
+        </div>
+        
+        <div style={{ 
+          background: 'rgba(0,0,0,0.3)', 
+          padding: '10px', 
+          borderRadius: '5px',
+          marginBottom: '15px',
+          color: '#fff',
+          fontSize: '13px'
+        }}>
+          <div>Position: X{collisionAlert.position?.x?.toFixed(2)} Y{collisionAlert.position?.y?.toFixed(2)} Z{collisionAlert.position?.z?.toFixed(2)}</div>
+          <div>Type: {collisionAlert.type || 'Rapid move through material'}</div>
+          <div>Tool: Ø{collisionAlert.toolDiameter}mm</div>
+        </div>
+        
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={() => {
+              setCollisionAlert(null);
+              setSimulation(prev => ({ ...prev, isPlaying: true }));
+            }}
+            style={{
+              flex: 1,
+              padding: '10px',
+              background: '#00d4ff',
+              color: '#000',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}
+          >
+            Continue
+          </button>
+          <button
+            onClick={() => {
+              setCollisionAlert(null);
+              stopSimulation();
+            }}
+            style={{
+              flex: 1,
+              padding: '10px',
+              background: '#ff0000',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}
+          >
+            Stop
+          </button>
+        </div>
+        
+        <div style={{ 
+          marginTop: '10px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          color: '#fff',
+          fontSize: '12px'
+        }}>
+          <input
+            type="checkbox"
+            checked={stopOnCollision}
+            onChange={(e) => setStopOnCollision(e.target.checked)}
+            id="stop-on-collision"
+          />
+          <label htmlFor="stop-on-collision">Stop on collision</label>
+        </div>
+      </div>
+    );
+  };
+
   // Quick access toolbar
   const QuickToolbar = () => (
     <div style={{
@@ -1913,14 +2040,56 @@ M30 ; End`
         <button 
           onClick={() => setCollisionDetection(!collisionDetection)}
           className={collisionDetection ? 'active' : ''}
-          title="Toggle Collision Detection"
+          title={`Collision Detection (${collisionCount} detected)`}
           style={{
             background: collisionDetection ? '#ff6666' : 'transparent',
-            color: collisionDetection ? '#fff' : '#888'
+            color: collisionDetection ? '#fff' : '#888',
+            position: 'relative'
           }}
         >
           ⚠️
+          {collisionCount > 0 && (
+            <span style={{
+              position: 'absolute',
+              top: '-8px',
+              right: '-8px',
+              background: '#ff0000',
+              color: '#fff',
+              borderRadius: '50%',
+              width: '20px',
+              height: '20px',
+              fontSize: '11px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 'bold',
+              border: '2px solid #0a0e1a'
+            }}>
+              {collisionCount > 99 ? '99+' : collisionCount}
+            </span>
+          )}
         </button>
+        {collisionCount > 0 && (
+          <button 
+            onClick={() => {
+              setCollisionCount(0);
+              setCollisionHistory([]);
+              setCollisionAlert(null);
+            }}
+            title="Clear collision history"
+            style={{
+              background: 'transparent',
+              color: '#ff6666',
+              fontSize: '12px',
+              padding: '2px 6px',
+              border: '1px solid #ff6666',
+              borderRadius: '3px',
+              cursor: 'pointer'
+            }}
+          >
+            Clear
+          </button>
+        )}
         <button 
           onClick={() => setShowShortcutsHelp(true)}
           title="Keyboard Shortcuts (?)"
@@ -2781,6 +2950,45 @@ M30 ; End`
             >
               ⚠️ Collision Detection {collisionDetection ? 'ON' : 'OFF'}
             </button>
+            <button
+              onClick={() => { setStopOnCollision(!stopOnCollision); setMobileMenuOpen(false); }}
+              style={{
+                width: '100%',
+                padding: '12px 15px',
+                background: stopOnCollision ? '#ff666622' : 'transparent',
+                border: 'none',
+                borderBottom: '1px solid #222',
+                color: stopOnCollision ? '#ff6666' : '#ccc',
+                textAlign: 'left',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              🛑 Stop on Collision {stopOnCollision ? 'YES' : 'NO'}
+            </button>
+            {collisionCount > 0 && (
+              <button
+                onClick={() => { 
+                  setCollisionCount(0);
+                  setCollisionHistory([]);
+                  setCollisionAlert(null);
+                  setMobileMenuOpen(false); 
+                }}
+                style={{
+                  width: '100%',
+                  padding: '12px 15px',
+                  background: 'transparent',
+                  border: 'none',
+                  borderBottom: '1px solid #222',
+                  color: '#ff6666',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                🗑️ Clear {collisionCount} Collisions
+              </button>
+            )}
           </div>
       </div>
     </div>
@@ -3196,6 +3404,9 @@ M30 ; End`
       
       {/* Quick Access Toolbar - Desktop Only */}
       {!isMobile && <QuickToolbar />}
+      
+      {/* Collision Alert Modal */}
+      <CollisionAlert />
       
       {/* Keyboard Shortcuts Help Modal */}
       {showShortcutsHelp && (
@@ -4150,12 +4361,23 @@ M30 ; End`
             }}>
               CNC Pro Suite
             </h3>
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              {collisionCount > 0 && (
+                <span style={{ 
+                  color: '#ff6666', 
+                  fontSize: '12px',
+                  background: '#ff000022',
+                  padding: '2px 6px',
+                  borderRadius: '3px'
+                }}>
+                  ⚠️ {collisionCount}
+                </span>
+              )}
               <span style={{ color: '#888', fontSize: '12px' }}>
                 {simulation.isPlaying ? '▶️ Playing' : '⏸️ Paused'}
               </span>
               <span style={{ color: '#888', fontSize: '12px' }}>
-                Line: {simulation.currentLine}
+                L:{simulation.currentLine}
               </span>
             </div>
           </div>
