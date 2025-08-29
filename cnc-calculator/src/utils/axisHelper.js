@@ -37,14 +37,14 @@ export const createAxisHelper = (size = 30, thickness = 0.5, showLabels = false)
   const yAxisGeometry = new THREE.CylinderGeometry(thickness, thickness, size, 8);
   const yAxisMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
   const yAxis = new THREE.Mesh(yAxisGeometry, yAxisMaterial);
-  yAxis.rotation.x = -Math.PI / 2;  // Rotate cylinder to lie along Y axis
+  yAxis.rotation.x = Math.PI / 2;  // Rotate 90 degrees around X axis
   yAxis.position.y = size / 2;
   axisGroup.add(yAxis);
   
   // Y cone
   const yConeGeometry = new THREE.ConeGeometry(coneRadius, coneHeight, 8);
   const yCone = new THREE.Mesh(yConeGeometry, yAxisMaterial);
-  yCone.rotation.x = Math.PI / 2;  // Point toward +Y
+  yCone.rotation.x = -Math.PI / 2;  // Point toward +Y (rotated)
   yCone.position.y = size + coneHeight / 2;
   axisGroup.add(yCone);
   
@@ -52,15 +52,14 @@ export const createAxisHelper = (size = 30, thickness = 0.5, showLabels = false)
   const zAxisGeometry = new THREE.CylinderGeometry(thickness, thickness, size, 8);
   const zAxisMaterial = new THREE.MeshBasicMaterial({ color: 0x0080ff });
   const zAxis = new THREE.Mesh(zAxisGeometry, zAxisMaterial);
-  // Cylinder default orientation is along Y, rotate to Z
-  zAxis.rotation.x = 0;  // No rotation needed when camera.up is Z
+  // No rotation - cylinder default is vertical which is what we want for Z
   zAxis.position.z = size / 2;
   axisGroup.add(zAxis);
   
   // Z cone
   const zConeGeometry = new THREE.ConeGeometry(coneRadius, coneHeight, 8);
   const zCone = new THREE.Mesh(zConeGeometry, zAxisMaterial);
-  zCone.rotation.x = 0;  // Point toward +Z
+  // No rotation - cone default points up which is correct for Z
   zCone.position.z = size + coneHeight / 2;
   axisGroup.add(zCone);
   

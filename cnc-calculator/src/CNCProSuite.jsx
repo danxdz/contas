@@ -3201,6 +3201,8 @@ M30 ; End`
         <MachineControl 
           simulation={simulation}
           onChange={setSimulation}
+          toolRef={toolRef}
+          sceneRef={sceneRef}
         />
       )}
       
