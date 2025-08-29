@@ -5275,39 +5275,22 @@ M30 ; End`
           )}
           
           {renderPanel('workOffsets',
-            <div className="setup-panel">
-              <h3 style={{ color: '#00d4ff', marginBottom: '20px' }}>Work Coordinate Systems (G54-G59)</h3>
-              
-              <div className="setup-section">
-                <h4>Active Work Offset</h4>
-                <select 
-                  value={setupConfig.workOffsets.activeOffset}
-                  onChange={(e) => setSetupConfig(prev => ({
-                    ...prev,
-                    workOffsets: { ...prev.workOffsets, activeOffset: e.target.value }
-                  }))}
-                  style={{ width: '100%', padding: '8px', marginBottom: '15px', background: '#1a1f2e', color: '#fff', border: '1px solid #00d4ff' }}
-                >
-                  <option value="G54">G54 - Primary Setup</option>
-                  <option value="G55">G55 - Secondary Setup</option>
-                  <option value="G56">G56 - Third Setup</option>
-                  <option value="G57">G57 - Fourth Setup</option>
-                  <option value="G58">G58 - Fifth Setup</option>
-                  <option value="G59">G59 - Sixth Setup</option>
-                </select>
-              </div>
-              
-              {['G54', 'G55', 'G56', 'G57', 'G58', 'G59'].map(offset => (
-                <div key={offset} className="setup-section" style={{ 
-                  background: setupConfig.workOffsets.activeOffset === offset ? 'rgba(0, 212, 255, 0.1)' : 'transparent',
-                  padding: '15px',
-                  marginBottom: '10px',
-                  borderRadius: '4px',
-                  border: setupConfig.workOffsets.activeOffset === offset ? '1px solid #00d4ff' : '1px solid #333'
-                }}>
-                  <h4 style={{ color: setupConfig.workOffsets.activeOffset === offset ? '#00d4ff' : '#888' }}>
-                    {offset} - {setupConfig.workOffsets[offset].description}
-                  </h4>
+            <WorkOffsetsManager
+              workOffsets={setupConfig.workOffsets}
+              onUpdate={(updatedOffsets) => {
+                setSetupConfig(prev => ({
+                  ...prev,
+                  workOffsets: updatedOffsets
+                }));
+              }}
+              sceneRef={sceneRef}
+              onVisualsUpdate={() => {
+                // Force re-render of 3D scene if needed
+                if (sceneRef.current && rendererRef.current && cameraRef.current) {
+                  rendererRef.current.render(sceneRef.current, cameraRef.current);
+                }
+              }}
+            />
                   
                   <div style={{ marginBottom: '10px' }}>
                     <label>Description</label>
