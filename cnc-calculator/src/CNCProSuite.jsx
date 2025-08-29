@@ -1451,8 +1451,7 @@ M30 ; End`
       
       // Add text labels for major ticks
       if (i % 20 === 0) {
-        const loader = new THREE.FontLoader();
-        // We'll use sprites for text since FontLoader needs font file
+        // Use sprites for text labels
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
         canvas.width = 64;
