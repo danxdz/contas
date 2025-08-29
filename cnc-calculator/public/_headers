@@ -1,0 +1,24 @@
+# Set correct MIME types for JavaScript modules
+/*.js
+  Content-Type: application/javascript; charset=UTF-8
+
+/*.mjs
+  Content-Type: application/javascript; charset=UTF-8
+
+/*.jsx
+  Content-Type: application/javascript; charset=UTF-8
+
+/assets/*.js
+  Content-Type: application/javascript; charset=UTF-8
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*.css
+  Content-Type: text/css; charset=UTF-8
+  Cache-Control: public, max-age=31536000, immutable
+
+# Security headers for all routes
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  X-XSS-Protection: 1; mode=block
+  Referrer-Policy: strict-origin-when-cross-origin
