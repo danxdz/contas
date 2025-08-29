@@ -1603,13 +1603,14 @@ M30 ; End`
       const currentWorkOffset = positions[safeCurrentLine]?.workOffset || setupConfig.workOffsets.activeOffset;
       const activeOffset = setupConfig.workOffsets[currentWorkOffset] || setupConfig.workOffsets[setupConfig.workOffsets.activeOffset];
       
-      // Get actual tool assembly length if available
+      // Get actual tool length from spindle nose to tool tip
+      // This is the stickout + any extensions, NOT the holder length
       let actualToolLength = 30; // Default
       if (simulation.toolAssembly && simulation.toolAssembly.components) {
         const components = simulation.toolAssembly.components;
-        actualToolLength = 0;
-        if (components.tool?.length) actualToolLength += components.tool.length;
-        if (components.holder?.length) actualToolLength += components.holder.length;
+        // Tool length is just the stickout from the spindle nose
+        actualToolLength = components.tool?.stickout || components.tool?.length || 30;
+        // Add any extensions
         if (components.extension?.length) actualToolLength += components.extension.length;
       }
       
@@ -1654,13 +1655,13 @@ M30 ; End`
         );
       }
       
-      // Update tool tip coordinate system position
+      // Update tool tip coordinate system position (yellow sphere)
       if (toolRef.current && toolRef.current.userData.toolCoordGroup) {
         if (currentPos.g43) {
-          // With G43: coord system at tool tip
+          // With G43: control point at tool tip
           toolRef.current.userData.toolCoordGroup.position.z = -actualToolLength;
         } else {
-          // Without G43: coord system at spindle nose
+          // Without G43: control point at spindle nose
           toolRef.current.userData.toolCoordGroup.position.z = 0;
         }
       }
@@ -1777,13 +1778,13 @@ M30 ; End`
           toolLengthComp = hOffset.lengthGeometry + hOffset.lengthWear;
         }
         
-        // Get actual tool assembly length if available
+        // Get actual tool length from spindle nose to tool tip
         let actualToolLength = 30; // Default
         if (simulation.toolAssembly && simulation.toolAssembly.components) {
           const components = simulation.toolAssembly.components;
-          actualToolLength = 0;
-          if (components.tool?.length) actualToolLength += components.tool.length;
-          if (components.holder?.length) actualToolLength += components.holder.length;
+          // Tool length is just the stickout from the spindle nose
+          actualToolLength = components.tool?.stickout || components.tool?.length || 30;
+          // Add any extensions
           if (components.extension?.length) actualToolLength += components.extension.length;
         }
         
@@ -1815,13 +1816,13 @@ M30 ; End`
           );
         }
         
-        // Update tool tip coordinate system during animation
+        // Update tool tip coordinate system during animation (yellow sphere)
         if (toolRef.current && toolRef.current.userData?.toolCoordGroup) {
           if (currentPos?.g43) {
-            // With G43: coord system at tool tip
+            // With G43: control point at tool tip
             toolRef.current.userData.toolCoordGroup.position.z = -actualToolLength;
           } else {
-            // Without G43: coord system at spindle nose  
+            // Without G43: control point at spindle nose  
             toolRef.current.userData.toolCoordGroup.position.z = 0;
           }
         }
@@ -3620,10 +3621,10 @@ M30 ; End`
                 const tool = assembly.components.tool;
                 const holder = assembly.components.holder;
                 
-                // Calculate total tool length (tool + holder + extensions)
-                let totalLength = 0;
-                if (tool.length) totalLength += tool.length;
-                if (holder?.length) totalLength += holder.length;
+                // Calculate tool length from spindle nose to tool tip
+                // This is the stickout, NOT the entire assembly length
+                let totalLength = tool.stickout || tool.length || 0;
+                // Add any extensions
                 if (assembly.components.extension?.length) totalLength += assembly.components.extension.length;
                 
                 // Find or assign a tool number (T1, T2, etc.)
@@ -4072,10 +4073,10 @@ M30 ; End`
               const tool = assembly.components.tool;
               const holder = assembly.components.holder;
               
-              // Calculate total tool length (tool + holder + extensions)
-              let totalLength = 0;
-              if (tool.length) totalLength += tool.length;
-              if (holder?.length) totalLength += holder.length;
+              // Calculate tool length from spindle nose to tool tip
+              // This is the stickout, NOT the entire assembly length
+              let totalLength = tool.stickout || tool.length || 0;
+              // Add any extensions
               if (assembly.components.extension?.length) totalLength += assembly.components.extension.length;
               
               // Find or assign a tool number (T1, T2, etc.)
