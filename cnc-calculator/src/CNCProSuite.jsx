@@ -70,7 +70,7 @@ const CNCProSuite = () => {
     },
     workOffsets: {
       activeOffset: 'G54',
-      G54: { x: -100, y: -50, z: -150, description: 'Primary Setup' },  // Typical vise setup
+      G54: { x: 0, y: 0, z: -50, description: 'Primary Setup' },  // Top of stock at Z=0
       G55: { x: 100, y: 100, z: -150, description: 'Secondary Setup' },
       G56: { x: 0, y: 0, z: -150, description: 'Third Setup' },
       G57: { x: 0, y: 0, z: -150, description: 'Fourth Setup' },
