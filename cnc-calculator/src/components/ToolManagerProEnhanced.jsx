@@ -130,6 +130,31 @@ const ToolManagerProEnhanced = ({
     ));
   };
 
+  // Update stickout
+  const updateStickout = (id, stickout) => {
+    setAssemblies(assemblies.map(a => {
+      if (a.id === id) {
+        const updatedAssembly = {
+          ...a,
+          stickout,
+          components: {
+            ...a.components,
+            tool: {
+              ...a.components.tool,
+              stickout
+            }
+          }
+        };
+        // If this is the selected assembly, update tool offset table
+        if (selectedAssembly?.id === id && onAssemblySelect) {
+          selectAssembly(updatedAssembly);
+        }
+        return updatedAssembly;
+      }
+      return a;
+    }));
+  };
+
   // Calculate cutting parameters
   const calculateCuttingParams = () => {
     if (!selectedAssembly?.components?.tool) return null;
@@ -314,6 +339,7 @@ const ToolManagerProEnhanced = ({
                       onDuplicate={duplicateAssembly}
                       onDelete={deleteAssembly}
                       onUpdateWear={updateWearLevel}
+                      onUpdateStickout={updateStickout}
                     />
                   ))}
               </div>

@@ -348,57 +348,58 @@ const AssemblyCard = ({
 
   // Selected view - minimal with active indicator
   return (
-    <div
-      onClick={handleClick}
-      style={{
-        padding: '12px 15px',
-        background: 'linear-gradient(135deg, #00ff88, #00d4ff)',
-        borderRadius: '8px',
-        cursor: 'pointer',
-        marginBottom: '8px',
-        transition: 'all 0.3s',
-        boxShadow: '0 4px 20px rgba(0,255,136,0.3)'
-      }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{
-            padding: '5px 10px',
-            background: '#000',
-            color: '#00ff88',
-            borderRadius: '4px',
-            fontWeight: 'bold',
-            fontSize: '14px'
-          }}>
-            {assembly.tNumber}
-          </div>
-          <div>
-            <div style={{ 
-              fontSize: '14px', 
+    <>
+      <div
+        onClick={handleClick}
+        style={{
+          padding: '12px 15px',
+          background: 'linear-gradient(135deg, #00ff88, #00d4ff)',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          marginBottom: '8px',
+          transition: 'all 0.3s',
+          boxShadow: '0 4px 20px rgba(0,255,136,0.3)'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              padding: '5px 10px',
+              background: '#000',
+              color: '#00ff88',
+              borderRadius: '4px',
               fontWeight: 'bold',
-              color: '#000'
+              fontSize: '14px'
             }}>
-              ACTIVE IN SIMULATION
+              {assembly.tNumber}
             </div>
-            <div style={{ 
-              fontSize: '11px', 
-              color: '#003333'
-            }}>
-              {assembly.name || 'Tool Assembly'}
+            <div>
+              <div style={{ 
+                fontSize: '14px', 
+                fontWeight: 'bold',
+                color: '#000'
+              }}>
+                ACTIVE IN SIMULATION
+              </div>
+              <div style={{ 
+                fontSize: '11px', 
+                color: '#003333'
+              }}>
+                {assembly.name || 'Tool Assembly'}
+              </div>
             </div>
           </div>
+          <span style={{ 
+            color: '#000',
+            fontSize: '12px'
+          }}>
+            ▼
+          </span>
         </div>
-        <span style={{ 
-          color: '#000',
-          fontSize: '12px'
-        }}>
-          ▼
-        </span>
       </div>
-    </div>
-    
-    {/* Stickout Adjustment Modal */}
-    {showStickoutModal && (
+      
+      {/* Stickout Adjustment Modal */}
+      {showStickoutModal && (
       <>
         <div style={{
           position: 'fixed',
@@ -516,6 +517,7 @@ const AssemblyCard = ({
         </div>
       </>
     )}
+    </>
   );
 };
 
