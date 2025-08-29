@@ -4,6 +4,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
 import './CNCProSuite.css';
 import MaterialRemovalSimulation from './components/MaterialRemovalSimulation';
+import LightingSetup from './components/LightingSetup';
 import { setupCNCShortcuts } from './utils/KeyboardShortcuts';
 
 // Components
@@ -331,6 +332,16 @@ const CNCProSuite = () => {
       zIndex: 2,
       minimized: false,
       title: 'Tool Offset Table'
+    },
+    lighting: {
+      visible: false,
+      floating: true,
+      docked: null,
+      position: { x: window.innerWidth - 440, y: 100 },
+      size: { width: 420, height: 700 },
+      zIndex: 2,
+      minimized: false,
+      title: '🔆 Lighting Setup'
     }
   });
 
@@ -2164,6 +2175,21 @@ M30 ; End`
         >
           ⌨️
         </button>
+        <button 
+          onClick={() => togglePanel('lighting')}
+          title="Lighting Setup"
+          style={{
+            background: panels.lighting?.visible ? '#ffaa0022' : 'transparent',
+            border: panels.lighting?.visible ? '2px solid #ffaa00' : '1px solid #333',
+            borderRadius: '5px',
+            color: panels.lighting?.visible ? '#ffaa00' : '#888',
+            padding: '5px 10px',
+            cursor: 'pointer',
+            fontSize: '18px'
+          }}
+        >
+          🔆
+        </button>
       </div>
       
       <div className="toolbar-info">
@@ -2547,7 +2573,9 @@ M30 ; End`
         { id: 'step', label: 'STEP Processor', checked: panels.stepProcessor.visible, action: () => togglePanel('stepProcessor') },
         { id: 'machine', label: 'Machine Control', checked: panels.machineControl.visible, action: () => togglePanel('machineControl') },
         { id: 'features', label: 'Feature Tree', checked: panels.features.visible, action: () => togglePanel('features') },
-        { id: 'console', label: 'Console', checked: panels.console.visible, action: () => togglePanel('console') }
+        { id: 'console', label: 'Console', checked: panels.console.visible, action: () => togglePanel('console') },
+        { divider: true },
+        { id: 'lighting', label: '🔆 Lighting Setup', checked: panels.lighting.visible, action: () => togglePanel('lighting') }
       ]
     },
     simulation: {
@@ -3830,6 +3858,13 @@ M30 ; End`
           <div>CNC Pro Suite v2.0 Ready</div>
           <div>Type 'help' for commands</div>
         </div>
+      )}
+      
+      {renderPanel('lighting',
+        <LightingSetup 
+          scene={sceneRef.current}
+          onUpdate={(lights) => console.log('Lighting updated:', lights)}
+        />
       )}
       
       {/* Calculator Modules */}
