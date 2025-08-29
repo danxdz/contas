@@ -2997,9 +2997,64 @@ M30 ; End`
   
   // Mobile Panel Component - Modern Bottom Sheet
   const MobilePanel = () => {
-    const isOpen = activeMobilePanel || mobileBottomSheet;
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragStartY, setDragStartY] = useState(0);
+    const [panelHeight, setPanelHeight] = useState(60); // Default collapsed height
+    const panelRef = useRef(null);
     
-    if (!isOpen) return null;
+    // Calculate panel transform based on state
+    const getTransform = () => {
+      // Always show at least the handle (60px)
+      if (mobileBottomSheet || activeMobilePanel) {
+        return 'translateY(0)'; // Fully open
+      }
+      return 'translateY(calc(100% - 60px))'; // Show just the handle
+    };
+    
+    // Handle touch/mouse drag
+    const handleDragStart = (e) => {
+      setIsDragging(true);
+      const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+      setDragStartY(clientY);
+    };
+    
+    const handleDragMove = (e) => {
+      if (!isDragging) return;
+      const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+      const deltaY = dragStartY - clientY;
+      
+      // If dragging up, open the panel
+      if (deltaY > 50) {
+        setMobileBottomSheet(true);
+        setIsDragging(false);
+      }
+      // If dragging down, close the panel
+      else if (deltaY < -50) {
+        setMobileBottomSheet(false);
+        setActiveMobilePanel(null);
+        setIsDragging(false);
+      }
+    };
+    
+    const handleDragEnd = () => {
+      setIsDragging(false);
+    };
+    
+    useEffect(() => {
+      if (isDragging) {
+        document.addEventListener('mousemove', handleDragMove);
+        document.addEventListener('mouseup', handleDragEnd);
+        document.addEventListener('touchmove', handleDragMove);
+        document.addEventListener('touchend', handleDragEnd);
+        
+        return () => {
+          document.removeEventListener('mousemove', handleDragMove);
+          document.removeEventListener('mouseup', handleDragEnd);
+          document.removeEventListener('touchmove', handleDragMove);
+          document.removeEventListener('touchend', handleDragEnd);
+        };
+      }
+    }, [isDragging, dragStartY]);
     
     let content = null;
     if (mobileBottomSheet && !activeMobilePanel) {
@@ -3249,43 +3304,65 @@ M30 ; End`
     }
     
     return (
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        background: 'linear-gradient(to top, #0a0e1a, #1a1f2e)',
-        borderTopLeftRadius: '20px',
-        borderTopRightRadius: '20px',
-        boxShadow: '0 -4px 20px rgba(0,0,0,0.5)',
-        transform: isOpen ? 'translateY(0)' : 'translateY(100%)',
-        transition: 'transform 0.3s ease',
-        zIndex: 999,
-        maxHeight: '80vh',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
+      <div 
+        ref={panelRef}
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: 'linear-gradient(to top, #0a0e1a, #1a1f2e)',
+          borderTopLeftRadius: '20px',
+          borderTopRightRadius: '20px',
+          boxShadow: '0 -4px 20px rgba(0,0,0,0.5)',
+          transform: getTransform(),
+          transition: isDragging ? 'none' : 'transform 0.3s ease',
+          zIndex: 999,
+          height: '80vh',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
         {/* Handle */}
         <div 
+          onMouseDown={handleDragStart}
+          onTouchStart={handleDragStart}
           onClick={() => {
-            if (mobileBottomSheet) setMobileBottomSheet(false);
-            else if (activeMobilePanel) setActiveMobilePanel(null);
+            if (!isDragging) {
+              if (mobileBottomSheet) {
+                setMobileBottomSheet(false);
+                setActiveMobilePanel(null);
+              } else {
+                setMobileBottomSheet(true);
+              }
+            }
           }}
           style={{
             padding: '12px',
-            cursor: 'pointer',
+            cursor: isDragging ? 'grabbing' : 'grab',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            borderBottom: '1px solid #333'
+            borderBottom: '1px solid #333',
+            touchAction: 'none',
+            userSelect: 'none'
           }}
         >
           <div style={{
             width: '40px',
             height: '4px',
-            background: '#555',
+            background: isDragging ? '#00d4ff' : '#555',
             borderRadius: '2px',
-            marginBottom: '8px'
+            marginBottom: '4px',
+            transition: 'background 0.2s ease'
+          }} />
+          <div style={{
+            width: '30px',
+            height: '3px',
+            background: isDragging ? '#00d4ff' : '#444',
+            borderRadius: '2px',
+            marginBottom: '8px',
+            transition: 'background 0.2s ease'
           }} />
           {activeMobilePanel && (
             <div style={{ 
