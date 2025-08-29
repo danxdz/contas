@@ -15,50 +15,52 @@ export const createAxisHelper = (size = 30, thickness = 0.5, showLabels = false)
   const coneHeight = size * 0.15;
   const coneRadius = thickness * 3;
   
-  // X axis - Red (pointing right in Three.js X direction)
+  // Create axes using BufferGeometry for precise control
+  // This matches Three.js AxesHelper but with cylinders and cones
+  
+  // X axis - Red (pointing right)
   const xAxisGeometry = new THREE.CylinderGeometry(thickness, thickness, size, 8);
   const xAxisMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
   const xAxis = new THREE.Mesh(xAxisGeometry, xAxisMaterial);
-  xAxis.rotation.z = Math.PI / 2;  // Rotate cylinder to point along X
+  xAxis.rotation.z = Math.PI / 2;  // Rotate cylinder to lie along X axis
   xAxis.position.x = size / 2;
   axisGroup.add(xAxis);
   
   // X cone
   const xConeGeometry = new THREE.ConeGeometry(coneRadius, coneHeight, 8);
   const xCone = new THREE.Mesh(xConeGeometry, xAxisMaterial);
-  xCone.rotation.z = -Math.PI / 2;  // Point along positive X
+  xCone.rotation.z = -Math.PI / 2;  // Point toward +X
   xCone.position.x = size + coneHeight / 2;
   axisGroup.add(xCone);
   
-  // Y axis - Green (pointing forward in Three.js Y direction)
-  // In CNC, Y is forward/back, which maps to Three.js Y
+  // Y axis - Green (pointing forward/into screen)
   const yAxisGeometry = new THREE.CylinderGeometry(thickness, thickness, size, 8);
   const yAxisMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
   const yAxis = new THREE.Mesh(yAxisGeometry, yAxisMaterial);
-  yAxis.rotation.x = Math.PI / 2;  // Rotate cylinder to point along Y (forward)
+  yAxis.rotation.x = -Math.PI / 2;  // Rotate cylinder to lie along Y axis
   yAxis.position.y = size / 2;
   axisGroup.add(yAxis);
   
   // Y cone
   const yConeGeometry = new THREE.ConeGeometry(coneRadius, coneHeight, 8);
   const yCone = new THREE.Mesh(yConeGeometry, yAxisMaterial);
-  yCone.rotation.x = -Math.PI / 2;  // Point along positive Y
+  yCone.rotation.x = Math.PI / 2;  // Point toward +Y
   yCone.position.y = size + coneHeight / 2;
   axisGroup.add(yCone);
   
-  // Z axis - Blue (pointing up in Three.js Z direction)
-  // In CNC, Z is up/down, which maps to Three.js Z
+  // Z axis - Blue (pointing up)
   const zAxisGeometry = new THREE.CylinderGeometry(thickness, thickness, size, 8);
   const zAxisMaterial = new THREE.MeshBasicMaterial({ color: 0x0080ff });
   const zAxis = new THREE.Mesh(zAxisGeometry, zAxisMaterial);
-  // Cylinder points along Y by default, no rotation to point along Z
+  // Cylinder default orientation is along Y, rotate to Z
+  zAxis.rotation.x = 0;  // No rotation needed when camera.up is Z
   zAxis.position.z = size / 2;
   axisGroup.add(zAxis);
   
   // Z cone
   const zConeGeometry = new THREE.ConeGeometry(coneRadius, coneHeight, 8);
   const zCone = new THREE.Mesh(zConeGeometry, zAxisMaterial);
-  // Cone points along Y by default, no rotation for Z
+  zCone.rotation.x = 0;  // Point toward +Z
   zCone.position.z = size + coneHeight / 2;
   axisGroup.add(zCone);
   
