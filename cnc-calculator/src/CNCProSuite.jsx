@@ -1615,7 +1615,6 @@ M30 ; End`
         
         // Get tool length compensation
         let toolLengthComp = 0;
-        const currentPos = positions[simulation.currentLine];
         if (currentPos && currentPos.g43 && currentPos.h > 0 && currentPos.h < toolOffsetTable.H.length) {
           const hOffset = toolOffsetTable.H[currentPos.h];
           toolLengthComp = hOffset.lengthGeometry + hOffset.lengthWear;
