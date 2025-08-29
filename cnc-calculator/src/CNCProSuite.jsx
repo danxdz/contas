@@ -5291,28 +5291,7 @@ M30 ; End`
                 }
               }}
             />
-                  
-                  <div style={{ marginBottom: '10px' }}>
-                    <label>Description</label>
-                    <input 
-                      type="text" 
-                      value={setupConfig.workOffsets[offset].description}
-                      onChange={(e) => setSetupConfig(prev => ({
-                        ...prev,
-                        workOffsets: { 
-                          ...prev.workOffsets,
-                          [offset]: { ...prev.workOffsets[offset], description: e.target.value }
-                        }
-                      }))}
-                      style={{ width: '100%', padding: '5px', marginBottom: '10px' }}
-                    />
-                  </div>
-                  
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
-                    <div>
-                      <label>X Offset (mm)</label>
-                      <input 
-                        type="number" 
+          )} 
                         value={setupConfig.workOffsets[offset].x}
                         onChange={(e) => {
                           const value = parseFloat(e.target.value) || 0;
