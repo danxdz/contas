@@ -16,6 +16,10 @@ import MachineControl from './components/MachineControl';
 import FeatureTree from './components/FeatureTree';
 import ToolOffsetTable from './components/ToolOffsetTable';
 import WorkOffsetsManager from './components/WorkOffsetsManager';
+import StockSetup from './components/StockSetup';
+import FixtureSetup from './components/FixtureSetup';
+import PartSetup from './components/PartSetup';
+import MachineSetup from './components/MachineSetup';
 
 // Import calculator modules
 import {
@@ -4652,20 +4656,29 @@ M30 ; End`
           
           {/* Setup Panels */}
           {renderPanel('stockSetup', 
-            <div className="setup-panel">
-              <h3 style={{ color: '#00d4ff', marginBottom: '20px' }}>Stock Configuration</h3>
-              
-              <div className="setup-section">
-                <h4>Stock Type</h4>
-                <select 
-                  value={setupConfig.stock.type}
-                  onChange={(e) => setSetupConfig(prev => ({
-                    ...prev,
-                    stock: { ...prev.stock, type: e.target.value }
-                  }))}
-                  style={{ width: '100%', padding: '8px', marginBottom: '15px' }}
-                >
-                  <option value="block">Rectangular Block</option>
+            <StockSetup
+              config={setupConfig.stock}
+              onUpdate={(updatedStock) => {
+                setSetupConfig(prev => ({
+                  ...prev,
+                  stock: updatedStock
+                }));
+              }}
+              sceneRef={sceneRef}
+            />
+          )}
+          
+          {renderPanel('fixtureSetup',
+            <FixtureSetup
+              config={setupConfig.fixture}
+              onUpdate={(updatedFixture) => {
+                setSetupConfig(prev => ({
+                  ...prev,
+                  fixture: updatedFixture
+                }));
+              }}
+              sceneRef={sceneRef}
+            />
                   <option value="cylinder">Cylinder</option>
                   <option value="tube">Tube</option>
                   <option value="custom">Custom Shape</option>
@@ -4866,14 +4879,7 @@ M30 ; End`
                   cursor: 'pointer',
                   width: '100%'
                 }}
-              >
-                Apply Stock Settings
-              </button>
-            </div>
-          )}
-          
-          {renderPanel('fixtureSetup',
-            <div className="setup-panel">
+
               <h3 style={{ color: '#00d4ff', marginBottom: '20px' }}>Fixture Configuration</h3>
               
               <div className="setup-section">
@@ -5291,26 +5297,12 @@ M30 ; End`
                 }
               }}
             />
-          )} 
-                        value={setupConfig.workOffsets[offset].x}
-                        onChange={(e) => {
-                          const value = parseFloat(e.target.value) || 0;
-                          setSetupConfig(prev => ({
-                            ...prev,
-                            workOffsets: { 
-                              ...prev.workOffsets,
-                              [offset]: { ...prev.workOffsets[offset], x: value }
-                            }
-                          }));
-                        }}
-                        style={{ width: '100%', padding: '5px' }}
-                      />
-                    </div>
-                    <div>
-                      <label>Y Offset (mm)</label>
-                      <input 
-                        type="number" 
-                        value={setupConfig.workOffsets[offset].y}
+          )}
+
+        </>
+      )}
+      
+      {/* Context Menu
                         onChange={(e) => {
                           const value = parseFloat(e.target.value) || 0;
                           setSetupConfig(prev => ({
@@ -5431,14 +5423,7 @@ M30 ; End`
                   </button>
                 </div>
               </div>
-            </div>
-          )}
-          
-
-        </>
-      )}
-      
-      {/* Context Menu */}
+ */}
       <div className="context-menu" style={{ display: 'none' }}>
         <button>Cut</button>
         <button>Copy</button>
