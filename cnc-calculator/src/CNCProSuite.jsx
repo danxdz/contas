@@ -347,7 +347,7 @@ const CNCProSuite = () => {
     isPlaying: false,
     speed: 1.0,
     currentLine: 0,
-    position: { x: 0, y: 0, z: 50, a: 0, b: 0, c: 0 },  // Start at safe height above stock
+    position: { x: 0, y: 0, z: 0, a: 0, b: 0, c: 0 },  // Start at machine zero
     feedRate: 500,
     spindleSpeed: 12000,
     tool: 1,
@@ -425,7 +425,9 @@ const CNCProSuite = () => {
 ; Tool: 10mm End Mill
 ; ====================
 
-G21 G90 G94 ; Metric, Absolute, Feed/min
+G28 G91 Z0 ; Home Z axis first for safety
+G90 ; Absolute mode
+G21 G94 ; Metric, Feed/min
 G17 G49 G40 G80 ; XY plane, Cancel offsets
 G54 ; Work coordinate system
 
@@ -591,7 +593,10 @@ M30 ; End`
   const parseGCodePositions = (gcode) => {
     const lines = gcode.split('\n');
     const positions = [];
-    let current = { x: 0, y: 0, z: 50, f: 500, s: 0, g43: false, g41: false, g42: false, h: 0, d: 0 };  // Start at safe height
+    // Machine home position (G28 returns here)
+    const machineHome = { x: 0, y: 0, z: 200 };  // Z200 is typical machine home
+    let current = { x: 0, y: 0, z: 0, f: 500, s: 0, g43: false, g41: false, g42: false, h: 0, d: 0 };  // Start at machine zero
+    let isRelative = false;  // G91 mode
     
     lines.forEach(line => {
       const trimmed = line.trim();
@@ -600,6 +605,44 @@ M30 ; End`
         positions.push({ ...current, comment: true, line: trimmed });
         return;
       }
+      
+      // Check for G28 (Return to home)
+      if (/G28/i.test(line)) {
+        // G28 can be used with intermediate point or direct
+        // G28 Z0 means go to Z0 first, then home Z
+        // G28 G91 Z0 means move Z by 0 (no move) then home Z
+        const hasG91 = /G91/i.test(line);
+        const x = line.match(/X([-\d.]+)/i);
+        const y = line.match(/Y([-\d.]+)/i);
+        const z = line.match(/Z([-\d.]+)/i);
+        
+        // If G91 is in the line, intermediate moves are relative
+        if (hasG91) {
+          // Move to intermediate point (relative)
+          if (x) current.x += parseFloat(x[1]);
+          if (y) current.y += parseFloat(y[1]);
+          if (z) current.z += parseFloat(z[1]);
+          positions.push({ ...current, rapid: true, comment: false, line: trimmed + ' (intermediate)' });
+        } else if (x || y || z) {
+          // Move to intermediate point (absolute)
+          if (x) current.x = parseFloat(x[1]);
+          if (y) current.y = parseFloat(y[1]);
+          if (z) current.z = parseFloat(z[1]);
+          positions.push({ ...current, rapid: true, comment: false, line: trimmed + ' (intermediate)' });
+        }
+        
+        // Then move to home for specified axes
+        if (z || (!x && !y && !z)) current.z = machineHome.z;  // Home Z if specified or no axes
+        if (x || (!x && !y && !z && line.match(/X/i))) current.x = machineHome.x;
+        if (y || (!x && !y && !z && line.match(/Y/i))) current.y = machineHome.y;
+        
+        positions.push({ ...current, rapid: true, comment: false, line: trimmed + ' (home)' });
+        return;
+      }
+      
+      // Check for G90/G91 (absolute/relative mode)
+      if (/G90/i.test(line)) isRelative = false;
+      if (/G91/i.test(line)) isRelative = true;
       
       const x = line.match(/X([-\d.]+)/i);
       const y = line.match(/Y([-\d.]+)/i);
@@ -616,9 +659,17 @@ M30 ; End`
       if (/G42/i.test(line)) { current.g42 = true; current.g41 = false; } // Cutter comp right
       if (/G40/i.test(line)) { current.g41 = false; current.g42 = false; } // Cutter comp off
       
-      if (x) current.x = parseFloat(x[1]);
-      if (y) current.y = parseFloat(y[1]);
-      if (z) current.z = parseFloat(z[1]);
+      // Handle relative vs absolute positioning
+      if (isRelative) {
+        if (x) current.x += parseFloat(x[1]);
+        if (y) current.y += parseFloat(y[1]);
+        if (z) current.z += parseFloat(z[1]);
+      } else {
+        if (x) current.x = parseFloat(x[1]);
+        if (y) current.y = parseFloat(y[1]);
+        if (z) current.z = parseFloat(z[1]);
+      }
+      
       if (f) current.f = parseFloat(f[1]);
       if (s) current.s = parseInt(s[1]);
       if (h) current.h = parseInt(h[1]);
