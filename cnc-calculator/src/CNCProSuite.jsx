@@ -776,6 +776,12 @@ M30 ; End`
     simulationRef.current = simulation;
   }, [simulation]);
   
+  // Store project in ref for toolpath updates
+  const projectRef = useRef(project);
+  useEffect(() => {
+    projectRef.current = project;
+  }, [project]);
+  
   // Initialize 3D scene
   useEffect(() => {
     if (!mountRef.current) return;
@@ -1646,8 +1652,10 @@ M30 ; End`
     originMarkerRef.current = originGroup;
     
     // Create dynamic toolpath from G-code
-    const updateToolpath = (workOffsets = null) => {
-      console.log('Updating toolpath with G-code length:', project.gcode.channel1?.length || 0);
+    const updateToolpath = (workOffsets = null, gcode = null) => {
+      // Use provided gcode or fall back to current project gcode from ref
+      const gcodeToUse = gcode || projectRef.current?.gcode?.channel1 || project.gcode.channel1;
+      console.log('Updating toolpath with G-code length:', gcodeToUse?.length || 0);
       
       // Remove old toolpath
       if (toolpathRef.current) {
@@ -1656,7 +1664,7 @@ M30 ; End`
       }
       
       // Parse G-code positions
-      const positions = parseGCodePositions(project.gcode.channel1);
+      const positions = parseGCodePositions(gcodeToUse);
       if (positions.length > 1) {
         const toolpathGroup = new THREE.Group();
         
@@ -1774,6 +1782,10 @@ M30 ; End`
         
         scene.add(toolpathGroup);
         toolpathRef.current = toolpathGroup;
+        toolpathGroup.visible = true; // Ensure visibility
+        console.log('Toolpath added to scene with', segments.length, 'segments');
+      } else {
+        console.log('No valid positions to create toolpath');
       }
     };
     
@@ -3079,22 +3091,9 @@ M30 ; End`
         programTools: programTools // Store tools needed by program
       }));
       
-      // Force immediate toolpath update with a small delay to ensure state is updated
-      setTimeout(() => {
-        console.log('Loading NC file, updating toolpath...');
-        if (updateToolpathRef.current) {
-          // Clear existing toolpath first
-          if (toolpathRef.current && sceneRef.current) {
-            sceneRef.current.remove(toolpathRef.current);
-            toolpathRef.current = null;
-          }
-          // Recreate toolpath with new G-code
-          updateToolpathRef.current(setupConfig.workOffsets);
-          console.log('Toolpath update triggered');
-        } else {
-          console.log('updateToolpathRef not available');
-        }
-      }, 100);
+      // IMPORTANT: The useEffect will handle the toolpath update automatically
+      // when project.gcode.channel1 changes, so we don't need setTimeout here
+      console.log('NC file loaded, toolpath will update via useEffect');
     };
     reader.readAsText(file);
   };
