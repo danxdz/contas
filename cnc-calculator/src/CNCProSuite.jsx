@@ -45,7 +45,71 @@ const CNCProSuite = () => {
   const [collisionCount, setCollisionCount] = useState(0);
   const [stopOnCollision, setStopOnCollision] = useState(true);
   const [collisionAlert, setCollisionAlert] = useState(null);
+  
+  // Lighting configuration (persistent)
+  const [lightingConfig, setLightingConfig] = useState({
+    ambient: { enabled: true, intensity: 0.5, color: '#ffffff' },
+    directional1: { 
+      enabled: true, intensity: 0.8, color: '#ffffff',
+      position: { x: 200, y: 200, z: 400 }, castShadow: true 
+    },
+    directional2: { 
+      enabled: true, intensity: 0.4, color: '#e0e0ff',
+      position: { x: -200, y: 100, z: -200 }, castShadow: false 
+    },
+    spot1: { 
+      enabled: false, intensity: 0.6, color: '#ffff00',
+      position: { x: 0, y: 0, z: 300 }, angle: Math.PI / 6, 
+      penumbra: 0.1, castShadow: true 
+    },
+    hemisphere: { 
+      enabled: true, skyColor: '#87ceeb', 
+      groundColor: '#362907', intensity: 0.3 
+    }
+  });
+  const lightsRef = useRef({});
   const [collisionHistory, setCollisionHistory] = useState([]);
+  
+  // Function to update lights without recreating them
+  const updateLights = (newConfig) => {
+    setLightingConfig(newConfig);
+    
+    // Update existing lights
+    if (lightsRef.current.ambient) {
+      lightsRef.current.ambient.visible = newConfig.ambient.enabled;
+      lightsRef.current.ambient.intensity = newConfig.ambient.intensity;
+      lightsRef.current.ambient.color = new THREE.Color(newConfig.ambient.color);
+    }
+    
+    if (lightsRef.current.directional1) {
+      lightsRef.current.directional1.visible = newConfig.directional1.enabled;
+      lightsRef.current.directional1.intensity = newConfig.directional1.intensity;
+      lightsRef.current.directional1.color = new THREE.Color(newConfig.directional1.color);
+      lightsRef.current.directional1.position.set(
+        newConfig.directional1.position.x,
+        newConfig.directional1.position.y,
+        newConfig.directional1.position.z
+      );
+    }
+    
+    if (lightsRef.current.directional2) {
+      lightsRef.current.directional2.visible = newConfig.directional2.enabled;
+      lightsRef.current.directional2.intensity = newConfig.directional2.intensity;
+      lightsRef.current.directional2.color = new THREE.Color(newConfig.directional2.color);
+      lightsRef.current.directional2.position.set(
+        newConfig.directional2.position.x,
+        newConfig.directional2.position.y,
+        newConfig.directional2.position.z
+      );
+    }
+    
+    if (lightsRef.current.hemisphere) {
+      lightsRef.current.hemisphere.visible = newConfig.hemisphere.enabled;
+      lightsRef.current.hemisphere.intensity = newConfig.hemisphere.intensity;
+      lightsRef.current.hemisphere.color = new THREE.Color(newConfig.hemisphere.skyColor);
+      lightsRef.current.hemisphere.groundColor = new THREE.Color(newConfig.hemisphere.groundColor);
+    }
+  };
   
   // Setup states for stock, fixture, and machine
   const [setupConfig, setSetupConfig] = useState({
@@ -741,13 +805,55 @@ M30 ; End`
     controls.enableDamping = true;
     controlsRef.current = controls;
 
-    // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    scene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(200, 200, 400);
-    directionalLight.castShadow = true;
-    scene.add(directionalLight);
+    // Initialize persistent lighting
+    // Ambient Light
+    if (lightingConfig.ambient.enabled) {
+      lightsRef.current.ambient = new THREE.AmbientLight(
+        lightingConfig.ambient.color,
+        lightingConfig.ambient.intensity
+      );
+      scene.add(lightsRef.current.ambient);
+    }
+    
+    // Main Directional Light
+    if (lightingConfig.directional1.enabled) {
+      lightsRef.current.directional1 = new THREE.DirectionalLight(
+        lightingConfig.directional1.color,
+        lightingConfig.directional1.intensity
+      );
+      lightsRef.current.directional1.position.set(
+        lightingConfig.directional1.position.x,
+        lightingConfig.directional1.position.y,
+        lightingConfig.directional1.position.z
+      );
+      lightsRef.current.directional1.castShadow = lightingConfig.directional1.castShadow;
+      scene.add(lightsRef.current.directional1);
+    }
+    
+    // Fill Directional Light
+    if (lightingConfig.directional2.enabled) {
+      lightsRef.current.directional2 = new THREE.DirectionalLight(
+        lightingConfig.directional2.color,
+        lightingConfig.directional2.intensity
+      );
+      lightsRef.current.directional2.position.set(
+        lightingConfig.directional2.position.x,
+        lightingConfig.directional2.position.y,
+        lightingConfig.directional2.position.z
+      );
+      lightsRef.current.directional2.castShadow = lightingConfig.directional2.castShadow;
+      scene.add(lightsRef.current.directional2);
+    }
+    
+    // Hemisphere Light
+    if (lightingConfig.hemisphere.enabled) {
+      lightsRef.current.hemisphere = new THREE.HemisphereLight(
+        lightingConfig.hemisphere.skyColor,
+        lightingConfig.hemisphere.groundColor,
+        lightingConfig.hemisphere.intensity
+      );
+      scene.add(lightsRef.current.hemisphere);
+    }
 
     // Grid
     const gridHelper = new THREE.GridHelper(1000, 50, 0x444444, 0x222222);
@@ -4069,8 +4175,9 @@ M30 ; End`
       
       {renderPanel('lighting',
         <LightingSetup 
-          scene={sceneRef.current}
-          onUpdate={() => {}}
+          lights={lightsRef.current}
+          config={lightingConfig}
+          onUpdate={updateLights}
         />
       )}
       
