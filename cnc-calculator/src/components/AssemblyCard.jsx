@@ -265,9 +265,28 @@ const AssemblyCard = ({
             </div>
           </div>
           <div>
-            <div style={{ fontSize: '10px', color: '#888' }}>Length</div>
+            <div style={{ fontSize: '10px', color: '#888' }}>Stickout</div>
+            <div style={{ fontSize: '14px', color: '#00ff88', fontWeight: 'bold' }}>
+              {assembly.components?.tool?.stickout || 30}mm
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: '10px', color: '#888' }}>Total Length</div>
             <div style={{ fontSize: '14px', color: '#00d4ff', fontWeight: 'bold' }}>
-              {assembly.totalLength || 0}mm
+              {(() => {
+                const holderGaugeLengths = {
+                  'BT30': 45, 'BT40': 65, 'BT50': 100,
+                  'CAT40': 65, 'CAT50': 100,
+                  'HSK63': 50, 'HSK100': 60,
+                  'ER32': 40, 'ER40': 45,
+                  'default': 60
+                };
+                const holderType = assembly.components?.holder?.type?.split('/')[0] || 'default';
+                const holderGauge = holderGaugeLengths[holderType] || holderGaugeLengths.default;
+                const stickout = assembly.components?.tool?.stickout || 30;
+                const extensions = assembly.components?.extension?.length || 0;
+                return holderGauge + stickout + extensions;
+              })()}mm
             </div>
           </div>
           <div>
@@ -474,7 +493,19 @@ const AssemblyCard = ({
               color: '#888'
             }}>
               💡 Shorter stickout = Better rigidity, less chatter<br/>
-              📏 Total Length: {(assembly.components?.holder?.length || 60) + newStickout}mm
+              📏 Total Length: {(() => {
+                const holderGaugeLengths = {
+                  'BT30': 45, 'BT40': 65, 'BT50': 100,
+                  'CAT40': 65, 'CAT50': 100,
+                  'HSK63': 50, 'HSK100': 60,
+                  'ER32': 40, 'ER40': 45,
+                  'default': 60
+                };
+                const holderType = assembly.components?.holder?.type?.split('/')[0] || 'default';
+                const holderGauge = holderGaugeLengths[holderType] || holderGaugeLengths.default;
+                const extensions = assembly.components?.extension?.length || 0;
+                return holderGauge + newStickout + extensions;
+              })()}mm
             </div>
             
             <div style={{ display: 'flex', gap: '10px' }}>

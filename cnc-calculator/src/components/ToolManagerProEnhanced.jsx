@@ -132,9 +132,9 @@ const ToolManagerProEnhanced = ({
 
   // Update stickout
   const updateStickout = (id, stickout) => {
-    setAssemblies(assemblies.map(a => {
+    const updatedAssemblies = assemblies.map(a => {
       if (a.id === id) {
-        const updatedAssembly = {
+        return {
           ...a,
           stickout,
           components: {
@@ -145,14 +145,21 @@ const ToolManagerProEnhanced = ({
             }
           }
         };
-        // If this is the selected assembly, update tool offset table
-        if (selectedAssembly?.id === id && onAssemblySelect) {
-          selectAssembly(updatedAssembly);
-        }
-        return updatedAssembly;
       }
       return a;
-    }));
+    });
+    
+    setAssemblies(updatedAssemblies);
+    
+    // If this is the selected assembly, trigger offset table update
+    if (selectedAssembly?.id === id) {
+      const updatedAssembly = updatedAssemblies.find(a => a.id === id);
+      if (updatedAssembly && onAssemblySelect) {
+        // Trigger the offset table update by calling onAssemblySelect
+        onAssemblySelect(updatedAssembly);
+        setSelectedAssembly(updatedAssembly);
+      }
+    }
   };
 
   // Calculate cutting parameters
