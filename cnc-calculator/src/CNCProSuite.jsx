@@ -2633,36 +2633,155 @@ M30 ; End`
           overflowY: 'auto',
           padding: '10px'
         }}>
-        <div className="mobile-menu-item" onClick={() => { togglePanel('feedsSpeeds'); setMobileMenuOpen(false); }}>
-          Feeds & Speeds Optimizer
-        </div>
-        <div className="mobile-menu-item" onClick={() => { togglePanel('toolLife'); setMobileMenuOpen(false); }}>
-          Tool Life Calculator
-        </div>
-        <div className="mobile-menu-item" onClick={() => { togglePanel('powerTorque'); setMobileMenuOpen(false); }}>
-          Power & Torque Calculator
-        </div>
-        <div className="mobile-menu-item" onClick={() => { togglePanel('circular'); setMobileMenuOpen(false); }}>
-          Circular Interpolation
-        </div>
-        <div className="mobile-menu-item" onClick={() => { togglePanel('geometry'); setMobileMenuOpen(false); }}>
-          Geometry Tools
-        </div>
-        <div className="mobile-menu-item" onClick={() => { togglePanel('pocketMilling'); setMobileMenuOpen(false); }}>
-          Pocket Milling Wizard
-        </div>
-        <div className="mobile-menu-item" onClick={() => { togglePanel('dualChannel'); setMobileMenuOpen(false); }}>
-          Dual Channel Debugger
-        </div>
-        <div className="mobile-menu-item" onClick={() => { togglePanel('stepProcessor'); setMobileMenuOpen(false); }}>
-          STEP Processor
-        </div>
-        <div className="mobile-menu-item" onClick={() => { togglePanel('machineConfig'); setMobileMenuOpen(false); }}>
-          Machine Configurator
-        </div>
-        <div className="mobile-menu-item" onClick={() => { togglePanel('setupManager'); setMobileMenuOpen(false); }}>
-          Setup Manager
-        </div>
+          {/* File Operations */}
+          <div style={{ marginBottom: '15px' }}>
+            <h4 style={{ color: '#00d4ff', fontSize: '12px', marginBottom: '10px', paddingLeft: '10px' }}>FILE</h4>
+            <button
+              onClick={() => { newProject(); setMobileMenuOpen(false); }}
+              style={{
+                width: '100%',
+                padding: '12px 15px',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: '1px solid #222',
+                color: '#ccc',
+                textAlign: 'left',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              📄 New Project
+            </button>
+            <button
+              onClick={() => { document.getElementById('file-input').click(); setMobileMenuOpen(false); }}
+              style={{
+                width: '100%',
+                padding: '12px 15px',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: '1px solid #222',
+                color: '#ccc',
+                textAlign: 'left',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              📁 Open File
+            </button>
+            <button
+              onClick={() => { saveProject(); setMobileMenuOpen(false); }}
+              style={{
+                width: '100%',
+                padding: '12px 15px',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: '1px solid #222',
+                color: '#ccc',
+                textAlign: 'left',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              💾 Save Project
+            </button>
+          </div>
+
+          {/* View Options */}
+          <div style={{ marginBottom: '15px' }}>
+            <h4 style={{ color: '#00d4ff', fontSize: '12px', marginBottom: '10px', paddingLeft: '10px' }}>VIEW</h4>
+            {[
+              { label: '⬆️ Top View', action: () => setCameraView('top') },
+              { label: '➡️ Front View', action: () => setCameraView('front') },
+              { label: '⬅️ Side View', action: () => setCameraView('side') },
+              { label: '📐 Isometric', action: () => setCameraView('iso') }
+            ].map((item, idx) => (
+              <button
+                key={idx}
+                onClick={() => { item.action(); setMobileMenuOpen(false); }}
+                style={{
+                  width: '100%',
+                  padding: '12px 15px',
+                  background: 'transparent',
+                  border: 'none',
+                  borderBottom: '1px solid #222',
+                  color: '#ccc',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Main Panels */}
+          <div style={{ marginBottom: '15px' }}>
+            <h4 style={{ color: '#00d4ff', fontSize: '12px', marginBottom: '10px', paddingLeft: '10px' }}>PANELS</h4>
+            {[
+              { label: '📝 G-Code Editor', panel: 'gcode' },
+              { label: '🔧 Tool Manager', panel: 'tools' },
+              { label: '📦 Stock Setup', panel: 'stock' },
+              { label: '🔗 Fixture Setup', panel: 'fixture' },
+              { label: '🏭 Machine Setup', panel: 'machine' },
+              { label: '📏 Tool Offsets', panel: 'toolOffsetTable' }
+            ].map((item, idx) => (
+              <button
+                key={idx}
+                onClick={() => { togglePanel(item.panel); setMobileMenuOpen(false); }}
+                style={{
+                  width: '100%',
+                  padding: '12px 15px',
+                  background: panels[item.panel]?.visible ? '#00d4ff22' : 'transparent',
+                  border: 'none',
+                  borderBottom: '1px solid #222',
+                  color: panels[item.panel]?.visible ? '#00d4ff' : '#ccc',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                {item.label} {panels[item.panel]?.visible ? '✓' : ''}
+              </button>
+            ))}
+          </div>
+
+          {/* Settings */}
+          <div style={{ marginBottom: '15px' }}>
+            <h4 style={{ color: '#00d4ff', fontSize: '12px', marginBottom: '10px', paddingLeft: '10px' }}>SETTINGS</h4>
+            <button
+              onClick={() => { setShowMaterialRemoval(!showMaterialRemoval); setMobileMenuOpen(false); }}
+              style={{
+                width: '100%',
+                padding: '12px 15px',
+                background: showMaterialRemoval ? '#00d4ff22' : 'transparent',
+                border: 'none',
+                borderBottom: '1px solid #222',
+                color: showMaterialRemoval ? '#00d4ff' : '#ccc',
+                textAlign: 'left',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              🔨 Material Removal {showMaterialRemoval ? 'ON' : 'OFF'}
+            </button>
+            <button
+              onClick={() => { setCollisionDetection(!collisionDetection); setMobileMenuOpen(false); }}
+              style={{
+                width: '100%',
+                padding: '12px 15px',
+                background: collisionDetection ? '#00d4ff22' : 'transparent',
+                border: 'none',
+                borderBottom: '1px solid #222',
+                color: collisionDetection ? '#00d4ff' : '#ccc',
+                textAlign: 'left',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              ⚠️ Collision Detection {collisionDetection ? 'ON' : 'OFF'}
+            </button>
+          </div>
       </div>
     </div>
   );
