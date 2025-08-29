@@ -2143,6 +2143,7 @@ M30 ; End`
             </button>
           </div>
         </div>
+        )}
         {!panel.minimized && (
           <div style={{
             flex: 1,
