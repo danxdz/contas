@@ -70,12 +70,12 @@ const CNCProSuite = () => {
     },
     workOffsets: {
       activeOffset: 'G54',
-      G54: { x: 0, y: 0, z: 0, description: 'Primary Setup' },
-      G55: { x: 100, y: 100, z: 0, description: 'Secondary Setup' },
-      G56: { x: 0, y: 0, z: 0, description: 'Third Setup' },
-      G57: { x: 0, y: 0, z: 0, description: 'Fourth Setup' },
-      G58: { x: 0, y: 0, z: 0, description: 'Fifth Setup' },
-      G59: { x: 0, y: 0, z: 0, description: 'Sixth Setup' }
+      G54: { x: -100, y: -50, z: -150, description: 'Primary Setup' },  // Typical vise setup
+      G55: { x: 100, y: 100, z: -150, description: 'Secondary Setup' },
+      G56: { x: 0, y: 0, z: -150, description: 'Third Setup' },
+      G57: { x: 0, y: 0, z: -150, description: 'Fourth Setup' },
+      G58: { x: 0, y: 0, z: -150, description: 'Fifth Setup' },
+      G59: { x: 0, y: 0, z: -150, description: 'Sixth Setup' }
     }
   });
   
@@ -347,7 +347,7 @@ const CNCProSuite = () => {
     isPlaying: false,
     speed: 1.0,
     currentLine: 0,
-    position: { x: 0, y: 0, z: 0, a: 0, b: 0, c: 0 },  // Start at machine zero
+    position: { x: 0, y: 0, z: 200, a: 0, b: 0, c: 0 },  // Start at machine home
     feedRate: 500,
     spindleSpeed: 12000,
     tool: 1,
@@ -406,13 +406,13 @@ const CNCProSuite = () => {
     // H codes (Tool Length Offsets) - up to 99 in real machines
     H: Array(100).fill(null).map((_, i) => ({
       register: i,
-      lengthGeometry: i <= 6 ? [75.5, 65.2, 70.0, 85.3, 50.0, 68.7][i-1] || 0 : 0,
+      lengthGeometry: i === 0 ? 0 : (i <= 6 ? [75.5, 65.2, 70.0, 85.3, 50.0, 68.7][i-1] || 0 : 0),
       lengthWear: 0
     })),
     // D codes (Cutter Diameter Compensation) - up to 99 in real machines  
     D: Array(100).fill(null).map((_, i) => ({
       register: i,
-      diameterGeometry: i <= 6 ? [10, 6, 8, 5, 50, 12][i-1] || 0 : 0,
+      diameterGeometry: i === 0 ? 0 : (i <= 6 ? [10, 6, 8, 5, 50, 12][i-1] || 0 : 0),
       diameterWear: 0
     }))
   });
@@ -433,11 +433,12 @@ G54 ; Work coordinate system
 
 ; Tool Change
 T1 M06 ; Select Tool 1
+G43 H1 ; Apply tool length compensation
 S12000 M03 ; Spindle ON, 12000 RPM
 M08 ; Coolant ON
 
 ; Rapid to start position
-G0 Z50 ; Move to safe height first
+G0 Z50 ; Move to safe height in work coordinates
 G0 X-40 Y-25 ; Move to pocket corner
 G0 Z5 ; Approach height
 
@@ -595,7 +596,20 @@ M30 ; End`
     const positions = [];
     // Machine home position (G28 returns here)
     const machineHome = { x: 0, y: 0, z: 200 };  // Z200 is typical machine home
-    let current = { x: 0, y: 0, z: 0, f: 500, s: 0, g43: false, g41: false, g42: false, h: 0, d: 0 };  // Start at machine zero
+    // Start at machine home position
+    let current = { 
+      x: machineHome.x, 
+      y: machineHome.y, 
+      z: machineHome.z, 
+      f: 500, 
+      s: 0, 
+      g43: false, 
+      g41: false, 
+      g42: false, 
+      h: 0, 
+      d: 0,
+      workOffset: 'G54'  // Default work offset
+    };
     let isRelative = false;  // G91 mode
     
     lines.forEach(line => {
@@ -651,6 +665,14 @@ M30 ; End`
       const s = line.match(/S([\d]+)/i);
       const h = line.match(/H([\d]+)/i);
       const d = line.match(/D([\d]+)/i);
+      
+      // Check for work offset codes (G54-G59)
+      if (/G54/i.test(line)) current.workOffset = 'G54';
+      if (/G55/i.test(line)) current.workOffset = 'G55';
+      if (/G56/i.test(line)) current.workOffset = 'G56';
+      if (/G57/i.test(line)) current.workOffset = 'G57';
+      if (/G58/i.test(line)) current.workOffset = 'G58';
+      if (/G59/i.test(line)) current.workOffset = 'G59';
       
       // Check for tool compensation codes
       if (/G43/i.test(line)) current.g43 = true;  // Tool length comp on
@@ -1134,7 +1156,8 @@ M30 ; End`
     toolCoordGroup.position.z = -20; // At the cutting tip
     toolGroup.add(toolCoordGroup);
     
-    toolGroup.position.set(0, 0, 50); // Start at safe height above workpiece
+    // Start tool at machine home position
+    toolGroup.position.set(0, 0, 200); // Machine home Z=200
     scene.add(toolGroup);
     toolRef.current = toolGroup;
     
@@ -1453,8 +1476,9 @@ M30 ; End`
         toolLengthComp = hOffset.lengthGeometry + hOffset.lengthWear;
       }
       
-      // Position tool at actual cutting position with work offset and tool compensation
-      const activeOffset = setupConfig.workOffsets[setupConfig.workOffsets.activeOffset];
+      // Get the current work offset from the parsed position or use the active one
+      const currentWorkOffset = positions[safeCurrentLine]?.workOffset || setupConfig.workOffsets.activeOffset;
+      const activeOffset = setupConfig.workOffsets[currentWorkOffset] || setupConfig.workOffsets[setupConfig.workOffsets.activeOffset];
       
       // Get actual tool assembly length if available
       let actualToolLength = 30; // Default
@@ -1583,7 +1607,11 @@ M30 ; End`
         const currentY = lastPositionRef.current.y + (targetPositionRef.current.y - lastPositionRef.current.y) * easeT;
         const currentZ = lastPositionRef.current.z + (targetPositionRef.current.z - lastPositionRef.current.z) * easeT;
         
-        const activeOffset = setupConfig.workOffsets[setupConfig.workOffsets.activeOffset];
+        // Get work offset from current position
+        const positions = parseGCodePositions(project.gcode.channel1);
+        const currentPos = positions[Math.min(simulation.currentLine, positions.length - 1)];
+        const currentWorkOffset = currentPos?.workOffset || setupConfig.workOffsets.activeOffset;
+        const activeOffset = setupConfig.workOffsets[currentWorkOffset] || setupConfig.workOffsets[setupConfig.workOffsets.activeOffset];
         
         // Get tool length compensation
         let toolLengthComp = 0;
@@ -2418,7 +2446,7 @@ M30 ; End`
       
       // Parse the new G-code to get starting position
       const positions = parseGCodePositions(newGCode);
-      const startPos = positions.length > 0 ? positions[0] : { x: 0, y: 0, z: 50 };
+      const startPos = positions.length > 0 ? positions[0] : { x: 0, y: 0, z: 200 };  // Default to machine home
       
       // Parse tools used in the program
       const programTools = parseToolsFromGCode(newGCode);
