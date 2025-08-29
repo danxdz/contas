@@ -1105,9 +1105,19 @@ M30 ; End`
     // Store function for updates
     window.updateTool3D = rebuildToolGeometry;
     
-    // Add tool tip coordinate system (smaller than origin)
+    // Add control point indicator and coordinate system
     const toolCoordGroup = new THREE.Group();
     toolCoordGroup.name = 'toolCoordSystem';
+    
+    // Control point sphere (shows where the control point is)
+    const controlPointGeometry = new THREE.SphereGeometry(1.5, 8, 8);
+    const controlPointMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0xffff00,  // Yellow for visibility
+      transparent: true,
+      opacity: 0.8
+    });
+    const controlPoint = new THREE.Mesh(controlPointGeometry, controlPointMaterial);
+    toolCoordGroup.add(controlPoint);
     
     // X axis - Red
     const toolXGeometry = new THREE.CylinderGeometry(0.2, 0.2, 10, 4);
@@ -1152,9 +1162,16 @@ M30 ; End`
     toolZCone.position.z = 10;
     toolCoordGroup.add(toolZCone);
     
-    // Position at tool tip
-    toolCoordGroup.position.z = -20; // At the cutting tip
+    // Position coordinate system at control point
+    // This will move based on G43 status
+    toolCoordGroup.position.z = 0; // Will be updated based on G43
     toolGroup.add(toolCoordGroup);
+    
+    // Store references for updating based on G43
+    toolGroup.userData = { 
+      toolCoordGroup,
+      toolLength: 30 // Default tool length
+    };
     
     // Start tool at machine home position
     toolGroup.position.set(0, 0, 200); // Machine home Z=200
@@ -1490,10 +1507,18 @@ M30 ; End`
         if (components.extension?.length) actualToolLength += components.extension.length;
       }
       
-      // The tool control point is at the tip when G43 is active
-      const toolControlZ = currentPos.g43 ? 
-        currentPos.z + activeOffset.z - toolLengthComp :  // Compensated position
-        currentPos.z + activeOffset.z - actualToolLength;  // Use actual tool assembly length
+      // Tool control point behavior:
+      // Without G43: Control point is at spindle nose (tool holder reference)
+      // With G43: Control point moves to tool tip by applying H offset
+      // The Z coordinate in G-code always refers to the control point position
+      let toolControlZ;
+      if (currentPos.g43) {
+        // G43 active: Z coordinate is at tool tip, tool visual needs to be offset up by comp
+        toolControlZ = currentPos.z + activeOffset.z - toolLengthComp;
+      } else {
+        // G43 not active: Z coordinate is at spindle nose, tool visual at that position
+        toolControlZ = currentPos.z + activeOffset.z;
+      }
       
       const toolPosition = {
         x: currentPos.x + activeOffset.x,
@@ -1503,9 +1528,28 @@ M30 ; End`
       
       toolRef.current.position.set(toolPosition.x, toolPosition.y, toolPosition.z);
       
-      // Update toolpath marker to follow current position
+      // Update toolpath marker to follow control point
       if (toolpathMarkerRef.current) {
-        toolpathMarkerRef.current.position.set(toolPosition.x, toolPosition.y, toolPosition.z);
+        // Marker follows the control point position
+        const markerZ = currentPos.g43 ? 
+          currentPos.z + activeOffset.z :  // With G43: at programmed position
+          currentPos.z + activeOffset.z;    // Without G43: at programmed position
+        toolpathMarkerRef.current.position.set(
+          currentPos.x + activeOffset.x, 
+          currentPos.y + activeOffset.y, 
+          markerZ
+        );
+      }
+      
+      // Update tool tip coordinate system position
+      if (toolRef.current && toolRef.current.userData.toolCoordGroup) {
+        if (currentPos.g43) {
+          // With G43: coord system at tool tip
+          toolRef.current.userData.toolCoordGroup.position.z = -actualToolLength;
+        } else {
+          // Without G43: coord system at spindle nose
+          toolRef.current.userData.toolCoordGroup.position.z = 0;
+        }
       }
       
       // Material removal simulation
@@ -1630,9 +1674,17 @@ M30 ; End`
           if (components.extension?.length) actualToolLength += components.extension.length;
         }
         
-        const toolControlZ = currentPos?.g43 ? 
-          currentZ + activeOffset.z - toolLengthComp :
-          currentZ + activeOffset.z - actualToolLength;
+        // Tool control point during animation:
+        // Without G43: Control point at spindle nose
+        // With G43: Control point at tool tip (offset by H value)
+        let toolControlZ;
+        if (currentPos?.g43) {
+          // G43 active: apply tool length compensation
+          toolControlZ = currentZ + activeOffset.z - toolLengthComp;
+        } else {
+          // No G43: control point at spindle nose
+          toolControlZ = currentZ + activeOffset.z;
+        }
         
         toolRef.current.position.set(
           currentX + activeOffset.x,
@@ -1640,13 +1692,27 @@ M30 ; End`
           toolControlZ
         );
         
-        // Update toolpath marker during tweening
+        // Update toolpath marker during tweening to follow control point
         if (toolpathMarkerRef.current) {
+          const markerZ = currentPos?.g43 ?
+            currentZ + activeOffset.z :  // With G43: at programmed position
+            currentZ + activeOffset.z;    // Without G43: at programmed position
           toolpathMarkerRef.current.position.set(
             currentX + activeOffset.x,
             currentY + activeOffset.y,
-            toolControlZ
+            markerZ
           );
+        }
+        
+        // Update tool tip coordinate system during animation
+        if (toolRef.current && toolRef.current.userData?.toolCoordGroup) {
+          if (currentPos?.g43) {
+            // With G43: coord system at tool tip
+            toolRef.current.userData.toolCoordGroup.position.z = -actualToolLength;
+          } else {
+            // Without G43: coord system at spindle nose  
+            toolRef.current.userData.toolCoordGroup.position.z = 0;
+          }
         }
       }
       
@@ -2273,6 +2339,14 @@ M30 ; End`
         <span>X: {simulation.position.x.toFixed(1)}</span>
         <span>Y: {simulation.position.y.toFixed(1)}</span>
         <span>Z: {simulation.position.z.toFixed(1)}</span>
+        <span 
+          style={{ color: simulation.toolLengthCompActive ? '#00ff00' : '#ffaa00' }}
+          title={simulation.toolLengthCompActive ? 
+            'G43 Active: Control point at tool tip' : 
+            'G43 Inactive: Control point at spindle nose'}
+        >
+          {simulation.toolLengthCompActive ? 'G43' : 'No-G43'}
+        </span>
         <span>|</span>
         <span>F: {simulation.feedRate}</span>
         <span>S: {simulation.spindleSpeed}</span>
