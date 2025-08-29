@@ -101,7 +101,7 @@ const CNCProSuite = () => {
       title: 'G-Code Editor'
     },
     tools: {
-      visible: true,
+      visible: false,  // Hidden at start
       floating: true,
       docked: 'right',
       position: { x: Math.max(100, window.innerWidth - 1400), y: 80 },
@@ -1507,16 +1507,24 @@ M30 ; End`
         if (components.extension?.length) actualToolLength += components.extension.length;
       }
       
-      // Tool control point behavior:
-      // Without G43: Control point is at spindle nose (tool holder reference)
-      // With G43: Control point moves to tool tip by applying H offset
-      // The Z coordinate in G-code always refers to the control point position
+      // Tool control point behavior (like real CNC machine):
+      // Without G43: Programmed Z moves spindle nose to that position
+      // With G43: Programmed Z moves tool tip to that position
+      // 
+      // Work coordinate Z to Machine coordinate Z:
+      // Machine Z = Work Z + Work Offset Z
+      // 
+      // Tool visual positioning:
+      // The tool 3D model's origin is at the spindle nose
+      // When G43 is active, spindle must move UP by tool length to put tip at programmed position
       let toolControlZ;
       if (currentPos.g43) {
-        // G43 active: Z coordinate is at tool tip, tool visual needs to be offset up by comp
-        toolControlZ = currentPos.z + activeOffset.z - toolLengthComp;
+        // G43 active: Spindle moves up by tool length so tip reaches programmed Z
+        // Machine Z = Work Z + Work Offset Z + Tool Length
+        toolControlZ = currentPos.z + activeOffset.z + toolLengthComp;
       } else {
-        // G43 not active: Z coordinate is at spindle nose, tool visual at that position
+        // G43 not active: Spindle nose goes to programmed Z
+        // Machine Z = Work Z + Work Offset Z
         toolControlZ = currentPos.z + activeOffset.z;
       }
       
@@ -1530,14 +1538,13 @@ M30 ; End`
       
       // Update toolpath marker to follow control point
       if (toolpathMarkerRef.current) {
-        // Marker follows the control point position
-        const markerZ = currentPos.g43 ? 
-          currentPos.z + activeOffset.z :  // With G43: at programmed position
-          currentPos.z + activeOffset.z;    // Without G43: at programmed position
+        // Marker shows where the control point (cutting point) is
+        // With G43: This is the tool tip position
+        // Without G43: This is the spindle nose position
         toolpathMarkerRef.current.position.set(
           currentPos.x + activeOffset.x, 
           currentPos.y + activeOffset.y, 
-          markerZ
+          currentPos.z + activeOffset.z  // Always at programmed work position
         );
       }
       
@@ -1674,15 +1681,15 @@ M30 ; End`
           if (components.extension?.length) actualToolLength += components.extension.length;
         }
         
-        // Tool control point during animation:
-        // Without G43: Control point at spindle nose
-        // With G43: Control point at tool tip (offset by H value)
+        // Tool control point during animation (like real CNC):
+        // Without G43: Spindle nose at programmed position
+        // With G43: Tool tip at programmed position (spindle raised by H value)
         let toolControlZ;
         if (currentPos?.g43) {
-          // G43 active: apply tool length compensation
-          toolControlZ = currentZ + activeOffset.z - toolLengthComp;
+          // G43 active: Spindle moves up by tool length so tip is at programmed Z
+          toolControlZ = currentZ + activeOffset.z + toolLengthComp;
         } else {
-          // No G43: control point at spindle nose
+          // No G43: Spindle nose at programmed Z
           toolControlZ = currentZ + activeOffset.z;
         }
         
@@ -1694,13 +1701,11 @@ M30 ; End`
         
         // Update toolpath marker during tweening to follow control point
         if (toolpathMarkerRef.current) {
-          const markerZ = currentPos?.g43 ?
-            currentZ + activeOffset.z :  // With G43: at programmed position
-            currentZ + activeOffset.z;    // Without G43: at programmed position
+          // Marker always shows programmed position (where cutting happens)
           toolpathMarkerRef.current.position.set(
             currentX + activeOffset.x,
             currentY + activeOffset.y,
-            markerZ
+            currentZ + activeOffset.z  // Always at programmed work position
           );
         }
         
