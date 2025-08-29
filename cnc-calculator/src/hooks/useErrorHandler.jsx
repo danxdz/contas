@@ -1,81 +1,6 @@
 import { useState, useCallback } from 'react';
 
-/**
- * Custom hook for handling errors with user feedback
- * @returns {Object} Error handling utilities
- */
-export const useErrorHandler = () => {
-  const [error, setError] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  /**
-   * Wraps an async operation with error handling
-   * @param {Function} operation - Async function to execute
-   * @param {string} errorMessage - Custom error message
-   * @returns {Promise} Result of the operation
-   */
-  const handleAsync = useCallback(async (operation, errorMessage = 'Operation failed') => {
-    setError(null);
-    setIsLoading(true);
-    
-    try {
-      const result = await operation();
-      setIsLoading(false);
-      return result;
-    } catch (err) {
-      console.error(errorMessage, err);
-      setError({
-        message: errorMessage,
-        details: err.message || err.toString(),
-        timestamp: new Date().toISOString()
-      });
-      setIsLoading(false);
-      throw err;
-    }
-  }, []);
-
-  /**
-   * Wraps a synchronous operation with error handling
-   * @param {Function} operation - Function to execute
-   * @param {string} errorMessage - Custom error message
-   * @returns {*} Result of the operation
-   */
-  const handleSync = useCallback((operation, errorMessage = 'Operation failed') => {
-    setError(null);
-    
-    try {
-      return operation();
-    } catch (err) {
-      console.error(errorMessage, err);
-      setError({
-        message: errorMessage,
-        details: err.message || err.toString(),
-        timestamp: new Date().toISOString()
-      });
-      throw err;
-    }
-  }, []);
-
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
-
-  return {
-    error,
-    isLoading,
-    handleAsync,
-    handleSync,
-    clearError,
-    setError
-  };
-};
-
-/**
- * Error notification component
- * @param {Object} props - Component props
- * @param {Object} props.error - Error object
- * @param {Function} props.onClose - Close handler
- */
+// Error notification component
 export const ErrorNotification = ({ error, onClose }) => {
   if (!error) return null;
 
@@ -86,21 +11,30 @@ export const ErrorNotification = ({ error, onClose }) => {
       right: '20px',
       maxWidth: '400px',
       padding: '15px',
-      background: 'linear-gradient(135deg, #ff4444, #cc0000)',
-      border: '1px solid #ff6666',
+      background: 'rgba(255, 0, 0, 0.9)',
+      border: '1px solid #ff4444',
       borderRadius: '8px',
-      color: '#fff',
-      boxShadow: '0 4px 20px rgba(255, 68, 68, 0.3)',
+      color: '#ffffff',
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
       zIndex: 10000,
       animation: 'slideIn 0.3s ease-out'
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-            ⚠️ {error.message}
+          <strong style={{ display: 'block', marginBottom: '5px' }}>
+            ⚠️ Error
+          </strong>
+          <div style={{ fontSize: '14px' }}>
+            {error.message || error.toString()}
           </div>
           {error.details && (
-            <div style={{ fontSize: '12px', opacity: 0.9, marginTop: '5px' }}>
+            <div style={{ 
+              fontSize: '12px', 
+              marginTop: '8px',
+              padding: '8px',
+              background: 'rgba(0, 0, 0, 0.3)',
+              borderRadius: '4px'
+            }}>
               {error.details}
             </div>
           )}
@@ -110,10 +44,11 @@ export const ErrorNotification = ({ error, onClose }) => {
           style={{
             background: 'transparent',
             border: 'none',
-            color: '#fff',
+            color: '#ffffff',
             fontSize: '20px',
             cursor: 'pointer',
-            padding: '0 0 0 10px'
+            padding: '0',
+            marginLeft: '10px'
           }}
         >
           ×
@@ -123,23 +58,115 @@ export const ErrorNotification = ({ error, onClose }) => {
   );
 };
 
-// Add animation keyframes
-if (typeof document !== 'undefined' && !document.getElementById('error-handler-styles')) {
-  const style = document.createElement('style');
-  style.id = 'error-handler-styles';
-  style.textContent = `
-    @keyframes slideIn {
-      from {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
+// Custom hook for error handling
+const useErrorHandler = () => {
+  const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorHistory, setErrorHistory] = useState([]);
+
+  // Clear error
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  // Log error to history
+  const logError = useCallback((err) => {
+    const errorEntry = {
+      message: err.message || err.toString(),
+      timestamp: new Date().toISOString(),
+      stack: err.stack,
+      type: err.name || 'Error'
+    };
+    
+    setErrorHistory(prev => [...prev.slice(-9), errorEntry]); // Keep last 10 errors
+    console.error('Error logged:', errorEntry);
+  }, []);
+
+  // Handle async operations with error catching
+  const handleAsync = useCallback(async (asyncFunction, options = {}) => {
+    const { 
+      showLoading = true, 
+      onError = null, 
+      onSuccess = null,
+      errorMessage = null 
+    } = options;
+
+    try {
+      if (showLoading) setIsLoading(true);
+      clearError();
+      
+      const result = await asyncFunction();
+      
+      if (onSuccess) onSuccess(result);
+      return result;
+    } catch (err) {
+      const errorObj = {
+        message: errorMessage || err.message,
+        details: err.response?.data?.message || err.stack,
+        original: err
+      };
+      
+      setError(errorObj);
+      logError(err);
+      
+      if (onError) onError(err);
+      throw err;
+    } finally {
+      if (showLoading) setIsLoading(false);
     }
-  `;
-  document.head.appendChild(style);
-}
+  }, [clearError, logError]);
+
+  // Handle synchronous operations with error catching
+  const handleSync = useCallback((syncFunction, options = {}) => {
+    const { onError = null, onSuccess = null, errorMessage = null } = options;
+
+    try {
+      clearError();
+      const result = syncFunction();
+      
+      if (onSuccess) onSuccess(result);
+      return result;
+    } catch (err) {
+      const errorObj = {
+        message: errorMessage || err.message,
+        details: err.stack,
+        original: err
+      };
+      
+      setError(errorObj);
+      logError(err);
+      
+      if (onError) onError(err);
+      throw err;
+    }
+  }, [clearError, logError]);
+
+  // Wrapper for event handlers
+  const wrapHandler = useCallback((handler) => {
+    return (...args) => {
+      try {
+        return handler(...args);
+      } catch (err) {
+        setError({
+          message: `Event handler error: ${err.message}`,
+          details: err.stack,
+          original: err
+        });
+        logError(err);
+      }
+    };
+  }, [logError]);
+
+  return {
+    error,
+    isLoading,
+    errorHistory,
+    handleAsync,
+    handleSync,
+    wrapHandler,
+    clearError,
+    setError
+  };
+};
 
 export default useErrorHandler;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useReducer } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
@@ -10,6 +10,9 @@ import MaterialRemovalSimulation from './components/MaterialRemovalSimulation';
 import LightingSetup from './components/LightingSetup';
 import { setupCNCShortcuts } from './utils/KeyboardShortcuts';
 import useErrorHandler, { ErrorNotification } from './hooks/useErrorHandler.jsx';
+import { appReducer, initialState, actions } from './reducers/appReducer';
+import GlobalErrorHandler from './components/GlobalErrorHandler';
+import PerformanceMonitor from './components/PerformanceMonitor';
 
 // Components
 import DualChannelDebugger from './components/DualChannelDebugger';
@@ -44,23 +47,23 @@ import {
 
 const CNCProSuite = () => {
   // Error handling
-  const { error, isLoading, handleAsync, handleSync, clearError } = useErrorHandler();
+  const { error, isLoading, handleAsync, handleSync, wrapHandler, clearError } = useErrorHandler();
   
-  // Mobile detection
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeMobilePanel, setActiveMobilePanel] = useState(null);
-  const [mobileBottomSheet, setMobileBottomSheet] = useState(false);
+  // Main app state using reducer
+  const [state, dispatch] = useReducer(appReducer, {
+    ...initialState,
+    ui: { ...initialState.ui, isMobile: window.innerWidth <= 768 }
+  });
+  
+  // Extract state for easier access
+  const { simulation, panels, setupConfig, ui, features, project, toolDatabase, toolAssemblies, toolOffsetTable, activePanelId } = state;
+  
+  // Local state for UI-only concerns
   const materialRemovalRef = useRef(null);
-  const [showMaterialRemoval, setShowMaterialRemoval] = useState(true);
-  const [collisionDetection, setCollisionDetection] = useState(true);
   const [keyboardShortcuts, setKeyboardShortcuts] = useState(null);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
-  
-  // Collision tracking
-  const [collisionCount, setCollisionCount] = useState(0);
-  const [stopOnCollision, setStopOnCollision] = useState(true);
   const [collisionAlert, setCollisionAlert] = useState(null);
+  const [showPerformanceMonitor, setShowPerformanceMonitor] = useState(false);
   
   // Lighting configuration (persistent)
   const [lightingConfig, setLightingConfig] = useState({
@@ -84,7 +87,6 @@ const CNCProSuite = () => {
     }
   });
   const lightsRef = useRef({});
-  const [collisionHistory, setCollisionHistory] = useState([]);
   
   // Function to update lights without recreating them
   const updateLights = (newConfig) => {
@@ -127,50 +129,28 @@ const CNCProSuite = () => {
     }
   };
   
-  // Setup states for stock, fixture, and machine
-  const [setupConfig, setSetupConfig] = useState({
-    stock: {
-      type: 'block', // block, cylinder, custom
-      dimensions: { x: 100, y: 100, z: 50 },
-      material: 'aluminum',
-      position: { x: 0, y: 0, z: 0 }
-    },
-    fixture: {
-      type: 'vise', // vise, chuck, custom
-      jawWidth: 150,
-      clampingForce: 5000,
-      position: { x: 0, y: 0, z: -50 }
-    },
-    machine: {
-      type: '3-axis', // 3-axis, 4-axis, 5-axis
-      workEnvelope: { x: 800, y: 600, z: 500 },
-      spindleMax: 24000,
-      rapidFeed: 15000,
-      maxFeed: 10000
-    },
-    workOffsets: {
-      activeOffset: 'G54',
-      G54: { x: 0, y: 0, z: 50, description: 'Primary Setup' },  // Top of stock at Z=0
-      G55: { x: 100, y: 100, z: -150, description: 'Secondary Setup' },
-      G56: { x: 0, y: 0, z: -150, description: 'Third Setup' },
-      G57: { x: 0, y: 0, z: -150, description: 'Fourth Setup' },
-      G58: { x: 0, y: 0, z: -150, description: 'Fifth Setup' },
-      G59: { x: 0, y: 0, z: -150, description: 'Sixth Setup' }
-    }
+  // Work offsets configuration (kept separate for now)
+  const [workOffsets, setWorkOffsets] = useState({
+    activeOffset: 'G54',
+    G54: { x: 0, y: 0, z: 50, description: 'Primary Setup' },  // Top of stock at Z=0
+    G55: { x: 100, y: 100, z: -150, description: 'Secondary Setup' },
+    G56: { x: 0, y: 0, z: -150, description: 'Third Setup' },
+    G57: { x: 0, y: 0, z: -150, description: 'Fourth Setup' },
+    G58: { x: 0, y: 0, z: -150, description: 'Fifth Setup' },
+    G59: { x: 0, y: 0, z: -150, description: 'Sixth Setup' }
   });
   
   // Handle window resize
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
+      dispatch(actions.setMobile(window.innerWidth <= 768));
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  // Panel system - each panel can be floating or docked
-  const [activePanelId, setActivePanelId] = useState(null);
-  const [panels, setPanels] = useState({
+  // Additional refs and local state not in reducer
+  const [panels_temp, setPanels_temp] = useState({
     gcode: {
       visible: false,  // Start closed
       floating: true,
@@ -424,7 +404,7 @@ const CNCProSuite = () => {
     }
   });
 
-  const [simulation, setSimulation] = useState({
+  const [simulation_old, setSimulation] = useState({
     isPlaying: false,
     speed: 1.0,
     currentLine: 0,
@@ -441,7 +421,7 @@ const CNCProSuite = () => {
     compMode: 'none'  // none, left (G41), right (G42)
   });
   
-  const [toolDatabase, setToolDatabase] = useState([
+  const [toolDatabase_old, setToolDatabase] = useState([
     { 
       id: 1, tNumber: 'T1', name: 'End Mill 10mm', diameter: 10, flutes: 4, type: 'endmill', 
       material: 'Carbide', coating: 'TiAlN', lengthOffset: 75.5, wearOffset: 0,
@@ -480,10 +460,10 @@ const CNCProSuite = () => {
     }
   ]);
   
-  const [toolAssemblies, setToolAssemblies] = useState([]);
+  const [toolAssemblies_old, setToolAssemblies] = useState([]);
   
   // Tool Offset Table (like real CNC machine)
-  const [toolOffsetTable, setToolOffsetTable] = useState({
+  const [toolOffsetTable_old, setToolOffsetTable] = useState({
     // H codes (Tool Length Offsets) - up to 99 in real machines
     H: Array(100).fill(null).map((_, i) => ({
       register: i,
@@ -498,7 +478,7 @@ const CNCProSuite = () => {
     }))
   });
 
-  const [project, setProject] = useState({
+  const [project_old, setProject] = useState({
     name: 'Example Pocket Milling',
     gcode: {
       channel1: `; POCKET MILLING EXAMPLE
@@ -2582,37 +2562,29 @@ M30 ; End`
     }, 'Failed to save project');
   };
 
-  const pauseSimulation = () => {
+  const pauseSimulation = wrapHandler(() => {
     // Pause - just stop playing but keep position
     if (simulationIntervalRef.current) {
       clearInterval(simulationIntervalRef.current);
       simulationIntervalRef.current = null;
     }
-    setSimulation(prev => ({
-      ...prev,
-      isPlaying: false
-    }));
-  };
+    dispatch(actions.pauseSimulation());
+  });
 
-  const stopSimulation = () => {
+  const stopSimulation = wrapHandler(() => {
     // Stop - reset to beginning
     if (simulationIntervalRef.current) {
       clearInterval(simulationIntervalRef.current);
       simulationIntervalRef.current = null;
     }
-    setSimulation(prev => ({
-      ...prev,
-      isPlaying: false,
-      currentLine: 0,
-      position: { x: 0, y: 0, z: 250 }  // Start at safe Z height
-    }));
+    dispatch(actions.stopSimulation());
     // Reset tool position
     if (toolRef.current) {
       toolRef.current.position.set(0, 0, 250);
     }
-  };
+  });
 
-  const resetSimulation = () => {
+  const resetSimulation = wrapHandler(() => {
     // Full reset - stop and clear everything
     stopSimulation();
     // Clear toolpath visualization
@@ -2623,7 +2595,7 @@ M30 ; End`
     if (materialRemovalRef.current) {
       materialRemovalRef.current.reset();
     }
-  };
+  });
   
   const playPauseSimulation = () => {
     setSimulation(prev => ({
@@ -3335,7 +3307,35 @@ M30 ; End`
       )}
       
       {/* Error Notification */}
-      <ErrorNotification error={error} onClose={clearError} />
+      <GlobalErrorHandler 
+        error={error} 
+        isLoading={isLoading} 
+        onClearError={clearError} 
+      />
+      
+      {/* Performance Monitor */}
+      <PerformanceMonitor enabled={showPerformanceMonitor} />
+      
+      {/* Debug Toggle */}
+      <button
+        onClick={() => setShowPerformanceMonitor(prev => !prev)}
+        style={{
+          position: 'fixed',
+          bottom: '10px',
+          right: '10px',
+          background: 'rgba(0, 0, 0, 0.8)',
+          border: '1px solid #00d4ff',
+          borderRadius: '5px',
+          padding: '5px 10px',
+          color: '#00d4ff',
+          fontSize: '12px',
+          cursor: 'pointer',
+          zIndex: 9998
+        }}
+        title="Toggle Performance Monitor"
+      >
+        📊 Perf
+      </button>
     </div>
   );
 };

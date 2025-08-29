@@ -1,8 +1,5 @@
 import React from 'react';
 
-/**
- * Error Boundary component to catch React errors
- */
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -20,166 +17,106 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    // Log error details
-    console.error('Error caught by boundary:', error, errorInfo);
+    // Log error details for debugging
+    console.error('ErrorBoundary caught:', error, errorInfo);
     
-    // Update state with error details
     this.setState(prevState => ({
       error,
       errorInfo,
       errorCount: prevState.errorCount + 1
     }));
-    
-    // Report to error tracking service if available
-    if (window.errorReporter) {
-      window.errorReporter.logError(error, errorInfo);
+
+    // You can also log the error to an error reporting service here
+    if (this.props.onError) {
+      this.props.onError(error, errorInfo);
     }
   }
 
   handleReset = () => {
-    this.setState({ 
-      hasError: false, 
+    this.setState({
+      hasError: false,
       error: null,
-      errorInfo: null 
+      errorInfo: null
     });
   };
 
   render() {
     if (this.state.hasError) {
-      // Fallback UI
+      // Custom error UI
       return (
         <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '100vh',
           padding: '20px',
-          background: 'linear-gradient(135deg, #1a1f2e, #2a2f3e)',
-          color: '#fff'
+          margin: '20px',
+          background: 'rgba(255, 0, 0, 0.1)',
+          border: '2px solid #ff4444',
+          borderRadius: '8px',
+          color: '#ffffff',
+          fontFamily: 'monospace'
         }}>
-          <div style={{
-            maxWidth: '600px',
-            width: '100%',
-            padding: '30px',
-            background: 'rgba(255, 68, 68, 0.1)',
-            border: '2px solid #ff4444',
-            borderRadius: '12px',
-            boxShadow: '0 4px 20px rgba(255, 68, 68, 0.2)'
-          }}>
-            <h2 style={{ 
-              color: '#ff6666', 
-              marginBottom: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px'
-            }}>
-              ⚠️ Application Error
-            </h2>
-            
-            <p style={{ marginBottom: '15px', color: '#ddd' }}>
-              An unexpected error occurred in the application. 
-              {this.state.errorCount > 1 && (
-                <span style={{ color: '#ffaa00' }}>
-                  {' '}(Error #{this.state.errorCount})
-                </span>
-              )}
-            </p>
-            
-            {this.state.error && (
-              <div style={{
-                marginBottom: '20px',
-                padding: '15px',
+          <h2 style={{ color: '#ff4444', marginBottom: '10px' }}>
+            ⚠️ Application Error
+          </h2>
+          
+          <div style={{ marginBottom: '15px' }}>
+            <strong>Error:</strong> {this.state.error && this.state.error.toString()}
+          </div>
+          
+          {this.state.errorInfo && (
+            <details style={{ whiteSpace: 'pre-wrap', marginBottom: '15px' }}>
+              <summary style={{ cursor: 'pointer', color: '#00d4ff' }}>
+                View Stack Trace
+              </summary>
+              <pre style={{ 
+                fontSize: '12px', 
                 background: 'rgba(0, 0, 0, 0.3)',
-                borderRadius: '8px',
-                border: '1px solid #444'
+                padding: '10px',
+                borderRadius: '4px',
+                overflow: 'auto',
+                maxHeight: '200px'
               }}>
-                <div style={{ 
-                  fontWeight: 'bold', 
-                  color: '#ff9999',
-                  marginBottom: '10px' 
-                }}>
-                  Error Message:
-                </div>
-                <code style={{ 
-                  display: 'block',
-                  padding: '10px',
-                  background: 'rgba(0, 0, 0, 0.5)',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  overflowX: 'auto'
-                }}>
-                  {this.state.error.toString()}
-                </code>
-              </div>
-            )}
+                {this.state.errorInfo.componentStack}
+              </pre>
+            </details>
+          )}
+          
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              onClick={this.handleReset}
+              style={{
+                padding: '8px 16px',
+                background: '#00d4ff',
+                border: 'none',
+                borderRadius: '4px',
+                color: '#000',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              Reset Application
+            </button>
             
-            {this.state.errorInfo && process.env.NODE_ENV === 'development' && (
-              <details style={{ 
-                marginBottom: '20px',
-                cursor: 'pointer'
-              }}>
-                <summary style={{ 
-                  color: '#00d4ff',
-                  marginBottom: '10px',
-                  userSelect: 'none'
-                }}>
-                  Show Technical Details
-                </summary>
-                <pre style={{
-                  padding: '15px',
-                  background: 'rgba(0, 0, 0, 0.5)',
-                  borderRadius: '4px',
-                  fontSize: '11px',
-                  overflowX: 'auto',
-                  maxHeight: '300px',
-                  overflowY: 'auto'
-                }}>
-                  {this.state.errorInfo.componentStack}
-                </pre>
-              </details>
-            )}
-            
-            <div style={{ 
-              display: 'flex', 
-              gap: '10px',
-              justifyContent: 'center' 
-            }}>
-              <button
-                onClick={this.handleReset}
-                style={{
-                  padding: '10px 20px',
-                  background: 'linear-gradient(135deg, #00d4ff, #0099cc)',
-                  border: 'none',
-                  borderRadius: '6px',
-                  color: '#fff',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  transition: 'transform 0.2s'
-                }}
-                onMouseOver={e => e.target.style.transform = 'scale(1.05)'}
-                onMouseOut={e => e.target.style.transform = 'scale(1)'}
-              >
-                Try Again
-              </button>
-              
-              <button
-                onClick={() => window.location.reload()}
-                style={{
-                  padding: '10px 20px',
-                  background: 'transparent',
-                  border: '1px solid #666',
-                  borderRadius: '6px',
-                  color: '#aaa',
-                  cursor: 'pointer',
-                  transition: 'border-color 0.2s'
-                }}
-                onMouseOver={e => e.target.style.borderColor = '#999'}
-                onMouseOut={e => e.target.style.borderColor = '#666'}
-              >
-                Reload Page
-              </button>
-            </div>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                padding: '8px 16px',
+                background: '#ff9800',
+                border: 'none',
+                borderRadius: '4px',
+                color: '#000',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              Reload Page
+            </button>
+          </div>
+          
+          <div style={{ 
+            marginTop: '15px', 
+            fontSize: '12px', 
+            color: '#888' 
+          }}>
+            Error Count: {this.state.errorCount}
           </div>
         </div>
       );

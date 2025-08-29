@@ -1,3 +1,20 @@
+// Action types
+export const SIMULATION_ACTIONS = {
+  PLAY: 'PLAY',
+  PAUSE: 'PAUSE',
+  STOP: 'STOP',
+  RESET: 'RESET',
+  SET_SPEED: 'SET_SPEED',
+  SET_POSITION: 'SET_POSITION',
+  SET_LINE: 'SET_CURRENT_LINE',
+  STEP_FORWARD: 'NEXT_LINE',
+  STEP_BACKWARD: 'PREVIOUS_LINE',
+  SET_TOOL: 'SET_TOOL_ASSEMBLY',
+  SET_ERROR: 'SET_ERROR',
+  CLEAR_ERROR: 'CLEAR_ERROR',
+  SET_LOADING: 'SET_LOADING'
+};
+
 /**
  * Simulation reducer for managing simulation state
  * @param {Object} state - Current simulation state
