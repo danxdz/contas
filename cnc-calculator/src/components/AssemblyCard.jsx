@@ -7,9 +7,12 @@ const AssemblyCard = ({
   onEdit,
   onDuplicate,
   onDelete,
-  onUpdateWear
+  onUpdateWear,
+  onUpdateStickout
 }) => {
   const [viewMode, setViewMode] = useState('mini'); // 'mini', 'expanded', 'selected'
+  const [showStickoutModal, setShowStickoutModal] = useState(false);
+  const [newStickout, setNewStickout] = useState(assembly.components?.tool?.stickout || 30);
   
   const handleClick = (e) => {
     e.stopPropagation();
@@ -164,6 +167,24 @@ const AssemblyCard = ({
 
           {/* Action Buttons */}
           <div style={{ display: 'flex', gap: '5px' }}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowStickoutModal(true);
+              }}
+              style={{
+                padding: '6px 10px',
+                background: '#2a3f5f',
+                color: '#00d4ff',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '12px'
+              }}
+              title="Adjust Stickout"
+            >
+              📏
+            </button>
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -375,6 +396,126 @@ const AssemblyCard = ({
         </span>
       </div>
     </div>
+    
+    {/* Stickout Adjustment Modal */}
+    {showStickoutModal && (
+      <>
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.7)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }} onClick={() => setShowStickoutModal(false)}>
+          <div style={{
+            background: '#1a1f2e',
+            borderRadius: '12px',
+            padding: '25px',
+            width: '400px',
+            border: '2px solid #00d4ff',
+            boxShadow: '0 10px 40px rgba(0,212,255,0.3)'
+          }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ color: '#00d4ff', marginBottom: '20px' }}>
+              Adjust Tool Stickout
+            </h3>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <span style={{ color: '#888' }}>Current Stickout</span>
+                <span style={{ color: '#fff', fontSize: '18px', fontWeight: 'bold' }}>
+                  {newStickout}mm
+                </span>
+              </div>
+              
+              <input
+                type="range"
+                min="10"
+                max="100"
+                value={newStickout}
+                onChange={(e) => setNewStickout(parseInt(e.target.value))}
+                style={{
+                  width: '100%',
+                  height: '8px',
+                  background: `linear-gradient(to right, #00ff88 0%, #00ff88 ${(newStickout - 10) / 90 * 100}%, #333 ${(newStickout - 10) / 90 * 100}%, #333 100%)`,
+                  borderRadius: '4px',
+                  outline: 'none',
+                  WebkitAppearance: 'none',
+                  cursor: 'pointer'
+                }}
+              />
+              
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                fontSize: '10px', 
+                color: '#666',
+                marginTop: '5px'
+              }}>
+                <span>10mm</span>
+                <span>Short</span>
+                <span>Normal</span>
+                <span>Long</span>
+                <span>100mm</span>
+              </div>
+            </div>
+            
+            <div style={{
+              padding: '10px',
+              background: 'rgba(0, 212, 255, 0.1)',
+              borderRadius: '6px',
+              marginBottom: '20px',
+              fontSize: '12px',
+              color: '#888'
+            }}>
+              💡 Shorter stickout = Better rigidity, less chatter<br/>
+              📏 Total Length: {(assembly.components?.holder?.length || 60) + newStickout}mm
+            </div>
+            
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => {
+                  if (onUpdateStickout) {
+                    onUpdateStickout(assembly.id, newStickout);
+                  }
+                  setShowStickoutModal(false);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: 'linear-gradient(135deg, #00ff88, #00d4ff)',
+                  color: '#000',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer'
+                }}
+              >
+                Apply Changes
+              </button>
+              <button
+                onClick={() => setShowStickoutModal(false)}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: '#333',
+                  color: '#888',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    )}
   );
 };
 

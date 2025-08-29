@@ -21,6 +21,8 @@ const ModularToolSystemV2 = ({ onAssemblyCreate, editingAssembly }) => {
     };
   });
   
+  const [toolStickout, setToolStickout] = useState(30); // Default 30mm stickout
+  
   const [expandedSection, setExpandedSection] = useState('tool');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterBrand, setFilterBrand] = useState('all');
@@ -118,13 +120,23 @@ const ModularToolSystemV2 = ({ onAssemblyCreate, editingAssembly }) => {
       return;
     }
 
+    // Add stickout to the tool component
+    const componentsWithStickout = {
+      ...selectedComponents,
+      tool: {
+        ...selectedComponents.tool,
+        stickout: toolStickout
+      }
+    };
+    
     const assembly = {
       id: Date.now(),
-      components: { ...selectedComponents },
+      components: componentsWithStickout,
       totalLength: calculateAssemblyLength(),
       maxRPM: calculateMaxRPM(),
       timestamp: new Date().toISOString(),
-      name: generateAssemblyName()
+      name: generateAssemblyName(),
+      stickout: toolStickout
     };
 
     if (onAssemblyCreate) {
@@ -379,6 +391,53 @@ const ModularToolSystemV2 = ({ onAssemblyCreate, editingAssembly }) => {
               <div>
                 <span style={{ color: '#888' }}>Coating: </span>
                 <span style={{ color: '#ffaa00' }}>{selectedComponents.tool.coating}</span>
+              </div>
+              
+              {/* Stickout Control */}
+              <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #333' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <span style={{ color: '#00d4ff', fontWeight: 'bold' }}>Tool Stickout</span>
+                  <span style={{ color: '#fff', fontSize: '14px' }}>{toolStickout}mm</span>
+                </div>
+                <input
+                  type="range"
+                  min="10"
+                  max="100"
+                  value={toolStickout}
+                  onChange={(e) => setToolStickout(parseInt(e.target.value))}
+                  style={{
+                    width: '100%',
+                    height: '6px',
+                    background: `linear-gradient(to right, #00ff88 0%, #00ff88 ${(toolStickout - 10) / 90 * 100}%, #333 ${(toolStickout - 10) / 90 * 100}%, #333 100%)`,
+                    borderRadius: '3px',
+                    outline: 'none',
+                    WebkitAppearance: 'none',
+                    cursor: 'pointer'
+                  }}
+                />
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  fontSize: '10px', 
+                  color: '#666',
+                  marginTop: '5px'
+                }}>
+                  <span>10mm</span>
+                  <span>Short</span>
+                  <span>Normal</span>
+                  <span>Long</span>
+                  <span>100mm</span>
+                </div>
+                <div style={{
+                  marginTop: '10px',
+                  padding: '8px',
+                  background: 'rgba(0, 212, 255, 0.1)',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  color: '#888'
+                }}>
+                  💡 Stickout affects rigidity and chatter. Use minimum required for your operation.
+                </div>
               </div>
             </div>
           )}
