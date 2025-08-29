@@ -23,6 +23,7 @@ import StockSetup from './components/StockSetup';
 import FixtureSetup from './components/FixtureSetup';
 import PartSetup from './components/PartSetup';
 import MachineSetup from './components/MachineSetup';
+import ModernTopBar from './components/ModernTopBar';
 import MenuBar from './components/MenuBar';
 import { MainToolbar, StatusBar } from './components/Toolbar';
 import { MobileToolbar, MobileMenu, MobilePanel, MobileQuickAccess } from './components/MobileUI';
@@ -2924,57 +2925,33 @@ M30 ; End`
       overflow: 'hidden',
       position: 'relative'
     }}>
-      {/* Top Menu Bar - Desktop Only */}
+      {/* Modern Top Bar - Desktop Only */}
       {!isMobile && (
-        <div className="top-menu-bar">
-        <div className="menu-items">
-          {Object.entries(menuItems).map(([key, menu]) => (
-            <div 
-              key={key} 
-              className={`menu-item ${activeMenu === key ? 'active' : ''}`}
-              onMouseEnter={() => setActiveMenu(key)}
-              onClick={() => setActiveMenu(activeMenu === key ? null : key)}
-            >
-              {menu.label}
-              {activeMenu === key && (
-                <div className="menu-dropdown" onMouseLeave={() => setActiveMenu(null)}>
-                  {menu.items.map((item, idx) => (
-                    item.divider ? (
-                      <div key={idx} className="menu-divider" />
-                    ) : (
-                      <div 
-                        key={item.id} 
-                        className={`menu-dropdown-item ${item.disabled ? 'disabled' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (!item.disabled && item.action) {
-                            item.action();
-                            setActiveMenu(null);
-                          }
-                        }}
-                      >
-                        <span className="menu-label">
-                          {item.checked !== undefined && (
-                            <span className="menu-check">{item.checked ? '✓' : ' '}</span>
-                          )}
-                          {item.label}
-                        </span>
-                        {item.shortcut && (
-                          <span className="menu-shortcut">{item.shortcut}</span>
-                        )}
-                        {item.submenu && (
-                          <span className="menu-arrow">▶</span>
-                        )}
-                      </div>
-                    )
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="menu-title">CNC Pro Suite v2.0</div>
-      </div>
+        <ModernTopBar
+          panels={panels}
+          togglePanel={togglePanel}
+          simulation={simulation}
+          onSimulationControl={(action) => {
+            if (action === 'playPause') {
+              simulation.isPlaying ? pauseSimulation() : setSimulation(prev => ({ ...prev, isPlaying: true }));
+            } else if (action === 'stop') {
+              stopSimulation();
+            } else if (action === 'reset') {
+              resetSimulation();
+            } else if (action === 'step') {
+              stepForward();
+            }
+          }}
+          onFileAction={(action) => {
+            if (action === 'new') newProject();
+            else if (action === 'open') document.getElementById('file-input')?.click();
+            else if (action === 'save') saveProject();
+            else if (action === 'import') document.getElementById('file-input')?.click();
+            else if (action === 'export') saveProject();
+          }}
+          onViewChange={(view) => setCameraView(view)}
+          projectName={project.name}
+        />
       )}
       
       {/* 3D Viewport - Full screen background */}
@@ -2990,8 +2967,7 @@ M30 ; End`
         }} 
       />
       
-      {/* Quick Access Toolbar - Desktop Only */}
-      {!isMobile && <QuickToolbar />}
+
       
       {/* Collision Alert Modal */}
       <CollisionAlert />

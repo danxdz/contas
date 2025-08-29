@@ -11,8 +11,7 @@ export const createAxisHelper = (size = 30, thickness = 0.5, showLabels = false)
   const axisGroup = new THREE.Group();
   axisGroup.name = 'axisHelper';
   
-  // Rotate entire axis group 90 degrees around X to match CNC convention
-  axisGroup.rotation.x = Math.PI / 2;
+  // Don't rotate the group - we'll fix each axis individually
   
   // Scale cone size proportionally
   const coneHeight = size * 0.15;
@@ -40,14 +39,14 @@ export const createAxisHelper = (size = 30, thickness = 0.5, showLabels = false)
   const yAxisGeometry = new THREE.CylinderGeometry(thickness, thickness, size, 8);
   const yAxisMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
   const yAxis = new THREE.Mesh(yAxisGeometry, yAxisMaterial);
-  yAxis.rotation.x = Math.PI / 2;  // Rotate 90 degrees around X axis
+  yAxis.rotation.x = -Math.PI / 2;  // Rotate to point along Y
   yAxis.position.y = size / 2;
   axisGroup.add(yAxis);
   
   // Y cone
   const yConeGeometry = new THREE.ConeGeometry(coneRadius, coneHeight, 8);
   const yCone = new THREE.Mesh(yConeGeometry, yAxisMaterial);
-  yCone.rotation.x = -Math.PI / 2;  // Point toward +Y (rotated)
+  yCone.rotation.x = Math.PI / 2;  // Point toward +Y
   yCone.position.y = size + coneHeight / 2;
   axisGroup.add(yCone);
   
@@ -55,14 +54,14 @@ export const createAxisHelper = (size = 30, thickness = 0.5, showLabels = false)
   const zAxisGeometry = new THREE.CylinderGeometry(thickness, thickness, size, 8);
   const zAxisMaterial = new THREE.MeshBasicMaterial({ color: 0x0080ff });
   const zAxis = new THREE.Mesh(zAxisGeometry, zAxisMaterial);
-  // No rotation - cylinder default is vertical which is what we want for Z
+  // Cylinder default is along Y, no rotation needed for Z up
   zAxis.position.z = size / 2;
   axisGroup.add(zAxis);
   
   // Z cone
   const zConeGeometry = new THREE.ConeGeometry(coneRadius, coneHeight, 8);
   const zCone = new THREE.Mesh(zConeGeometry, zAxisMaterial);
-  // No rotation - cone default points up which is correct for Z
+  // Cone default points up
   zCone.position.z = size + coneHeight / 2;
   axisGroup.add(zCone);
   
