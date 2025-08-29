@@ -1897,6 +1897,10 @@ M30 ; End`
     const panel = panels[panelId];
     if (!panel.visible) return null;
 
+    // Compact panels that don't need title bar
+    const compactPanels = ['gcode', 'machineControl'];
+    const isCompact = compactPanels.includes(panelId);
+
     // Always use inline styles for proper sizing
     const panelStyle = {
       position: 'fixed',
@@ -1907,8 +1911,8 @@ M30 ; End`
       zIndex: panel.zIndex,
       background: '#0a0e1a',
       border: '1px solid #333',
-      borderRadius: '8px',
-      boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+      borderRadius: isCompact ? '4px' : '8px',
+      boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden'
@@ -1919,65 +1923,117 @@ M30 ; End`
         key={panelId}
         style={panelStyle}
       >
-        <div 
-          style={{
-            padding: '8px 12px',
-            background: 'linear-gradient(135deg, #1a1f2e, #0f1420)',
-            borderBottom: '1px solid #333',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            cursor: 'move',
-            userSelect: 'none'
-          }}
-          onMouseDown={(e) => startDragging(e, panelId)}
-        >
-          <span style={{ 
-            color: '#00d4ff', 
-            fontWeight: 'bold',
-            fontSize: '14px'
-          }}>
-            {panel.title}
-          </span>
-          <div style={{ display: 'flex', gap: '5px' }}>
-            <button 
-              onClick={() => toggleFloating(panelId)} 
-              title={panel.floating ? 'Dock' : 'Float'}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#888',
-                cursor: 'pointer',
-                fontSize: '16px'
-              }}
-            >
-              {panel.floating ? '📌' : '📍'}
-            </button>
-            <button 
-              onClick={() => minimizePanel(panelId)} 
-              title="Minimize"
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#888',
-                cursor: 'pointer',
-                fontSize: '16px'
-              }}
-            >
-              {panel.minimized ? '🔼' : '🔽'}
-            </button>
-            <button 
-              onClick={() => closePanel(panelId)} 
-              title="Close"
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#ff4444',
-                cursor: 'pointer',
-                fontSize: '16px'
-              }}
-            >
-              ✖
+        {isCompact ? (
+          // Compact header - just a thin draggable strip with minimal controls
+          <div 
+            style={{
+              padding: '2px 8px',
+              background: 'linear-gradient(135deg, #1a1f2e, #0f1420)',
+              borderBottom: '1px solid #222',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              alignItems: 'center',
+              cursor: 'move',
+              userSelect: 'none',
+              height: '24px'
+            }}
+            onMouseDown={(e) => startDragging(e, panelId)}
+          >
+            <div style={{ display: 'flex', gap: '2px' }}>
+              <button 
+                onClick={() => minimizePanel(panelId)} 
+                title="Minimize"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#666',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  padding: '0 4px'
+                }}
+              >
+                {panel.minimized ? '▲' : '▼'}
+              </button>
+              <button 
+                onClick={() => closePanel(panelId)} 
+                title="Close"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#666',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  padding: '0 4px'
+                }}
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        ) : (
+          // Regular header with title
+          <div 
+            style={{
+              padding: '6px 10px',
+              background: 'linear-gradient(135deg, #1a1f2e, #0f1420)',
+              borderBottom: '1px solid #333',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              cursor: 'move',
+              userSelect: 'none'
+            }}
+            onMouseDown={(e) => startDragging(e, panelId)}
+          >
+            <span style={{ 
+              color: '#00d4ff', 
+              fontWeight: 'bold',
+              fontSize: '13px'
+            }}>
+              {panel.title}
+            </span>
+            <div style={{ display: 'flex', gap: '3px' }}>
+              <button 
+                onClick={() => toggleFloating(panelId)} 
+                title={panel.floating ? 'Dock' : 'Float'}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#666',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  padding: '0 3px'
+                }}
+              >
+                {panel.floating ? '📌' : '📍'}
+              </button>
+              <button 
+                onClick={() => minimizePanel(panelId)} 
+                title="Minimize"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#666',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  padding: '0 3px'
+                }}
+              >
+                {panel.minimized ? '▲' : '▼'}
+              </button>
+              <button 
+                onClick={() => closePanel(panelId)} 
+                title="Close"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#ff4444',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  padding: '0 3px'
+                }}
+              >
+                ×
             </button>
           </div>
         </div>
