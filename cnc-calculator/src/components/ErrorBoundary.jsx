@@ -1,5 +1,10 @@
 import React from 'react';
 
+/**
+ * Error boundary component to catch and display errors gracefully
+ * @class ErrorBoundary
+ * @extends {React.Component}
+ */
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -18,173 +23,112 @@ class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     // Log error details for debugging
-    console.error('Error caught by boundary:', error, errorInfo);
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
     
-    // Update state with error details
     this.setState(prevState => ({
       error,
       errorInfo,
       errorCount: prevState.errorCount + 1
     }));
-
-    // Report to error tracking service if available
-    if (window.errorReporter) {
-      window.errorReporter.log({ error, errorInfo });
-    }
   }
 
   handleReset = () => {
     this.setState({ 
       hasError: false, 
-      error: null, 
+      error: null,
       errorInfo: null 
     });
   };
 
   render() {
     if (this.state.hasError) {
+      // Fallback UI
       return (
         <div style={{
-          padding: '40px',
-          background: 'linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%)',
-          minHeight: '100vh',
+          padding: '20px',
+          background: '#1a1f2e',
+          border: '2px solid #ff4444',
+          borderRadius: '8px',
+          margin: '20px',
           color: '#fff',
-          fontFamily: 'system-ui, -apple-system, sans-serif'
+          fontFamily: 'monospace'
         }}>
-          <div style={{
-            maxWidth: '800px',
-            margin: '0 auto',
-            background: 'rgba(26, 31, 46, 0.8)',
-            borderRadius: '12px',
-            padding: '30px',
-            border: '1px solid rgba(0, 212, 255, 0.3)',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)'
-          }}>
-            <h1 style={{
-              color: '#ff6b6b',
-              fontSize: '28px',
-              marginBottom: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px'
-            }}>
-              ⚠️ Application Error
-            </h1>
-            
+          <h2 style={{ color: '#ff4444', marginBottom: '15px' }}>
+            ⚠️ Application Error
+          </h2>
+          
+          <div style={{ marginBottom: '15px' }}>
+            <strong>Something went wrong.</strong>
+            {this.state.errorCount > 1 && (
+              <span style={{ color: '#ffa500', marginLeft: '10px' }}>
+                (Error #{this.state.errorCount})
+              </span>
+            )}
+          </div>
+          
+          {this.state.error && (
             <div style={{
-              background: 'rgba(255, 107, 107, 0.1)',
-              border: '1px solid rgba(255, 107, 107, 0.3)',
-              borderRadius: '8px',
-              padding: '15px',
-              marginBottom: '20px'
+              background: '#0d1117',
+              padding: '10px',
+              borderRadius: '4px',
+              marginBottom: '15px',
+              fontSize: '12px',
+              overflowX: 'auto'
             }}>
-              <h3 style={{ color: '#ffa94d', marginBottom: '10px' }}>
-                Error Details:
-              </h3>
-              <pre style={{
-                color: '#e0e0e0',
-                fontSize: '14px',
-                overflow: 'auto',
-                maxHeight: '200px',
-                background: 'rgba(0, 0, 0, 0.3)',
-                padding: '10px',
-                borderRadius: '4px'
-              }}>
-                {this.state.error && this.state.error.toString()}
-              </pre>
-            </div>
-
-            {this.state.errorInfo && (
-              <div style={{
-                background: 'rgba(0, 0, 0, 0.2)',
-                borderRadius: '8px',
-                padding: '15px',
-                marginBottom: '20px'
-              }}>
-                <h3 style={{ color: '#00d4ff', marginBottom: '10px' }}>
-                  Component Stack:
-                </h3>
-                <pre style={{
-                  color: '#888',
-                  fontSize: '12px',
-                  overflow: 'auto',
-                  maxHeight: '150px',
-                  background: 'rgba(0, 0, 0, 0.3)',
-                  padding: '10px',
-                  borderRadius: '4px'
-                }}>
+              <div style={{ color: '#ff6666', marginBottom: '5px' }}>
+                {this.state.error.toString()}
+              </div>
+              {this.state.errorInfo && (
+                <pre style={{ color: '#888', marginTop: '10px', fontSize: '11px' }}>
                   {this.state.errorInfo.componentStack}
                 </pre>
-              </div>
-            )}
-
-            <div style={{
-              display: 'flex',
-              gap: '10px',
-              marginTop: '20px'
-            }}>
-              <button
-                onClick={this.handleReset}
-                style={{
-                  background: 'linear-gradient(135deg, #00d4ff, #0099cc)',
-                  color: '#fff',
-                  border: 'none',
-                  padding: '12px 24px',
-                  borderRadius: '6px',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  transition: 'transform 0.2s',
-                  boxShadow: '0 4px 12px rgba(0, 212, 255, 0.3)'
-                }}
-                onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
-                onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-              >
-                🔄 Reset Application
-              </button>
-              
-              <button
-                onClick={() => window.location.reload()}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  color: '#fff',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  padding: '12px 24px',
-                  borderRadius: '6px',
-                  fontSize: '16px',
-                  cursor: 'pointer',
-                  transition: 'background 0.2s'
-                }}
-                onMouseEnter={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.2)'}
-                onMouseLeave={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.1)'}
-              >
-                🔃 Reload Page
-              </button>
+              )}
             </div>
-
-            <div style={{
-              marginTop: '30px',
-              padding: '15px',
-              background: 'rgba(0, 212, 255, 0.05)',
-              border: '1px solid rgba(0, 212, 255, 0.2)',
-              borderRadius: '8px'
-            }}>
-              <p style={{ color: '#888', fontSize: '14px', margin: 0 }}>
-                💡 <strong>Tip:</strong> If this error persists, try clearing your browser cache 
-                or contact support with the error details above.
-              </p>
-            </div>
-
-            <div style={{
-              marginTop: '15px',
-              fontSize: '12px',
-              color: '#666',
-              textAlign: 'center'
-            }}>
-              Error Count: {this.state.errorCount} | 
-              Time: {new Date().toLocaleTimeString()}
-            </div>
+          )}
+          
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              onClick={this.handleReset}
+              style={{
+                padding: '8px 16px',
+                background: '#00d4ff',
+                border: 'none',
+                borderRadius: '4px',
+                color: '#000',
+                fontWeight: 'bold',
+                cursor: 'pointer'
+              }}
+            >
+              Try Again
+            </button>
+            
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                padding: '8px 16px',
+                background: '#444',
+                border: '1px solid #666',
+                borderRadius: '4px',
+                color: '#fff',
+                cursor: 'pointer'
+              }}
+            >
+              Reload Page
+            </button>
           </div>
+          
+          {process.env.NODE_ENV === 'development' && (
+            <details style={{ marginTop: '15px', fontSize: '11px', color: '#666' }}>
+              <summary style={{ cursor: 'pointer' }}>Developer Info</summary>
+              <pre style={{ marginTop: '10px', whiteSpace: 'pre-wrap' }}>
+                {JSON.stringify({
+                  timestamp: new Date().toISOString(),
+                  userAgent: navigator.userAgent,
+                  url: window.location.href
+                }, null, 2)}
+              </pre>
+            </details>
+          )}
         </div>
       );
     }

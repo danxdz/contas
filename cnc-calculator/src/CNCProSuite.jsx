@@ -9,6 +9,7 @@ import './CNCProSuite.css';
 import MaterialRemovalSimulation from './components/MaterialRemovalSimulation';
 import LightingSetup from './components/LightingSetup';
 import { setupCNCShortcuts } from './utils/KeyboardShortcuts';
+import useErrorHandler, { ErrorNotification } from './hooks/useErrorHandler';
 
 // Components
 import DualChannelDebugger from './components/DualChannelDebugger';
@@ -42,6 +43,9 @@ import {
 } from './components/modules';
 
 const CNCProSuite = () => {
+  // Error handling
+  const { error, isLoading, handleAsync, handleSync, clearError } = useErrorHandler();
+  
   // Mobile detection
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -2342,18 +2346,20 @@ M30 ; End`
   const handleFileLoad = (file) => {
     if (!file) return;
     
-    const ext = file.name.toLowerCase();
-    if (ext.endsWith('.step') || ext.endsWith('.stp')) {
-      // Load STEP file
-      loadSTEPFile(file);
-      togglePanel('stepProcessor');
-    } else if (ext.endsWith('.stl')) {
-      // Load STL file
-      loadSTLFile(file);
-    } else {
-      // Load G-code
-      loadGCodeFile(file);
-    }
+    handleAsync(async () => {
+      const ext = file.name.toLowerCase();
+      if (ext.endsWith('.step') || ext.endsWith('.stp')) {
+        // Load STEP file
+        await loadSTEPFile(file);
+        togglePanel('stepProcessor');
+      } else if (ext.endsWith('.stl')) {
+        // Load STL file
+        await loadSTLFile(file);
+      } else {
+        // Load G-code
+        await loadGCodeFile(file);
+      }
+    }, `Failed to load file: ${file.name}`);
   };
 
   const loadSTEPFile = (file) => {
@@ -2564,13 +2570,16 @@ M30 ; End`
   };
 
   const saveProject = () => {
-    const data = JSON.stringify(project);
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${project.name}.cnc`;
-    a.click();
+    handleSync(() => {
+      const data = JSON.stringify(project);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${project.name}.cnc`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }, 'Failed to save project');
   };
 
   const pauseSimulation = () => {
@@ -3324,6 +3333,9 @@ M30 ; End`
           <MobilePanel />
         </>
       )}
+      
+      {/* Error Notification */}
+      <ErrorNotification error={error} onClose={clearError} />
     </div>
   );
 };

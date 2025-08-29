@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Scene3D from './components/Scene3D';
 import MobileLayout from './components/MobileLayout';
 import DesktopLayout from './components/DesktopLayout';
+import ErrorBoundary from './components/ErrorBoundary';
 import './App.css';
 
 const App = () => {
@@ -134,46 +135,48 @@ M30 ; Program end`,
   };
 
   return (
-    <div className="app" style={{ 
-      width: '100vw', 
-      height: '100vh', 
-      overflow: 'hidden',
-      position: 'relative'
-    }}>
-      {/* 3D Scene - Always rendered but may be hidden on mobile */}
-      <div style={{ 
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        display: isMobile && simulation.currentTab !== 'viewer' ? 'none' : 'block'
+    <ErrorBoundary>
+      <div className="app" style={{ 
+        width: '100vw', 
+        height: '100vh', 
+        overflow: 'hidden',
+        position: 'relative'
       }}>
-        <Scene3D
-          simulation={simulation}
-          gcode={project.gcode.channel1}
-          setupConfig={setupConfig}
-          toolOffsetTable={toolOffsetTable}
-          onSceneReady={handleSceneReady}
-        />
-      </div>
+        {/* 3D Scene - Always rendered but may be hidden on mobile */}
+        <div style={{ 
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          display: isMobile && simulation.currentTab !== 'viewer' ? 'none' : 'block'
+        }}>
+          <Scene3D
+            simulation={simulation}
+            gcode={project.gcode.channel1}
+            setupConfig={setupConfig}
+            toolOffsetTable={toolOffsetTable}
+            onSceneReady={handleSceneReady}
+          />
+        </div>
 
-      {/* UI Layout */}
-      <div style={{ 
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        pointerEvents: isMobile ? 'auto' : 'none'
-      }}>
-        {isMobile ? (
-          <MobileLayout {...commonProps} />
-        ) : (
-          <DesktopLayout {...commonProps} scene3D={scene3D} />
-        )}
+        {/* UI Layout */}
+        <div style={{ 
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          pointerEvents: isMobile ? 'auto' : 'none'
+        }}>
+          {isMobile ? (
+            <MobileLayout {...commonProps} />
+          ) : (
+            <DesktopLayout {...commonProps} scene3D={scene3D} />
+          )}
+        </div>
       </div>
-    </div>
+    </ErrorBoundary>
   );
 };
 
