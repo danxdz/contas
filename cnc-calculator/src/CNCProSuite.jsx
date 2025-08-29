@@ -1645,6 +1645,8 @@ M30 ; End`
     
     // Create dynamic toolpath from G-code
     const updateToolpath = (workOffsets = null) => {
+      console.log('Updating toolpath with G-code length:', project.gcode.channel1?.length || 0);
+      
       // Remove old toolpath
       if (toolpathRef.current) {
         scene.remove(toolpathRef.current);
@@ -3057,10 +3059,22 @@ M30 ; End`
         programTools: programTools // Store tools needed by program
       }));
       
-      // Force immediate toolpath update
-      if (updateToolpathRef.current) {
-        updateToolpathRef.current(setupConfig.workOffsets);
-      }
+      // Force immediate toolpath update with a small delay to ensure state is updated
+      setTimeout(() => {
+        console.log('Loading NC file, updating toolpath...');
+        if (updateToolpathRef.current) {
+          // Clear existing toolpath first
+          if (toolpathRef.current && sceneRef.current) {
+            sceneRef.current.remove(toolpathRef.current);
+            toolpathRef.current = null;
+          }
+          // Recreate toolpath with new G-code
+          updateToolpathRef.current(setupConfig.workOffsets);
+          console.log('Toolpath update triggered');
+        } else {
+          console.log('updateToolpathRef not available');
+        }
+      }, 100);
     };
     reader.readAsText(file);
   };
