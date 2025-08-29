@@ -411,7 +411,7 @@ const CNCProSuite = () => {
     isPlaying: false,
     speed: 1.0,
     currentLine: 0,
-    position: { x: 0, y: 0, z: 200, a: 0, b: 0, c: 0 },  // Start at machine home
+    position: { x: 0, y: 0, z: 250, a: 0, b: 0, c: 0 },  // Start at safe machine home
     feedRate: 500,
     spindleSpeed: 12000,
     tool: 1,
@@ -1579,8 +1579,10 @@ M30 ; End`
     const rulerGroup = createRuler();
     toolGroup.add(rulerGroup);
     
-    // Start tool at machine home position
-    toolGroup.position.set(0, 0, 200); // Machine home Z=200
+    // Start tool at machine home position (safe height above work)
+    // Machine coordinates: Z=200 is home (fully retracted)
+    // With typical setup, stock top is at Z=0 in work coordinates
+    toolGroup.position.set(0, 0, 250); // Start higher to ensure above stock
     scene.add(toolGroup);
     toolRef.current = toolGroup;
     
@@ -1863,16 +1865,34 @@ M30 ; End`
     };
   }, []); // Only initialize once
   
-  // Update toolpath when G-code or work offset changes
+  // Update toolpath when G-code or work offset changes - with debounce for real-time updates
+  const [toolpathUpdateTimer, setToolpathUpdateTimer] = useState(null);
+  
   useEffect(() => {
-    if (updateToolpathRef.current && project.gcode.channel1) {
-      updateToolpathRef.current(setupConfig.workOffsets);
+    // Clear previous timer
+    if (toolpathUpdateTimer) {
+      clearTimeout(toolpathUpdateTimer);
     }
-    // Also update origin marker position
+    
+    // Set new timer for debounced update (300ms delay for typing)
+    const timer = setTimeout(() => {
+      if (updateToolpathRef.current && project.gcode.channel1) {
+        console.log('Real-time toolpath update triggered');
+        updateToolpathRef.current(setupConfig.workOffsets);
+      }
+    }, 300);
+    
+    setToolpathUpdateTimer(timer);
+    
+    // Also update origin marker position immediately
     if (originMarkerRef.current) {
       const activeOffset = setupConfig.workOffsets[setupConfig.workOffsets.activeOffset];
       originMarkerRef.current.position.set(activeOffset.x, activeOffset.y, activeOffset.z);
     }
+    
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [project.gcode.channel1, setupConfig.workOffsets.activeOffset, setupConfig.workOffsets.G54, setupConfig.workOffsets.G55, setupConfig.workOffsets.G56, setupConfig.workOffsets.G57, setupConfig.workOffsets.G58, setupConfig.workOffsets.G59]);
   
   // Update tool 3D visualization when assembly changes
@@ -3154,6 +3174,24 @@ M30 ; End`
       }
       nextLine = Math.min(nextLine, lines.length - 1);
       const pos = positions[nextLine] || prev.position;
+      
+      // Trigger smooth animation
+      if (toolRef.current && pos) {
+        lastPositionRef.current = { ...prev.position };
+        targetPositionRef.current = { x: pos.x, y: pos.y, z: pos.z };
+        tweenProgressRef.current = 0;
+        
+        // Animate over 500ms
+        const animateStep = () => {
+          tweenProgressRef.current += 0.05;
+          if (tweenProgressRef.current >= 1) {
+            tweenProgressRef.current = 1;
+          } else {
+            requestAnimationFrame(animateStep);
+          }
+        };
+        animateStep();
+      }
       
       return {
         ...prev,
