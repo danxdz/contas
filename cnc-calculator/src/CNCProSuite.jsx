@@ -1765,9 +1765,35 @@ M30 ; End`
 
   // Quick access toolbar
   const QuickToolbar = () => (
-    <div className="quick-toolbar">
-      <div className="toolbar-group">
-        <button onClick={() => document.getElementById('file-input').click()} title="Open File">
+    <div style={{
+      position: 'fixed',
+      top: '50px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      background: 'linear-gradient(135deg, #1a1f2e, #0f1420)',
+      border: '1px solid #333',
+      borderRadius: '10px',
+      padding: '8px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+      zIndex: 100,
+      boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
+    }}>
+      <div style={{ display: 'flex', gap: '5px' }}>
+        <button 
+          onClick={() => document.getElementById('file-input').click()} 
+          title="Open File"
+          style={{
+            background: 'transparent',
+            border: '1px solid #333',
+            borderRadius: '5px',
+            color: '#00d4ff',
+            padding: '5px 10px',
+            cursor: 'pointer',
+            fontSize: '18px'
+          }}
+        >
           📁
         </button>
         <input 
@@ -1777,13 +1803,37 @@ M30 ; End`
           onChange={(e) => handleFileLoad(e.target.files[0])}
           hidden
         />
-        <button onClick={() => saveProject()} title="Save">💾</button>
-        <button onClick={() => newProject()} title="New">📄</button>
+        <button 
+          onClick={() => saveProject()} 
+          title="Save"
+          style={{
+            background: 'transparent',
+            border: '1px solid #333',
+            borderRadius: '5px',
+            color: '#00d4ff',
+            padding: '5px 10px',
+            cursor: 'pointer',
+            fontSize: '18px'
+          }}
+        >💾</button>
+        <button 
+          onClick={() => newProject()} 
+          title="New"
+          style={{
+            background: 'transparent',
+            border: '1px solid #333',
+            borderRadius: '5px',
+            color: '#00d4ff',
+            padding: '5px 10px',
+            cursor: 'pointer',
+            fontSize: '18px'
+          }}
+        >📄</button>
       </div>
       
-      <div className="toolbar-separator" />
+      <div style={{ width: '1px', height: '30px', background: '#333' }} />
       
-      <div className="toolbar-group">
+      <div style={{ display: 'flex', gap: '5px' }}>
         <button 
           onClick={() => setSimulation(prev => ({ ...prev, isPlaying: !prev.isPlaying }))}
           className={simulation.isPlaying ? 'active' : ''}
@@ -2953,7 +3003,12 @@ M30 ; End`
   };
   
   return (
-    <div className="cnc-pro-suite">
+    <div style={{ 
+      height: '100vh', 
+      background: '#0a0e1a', 
+      overflow: 'hidden',
+      position: 'relative'
+    }}>
       {/* Top Menu Bar - Desktop Only */}
       {!isMobile && (
         <div className="top-menu-bar">
@@ -3008,7 +3063,17 @@ M30 ; End`
       )}
       
       {/* 3D Viewport - Full screen background */}
-      <div ref={mountRef} className="viewport-3d" />
+      <div 
+        ref={mountRef} 
+        style={{ 
+          position: 'absolute', 
+          top: 0, 
+          left: 0, 
+          width: '100%', 
+          height: '100%',
+          zIndex: 0
+        }} 
+      />
       
       {/* Quick Access Toolbar - Desktop Only */}
       {!isMobile && <QuickToolbar />}
@@ -3942,6 +4007,40 @@ M30 ; End`
       {/* Mobile UI Components */}
       {isMobile && (
         <>
+          {/* Mobile Header */}
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '50px',
+            background: 'linear-gradient(to bottom, rgba(10,14,26,0.95), rgba(10,14,26,0.8))',
+            backdropFilter: 'blur(10px)',
+            borderBottom: '1px solid #333',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0 15px',
+            zIndex: 100
+          }}>
+            <h3 style={{ 
+              color: '#00d4ff', 
+              margin: 0,
+              fontSize: '16px',
+              fontWeight: 'bold'
+            }}>
+              CNC Pro Suite
+            </h3>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <span style={{ color: '#888', fontSize: '12px' }}>
+                {simulation.isPlaying ? '▶️ Playing' : '⏸️ Paused'}
+              </span>
+              <span style={{ color: '#888', fontSize: '12px' }}>
+                Line: {simulation.currentLine}
+              </span>
+            </div>
+          </div>
+          
           <MobileToolbar />
           <MobileMenu />
           <MobilePanel />
