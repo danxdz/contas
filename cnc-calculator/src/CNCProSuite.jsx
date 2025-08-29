@@ -2012,14 +2012,26 @@ M30 ; End`
       }
       
       // Update tool tip coordinate system position (yellow sphere)
+      // The yellow sphere should match the cyan sphere position (actual cutting point)
       if (toolRef.current && toolRef.current.userData.toolCoordGroup) {
         if (currentPos.g43) {
-          // With G43: control point at tool tip
+          // With G43: control point at tool tip (tool length compensated)
+          // The yellow sphere needs to be at the actual tool tip
           toolRef.current.userData.toolCoordGroup.position.z = -actualToolLength;
         } else {
           // Without G43: control point at spindle nose
           toolRef.current.userData.toolCoordGroup.position.z = 0;
         }
+      }
+      
+      // Make the cyan sphere match the yellow sphere position (they should be at same spot)
+      if (toolpathMarkerRef.current && currentPos.g43) {
+        // With G43, the marker should be at the tool tip in world coordinates
+        toolpathMarkerRef.current.position.set(
+          currentPos.x + activeOffset.x,
+          currentPos.y + activeOffset.y,
+          currentPos.z + activeOffset.z  // This is the programmed position (tool tip reaches here)
+        );
       }
       
       // Material removal simulation
@@ -4963,6 +4975,104 @@ M30 ; End`
                   </div>
                 </div>
               </div>
+              
+              <button 
+                onClick={() => {
+                  // Apply fixture to 3D scene
+                  if (sceneRef.current) {
+                    const scene = sceneRef.current;
+                    
+                    // Remove old fixture if exists
+                    const oldFixture = scene.getObjectByName('fixture');
+                    if (oldFixture) scene.remove(oldFixture);
+                    
+                    const fixtureGroup = new THREE.Group();
+                    fixtureGroup.name = 'fixture';
+                    
+                    if (setupConfig.fixture.type === 'vise') {
+                      // Create vise jaws
+                      const jawWidth = setupConfig.fixture.jawWidth || 150;
+                      const jawHeight = 60;
+                      const jawDepth = 30;
+                      
+                      // Fixed jaw
+                      const fixedJawGeometry = new THREE.BoxGeometry(jawDepth, jawWidth, jawHeight);
+                      const jawMaterial = new THREE.MeshPhongMaterial({ 
+                        color: 0x505050,
+                        metalness: 0.8,
+                        roughness: 0.2
+                      });
+                      const fixedJaw = new THREE.Mesh(fixedJawGeometry, jawMaterial);
+                      fixedJaw.position.set(-40, 0, -25);
+                      fixtureGroup.add(fixedJaw);
+                      
+                      // Moving jaw
+                      const movingJaw = new THREE.Mesh(fixedJawGeometry, jawMaterial);
+                      movingJaw.position.set(40, 0, -25);
+                      fixtureGroup.add(movingJaw);
+                      
+                      // Base
+                      const baseGeometry = new THREE.BoxGeometry(120, jawWidth, 20);
+                      const baseMaterial = new THREE.MeshPhongMaterial({ 
+                        color: 0x303030,
+                        metalness: 0.7,
+                        roughness: 0.3
+                      });
+                      const base = new THREE.Mesh(baseGeometry, baseMaterial);
+                      base.position.set(0, 0, -60);
+                      fixtureGroup.add(base);
+                      
+                    } else if (setupConfig.fixture.type === 'chuck') {
+                      // Create 3-jaw chuck
+                      const chuckRadius = 80;
+                      const chuckGeometry = new THREE.CylinderGeometry(chuckRadius, chuckRadius, 40, 32);
+                      const chuckMaterial = new THREE.MeshPhongMaterial({ 
+                        color: 0x606060,
+                        metalness: 0.8,
+                        roughness: 0.2
+                      });
+                      const chuck = new THREE.Mesh(chuckGeometry, chuckMaterial);
+                      chuck.rotation.x = Math.PI / 2;
+                      chuck.position.z = -30;
+                      fixtureGroup.add(chuck);
+                      
+                      // Add jaws
+                      for (let i = 0; i < 3; i++) {
+                        const angle = (i * Math.PI * 2) / 3;
+                        const jawGeometry = new THREE.BoxGeometry(20, 40, 30);
+                        const jaw = new THREE.Mesh(jawGeometry, chuckMaterial);
+                        jaw.position.x = Math.cos(angle) * 40;
+                        jaw.position.y = Math.sin(angle) * 40;
+                        jaw.position.z = -15;
+                        jaw.rotation.z = angle;
+                        fixtureGroup.add(jaw);
+                      }
+                    }
+                    
+                    // Apply position
+                    fixtureGroup.position.set(
+                      setupConfig.fixture.position.x,
+                      setupConfig.fixture.position.y,
+                      setupConfig.fixture.position.z
+                    );
+                    
+                    scene.add(fixtureGroup);
+                  }
+                }}
+                style={{
+                  marginTop: '20px',
+                  padding: '10px 20px',
+                  background: '#00d4ff',
+                  color: '#000',
+                  border: 'none',
+                  borderRadius: '5px',
+                  cursor: 'pointer',
+                  width: '100%',
+                  fontWeight: 'bold'
+                }}
+              >
+                Apply Fixture to Scene
+              </button>
             </div>
           )}
           
