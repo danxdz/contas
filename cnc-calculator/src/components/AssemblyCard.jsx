@@ -32,6 +32,7 @@ const AssemblyCard = ({
     return (
       <div
         onClick={handleClick}
+        data-assembly-id={assembly.id}
         style={{
           padding: '10px 15px',
           background: isSelected ? 

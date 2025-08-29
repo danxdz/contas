@@ -804,6 +804,116 @@ M30 ; End`
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controlsRef.current = controls;
+    
+    // Add mouse interaction for tool
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let isDraggingStickout = false;
+    let dragStartY = 0;
+    let initialStickout = 30;
+    
+    const onMouseMove = (event) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      
+      if (isDraggingStickout && toolRef.current) {
+        // Calculate new stickout based on drag distance
+        const dragDelta = event.clientY - dragStartY;
+        const newStickout = Math.max(10, Math.min(100, initialStickout - dragDelta * 0.5));
+        
+        // Update stickout indicator position
+        const ruler = toolRef.current.getObjectByName('stickoutRuler');
+        if (ruler) {
+          const indicator = ruler.getObjectByName('stickoutIndicator');
+          if (indicator) {
+            indicator.position.z = -newStickout;
+          }
+        }
+        
+        // Update current assembly stickout if available
+        if (toolRef.current.userData.currentAssembly) {
+          // We'll trigger the update through the tool manager
+          window.updateToolStickout?.(newStickout);
+        }
+      }
+    };
+    
+    const onMouseDown = (event) => {
+      raycaster.setFromCamera(mouse, camera);
+      
+      // Check if clicking on tool
+      if (toolRef.current) {
+        const intersects = raycaster.intersectObject(toolRef.current, true);
+        if (intersects.length > 0) {
+          // Show ruler when tool is clicked
+          const ruler = toolRef.current.getObjectByName('stickoutRuler');
+          if (ruler) {
+            ruler.visible = true;
+            isDraggingStickout = true;
+            dragStartY = event.clientY;
+            initialStickout = toolRef.current.userData.currentAssembly?.components?.tool?.stickout || 30;
+            controls.enabled = false; // Disable orbit controls during drag
+          }
+        }
+      }
+    };
+    
+    const onMouseUp = () => {
+      if (isDraggingStickout) {
+        isDraggingStickout = false;
+        controls.enabled = true; // Re-enable orbit controls
+        
+        // Hide ruler after a delay
+        setTimeout(() => {
+          if (toolRef.current) {
+            const ruler = toolRef.current.getObjectByName('stickoutRuler');
+            if (ruler && !isDraggingStickout) {
+              ruler.visible = false;
+            }
+          }
+        }, 2000);
+      }
+    };
+    
+    const onMouseClick = (event) => {
+      if (isDraggingStickout) return; // Don't process clicks during drag
+      
+      raycaster.setFromCamera(mouse, camera);
+      
+      // Check if clicking on tool
+      if (toolRef.current) {
+        const intersects = raycaster.intersectObject(toolRef.current, true);
+        if (intersects.length > 0) {
+          // Toggle ruler visibility
+          const ruler = toolRef.current.getObjectByName('stickoutRuler');
+          if (ruler) {
+            ruler.visible = !ruler.visible;
+            
+            // If showing ruler, hide it after 3 seconds
+            if (ruler.visible) {
+              setTimeout(() => {
+                if (ruler && !isDraggingStickout) {
+                  ruler.visible = false;
+                }
+              }, 3000);
+            }
+          }
+          
+          // Show tool info
+          if (toolRef.current.userData.currentAssembly) {
+            const assembly = toolRef.current.userData.currentAssembly;
+            const stickout = assembly.components?.tool?.stickout || 30;
+            console.log(`Tool: ${assembly.name}, Stickout: ${stickout}mm`);
+          }
+        }
+      }
+    };
+    
+    renderer.domElement.addEventListener('mousemove', onMouseMove);
+    renderer.domElement.addEventListener('mousedown', onMouseDown);
+    renderer.domElement.addEventListener('mouseup', onMouseUp);
+    renderer.domElement.addEventListener('click', onMouseClick);
 
     // Initialize persistent lighting
     // Ambient Light
@@ -939,10 +1049,23 @@ M30 ; End`
     
     // Function to rebuild tool geometry based on assembly
     const rebuildToolGeometry = (assembly) => {
-      // Clear existing tool meshes (keep coordinate system)
+      // Store current assembly in tool userData
+      toolGroup.userData.currentAssembly = assembly;
+      
+      // Clear existing tool meshes (keep coordinate system and ruler)
       const coordSystem = toolGroup.getObjectByName('toolCoordSystem');
+      const ruler = toolGroup.getObjectByName('stickoutRuler');
       toolGroup.clear();
       if (coordSystem) toolGroup.add(coordSystem);
+      if (ruler) {
+        // Update ruler indicator position based on assembly stickout
+        const stickout = assembly?.components?.tool?.stickout || 30;
+        const indicator = ruler.getObjectByName('stickoutIndicator');
+        if (indicator) {
+          indicator.position.z = -stickout;
+        }
+        toolGroup.add(ruler);
+      }
       
       // Check for new assembly structure from ToolManagerPro
       const hasComponents = assembly?.components;
@@ -1211,6 +1334,22 @@ M30 ; End`
     // Store function for updates
     window.updateTool3D = rebuildToolGeometry;
     
+    // Store function to update stickout from 3D interaction
+    window.updateToolStickout = (newStickout) => {
+      if (toolGroup.userData.currentAssembly) {
+        const assembly = toolGroup.userData.currentAssembly;
+        // Find and update the assembly in tool manager
+        const assemblyCard = document.querySelector(`[data-assembly-id="${assembly.id}"]`);
+        if (assemblyCard) {
+          // Trigger stickout update through the tool manager
+          const event = new CustomEvent('updateStickout', { 
+            detail: { id: assembly.id, stickout: newStickout } 
+          });
+          window.dispatchEvent(event);
+        }
+      }
+    };
+    
     // Add control point indicator and coordinate system
     const toolCoordGroup = new THREE.Group();
     toolCoordGroup.name = 'toolCoordSystem';
@@ -1276,8 +1415,79 @@ M30 ; End`
     // Store references for updating based on G43
     toolGroup.userData = { 
       toolCoordGroup,
-      toolLength: 30 // Default tool length
+      toolLength: 30, // Default tool length
+      isInteractive: true,
+      currentAssembly: null
     };
+    
+    // Add stickout ruler visualization
+    const rulerGroup = new THREE.Group();
+    rulerGroup.name = 'stickoutRuler';
+    rulerGroup.visible = false; // Hidden by default
+    
+    // Create ruler line
+    const rulerGeometry = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(0, 0, -100)
+    ]);
+    const rulerMaterial = new THREE.LineBasicMaterial({ 
+      color: 0x00ff88, 
+      linewidth: 2,
+      transparent: true,
+      opacity: 0.8
+    });
+    const rulerLine = new THREE.Line(rulerGeometry, rulerMaterial);
+    rulerLine.position.x = 15; // Offset to side of tool
+    rulerGroup.add(rulerLine);
+    
+    // Add tick marks every 10mm
+    for (let i = 0; i <= 100; i += 10) {
+      const tickGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(13, 0, -i),
+        new THREE.Vector3(17, 0, -i)
+      ]);
+      const tick = new THREE.Line(tickGeometry, rulerMaterial);
+      rulerGroup.add(tick);
+      
+      // Add text labels for major ticks
+      if (i % 20 === 0) {
+        const loader = new THREE.FontLoader();
+        // We'll use sprites for text since FontLoader needs font file
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.width = 64;
+        canvas.height = 32;
+        context.font = '20px Arial';
+        context.fillStyle = '#00ff88';
+        context.textAlign = 'center';
+        context.fillText(`${i}`, 32, 24);
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        const spriteMaterial = new THREE.SpriteMaterial({ 
+          map: texture,
+          transparent: true
+        });
+        const sprite = new THREE.Sprite(spriteMaterial);
+        sprite.position.set(25, 0, -i);
+        sprite.scale.set(10, 5, 1);
+        rulerGroup.add(sprite);
+      }
+    }
+    
+    // Add stickout indicator
+    const indicatorGeometry = new THREE.ConeGeometry(3, 6, 8);
+    const indicatorMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0xffaa00,
+      transparent: true,
+      opacity: 0.9
+    });
+    const stickoutIndicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
+    stickoutIndicator.rotation.z = -Math.PI / 2;
+    stickoutIndicator.position.set(10, 0, -30); // Default 30mm stickout
+    stickoutIndicator.name = 'stickoutIndicator';
+    rulerGroup.add(stickoutIndicator);
+    
+    toolGroup.add(rulerGroup);
     
     // Start tool at machine home position
     toolGroup.position.set(0, 0, 200); // Machine home Z=200

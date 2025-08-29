@@ -34,6 +34,19 @@ const ToolManagerProEnhanced = ({
       setAssemblies(JSON.parse(saved));
     }
   }, []);
+  
+  // Listen for stickout updates from 3D interaction
+  useEffect(() => {
+    const handleStickoutUpdate = (event) => {
+      const { id, stickout } = event.detail;
+      updateStickout(id, stickout);
+    };
+    
+    window.addEventListener('updateStickout', handleStickoutUpdate);
+    return () => {
+      window.removeEventListener('updateStickout', handleStickoutUpdate);
+    };
+  }, []);
 
   // Save assemblies
   useEffect(() => {
