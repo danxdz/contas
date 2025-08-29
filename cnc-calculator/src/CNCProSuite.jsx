@@ -4,6 +4,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
 import { parseGCodePositions, parseToolsFromGCode } from './utils/gcodeParser';
 import { rebuildToolGeometry, createRuler } from './utils/toolGeometry';
+import { createAxisHelper, createToolAxisIndicator, createWorkOffsetAxis } from './utils/axisHelper';
 import './CNCProSuite.css';
 import MaterialRemovalSimulation from './components/MaterialRemovalSimulation';
 import LightingSetup from './components/LightingSetup';
@@ -163,6 +164,7 @@ const CNCProSuite = () => {
   }, []);
   
   // Panel system - each panel can be floating or docked
+  const [activePanelId, setActivePanelId] = useState(null);
   const [panels, setPanels] = useState({
     gcode: {
       visible: false,  // Start closed
@@ -883,9 +885,9 @@ M30 ; End`
     gridHelper.rotateX(Math.PI / 2);
     scene.add(gridHelper);
 
-    // Axes
-    const axesHelper = new THREE.AxesHelper(200);
-    scene.add(axesHelper);
+    // Main machine axes
+    const mainAxes = createAxisHelper(200, 1, false);
+    scene.add(mainAxes);
 
     // Machine bed
     const bedGeometry = new THREE.BoxGeometry(600, 400, 20);
@@ -998,48 +1000,9 @@ M30 ; End`
     const controlPoint = new THREE.Mesh(controlPointGeometry, controlPointMaterial);
     toolCoordGroup.add(controlPoint);
     
-    // X axis - Red
-    const toolXGeometry = new THREE.CylinderGeometry(0.2, 0.2, 10, 4);
-    const toolXMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-    const toolXAxis = new THREE.Mesh(toolXGeometry, toolXMaterial);
-    toolXAxis.rotation.z = Math.PI / 2;
-    toolXAxis.position.x = 5;
-    toolCoordGroup.add(toolXAxis);
-    
-    // X cone
-    const toolXConeGeometry = new THREE.ConeGeometry(0.8, 2, 4);
-    const toolXCone = new THREE.Mesh(toolXConeGeometry, toolXMaterial);
-    toolXCone.rotation.z = -Math.PI / 2;
-    toolXCone.position.x = 10;
-    toolCoordGroup.add(toolXCone);
-    
-    // Y axis - Green (pointing forward/back in CNC convention)
-    const toolYGeometry = new THREE.CylinderGeometry(0.2, 0.2, 10, 4);
-    const toolYMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    const toolYAxis = new THREE.Mesh(toolYGeometry, toolYMaterial);
-    toolYAxis.rotation.x = -Math.PI / 2;  // Corrected rotation
-    toolYAxis.position.y = 5;
-    toolCoordGroup.add(toolYAxis);
-    
-    // Y cone
-    const toolYConeGeometry = new THREE.ConeGeometry(0.8, 2, 4);
-    const toolYCone = new THREE.Mesh(toolYConeGeometry, toolYMaterial);
-    toolYCone.rotation.x = -Math.PI / 2;  // Corrected rotation
-    toolYCone.position.y = 10;
-    toolCoordGroup.add(toolYCone);
-    
-    // Z axis - Blue
-    const toolZGeometry = new THREE.CylinderGeometry(0.2, 0.2, 10, 4);
-    const toolZMaterial = new THREE.MeshBasicMaterial({ color: 0x0080ff });
-    const toolZAxis = new THREE.Mesh(toolZGeometry, toolZMaterial);
-    toolZAxis.position.z = 5;
-    toolCoordGroup.add(toolZAxis);
-    
-    // Z cone
-    const toolZConeGeometry = new THREE.ConeGeometry(0.8, 2, 4);
-    const toolZCone = new THREE.Mesh(toolZConeGeometry, toolZMaterial);
-    toolZCone.position.z = 10;
-    toolCoordGroup.add(toolZCone);
+    // Add small axis indicator for tool
+    const toolAxes = createToolAxisIndicator();
+    toolCoordGroup.add(toolAxes);
     
     // Position coordinate system at control point
     // This will move based on G43 status
@@ -1066,50 +1029,8 @@ M30 ; End`
     toolRef.current = toolGroup;
     
     // Add work origin marker (coordinate system axes)
-    const originGroup = new THREE.Group();
-    
-    // X axis - Red
-    const xAxisGeometry = new THREE.CylinderGeometry(0.5, 0.5, 30, 8);
-    const xAxisMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-    const xAxis = new THREE.Mesh(xAxisGeometry, xAxisMaterial);
-    xAxis.rotation.z = Math.PI / 2;
-    xAxis.position.x = 15;
-    originGroup.add(xAxis);
-    
-    // X cone
-    const xConeGeometry = new THREE.ConeGeometry(2, 5, 8);
-    const xCone = new THREE.Mesh(xConeGeometry, xAxisMaterial);
-    xCone.rotation.z = -Math.PI / 2;
-    xCone.position.x = 30;
-    originGroup.add(xCone);
-    
-    // Y axis - Green (pointing forward/back in CNC convention)
-    const yAxisGeometry = new THREE.CylinderGeometry(0.5, 0.5, 30, 8);
-    const yAxisMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    const yAxis = new THREE.Mesh(yAxisGeometry, yAxisMaterial);
-    yAxis.rotation.x = -Math.PI / 2;  // Corrected rotation
-    yAxis.position.y = 15;
-    originGroup.add(yAxis);
-    
-    // Y cone
-    const yConeGeometry = new THREE.ConeGeometry(2, 5, 8);
-    const yCone = new THREE.Mesh(yConeGeometry, yAxisMaterial);
-    yCone.rotation.x = -Math.PI / 2;  // Corrected rotation
-    yCone.position.y = 30;
-    originGroup.add(yCone);
-    
-    // Z axis - Blue
-    const zAxisGeometry = new THREE.CylinderGeometry(0.5, 0.5, 30, 8);
-    const zAxisMaterial = new THREE.MeshBasicMaterial({ color: 0x0080ff });
-    const zAxis = new THREE.Mesh(zAxisGeometry, zAxisMaterial);
-    zAxis.position.z = 15;
-    originGroup.add(zAxis);
-    
-    // Z cone
-    const zConeGeometry = new THREE.ConeGeometry(2, 5, 8);
-    const zCone = new THREE.Mesh(zConeGeometry, zAxisMaterial);
-    zCone.position.z = 30;
-    originGroup.add(zCone);
+    // Use the work offset axis helper
+    const originGroup = createWorkOffsetAxis();
     
     // Origin sphere
     const originSphereGeometry = new THREE.SphereGeometry(2, 16, 16);
@@ -1789,11 +1710,13 @@ M30 ; End`
   };
 
   const bringToFront = (panelId) => {
+    setActivePanelId(panelId);
+    const maxZ = getMaxZIndex();
     setPanels(prev => ({
       ...prev,
       [panelId]: {
         ...prev[panelId],
-        zIndex: getMaxZIndex() + 1
+        zIndex: maxZ + 1
       }
     }));
   };
@@ -1891,6 +1814,7 @@ M30 ; End`
       <div 
         key={panelId}
         style={panelStyle}
+        onMouseDown={() => bringToFront(panelId)}
       >
         {isCompact ? (
           // Compact header - just a thin draggable strip with minimal controls
@@ -1906,7 +1830,10 @@ M30 ; End`
               userSelect: 'none',
               height: '24px'
             }}
-            onMouseDown={(e) => startDragging(e, panelId)}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              startDragging(e, panelId);
+            }}
           >
             <div style={{ display: 'flex', gap: '2px' }}>
               <button 
@@ -1952,7 +1879,10 @@ M30 ; End`
               cursor: 'move',
               userSelect: 'none'
             }}
-            onMouseDown={(e) => startDragging(e, panelId)}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              startDragging(e, panelId);
+            }}
           >
             <span style={{ 
               color: '#00d4ff', 
