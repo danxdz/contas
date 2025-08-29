@@ -11,6 +11,9 @@ export const createAxisHelper = (size = 30, thickness = 0.5, showLabels = false)
   const axisGroup = new THREE.Group();
   axisGroup.name = 'axisHelper';
   
+  // Rotate entire axis group 90 degrees around X to match CNC convention
+  axisGroup.rotation.x = Math.PI / 2;
+  
   // Scale cone size proportionally
   const coneHeight = size * 0.15;
   const coneRadius = thickness * 3;
