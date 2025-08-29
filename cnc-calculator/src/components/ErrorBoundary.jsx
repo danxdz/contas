@@ -1,9 +1,7 @@
 import React from 'react';
 
 /**
- * Error boundary component to catch and display errors gracefully
- * @class ErrorBoundary
- * @extends {React.Component}
+ * Error Boundary component to catch React errors
  */
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -22,14 +20,20 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    // Log error details for debugging
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    // Log error details
+    console.error('Error caught by boundary:', error, errorInfo);
     
+    // Update state with error details
     this.setState(prevState => ({
       error,
       errorInfo,
       errorCount: prevState.errorCount + 1
     }));
+    
+    // Report to error tracking service if available
+    if (window.errorReporter) {
+      window.errorReporter.logError(error, errorInfo);
+    }
   }
 
   handleReset = () => {
@@ -45,90 +49,138 @@ class ErrorBoundary extends React.Component {
       // Fallback UI
       return (
         <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
           padding: '20px',
-          background: '#1a1f2e',
-          border: '2px solid #ff4444',
-          borderRadius: '8px',
-          margin: '20px',
-          color: '#fff',
-          fontFamily: 'monospace'
+          background: 'linear-gradient(135deg, #1a1f2e, #2a2f3e)',
+          color: '#fff'
         }}>
-          <h2 style={{ color: '#ff4444', marginBottom: '15px' }}>
-            ⚠️ Application Error
-          </h2>
-          
-          <div style={{ marginBottom: '15px' }}>
-            <strong>Something went wrong.</strong>
-            {this.state.errorCount > 1 && (
-              <span style={{ color: '#ffa500', marginLeft: '10px' }}>
-                (Error #{this.state.errorCount})
-              </span>
-            )}
-          </div>
-          
-          {this.state.error && (
-            <div style={{
-              background: '#0d1117',
-              padding: '10px',
-              borderRadius: '4px',
-              marginBottom: '15px',
-              fontSize: '12px',
-              overflowX: 'auto'
+          <div style={{
+            maxWidth: '600px',
+            width: '100%',
+            padding: '30px',
+            background: 'rgba(255, 68, 68, 0.1)',
+            border: '2px solid #ff4444',
+            borderRadius: '12px',
+            boxShadow: '0 4px 20px rgba(255, 68, 68, 0.2)'
+          }}>
+            <h2 style={{ 
+              color: '#ff6666', 
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
             }}>
-              <div style={{ color: '#ff6666', marginBottom: '5px' }}>
-                {this.state.error.toString()}
+              ⚠️ Application Error
+            </h2>
+            
+            <p style={{ marginBottom: '15px', color: '#ddd' }}>
+              An unexpected error occurred in the application. 
+              {this.state.errorCount > 1 && (
+                <span style={{ color: '#ffaa00' }}>
+                  {' '}(Error #{this.state.errorCount})
+                </span>
+              )}
+            </p>
+            
+            {this.state.error && (
+              <div style={{
+                marginBottom: '20px',
+                padding: '15px',
+                background: 'rgba(0, 0, 0, 0.3)',
+                borderRadius: '8px',
+                border: '1px solid #444'
+              }}>
+                <div style={{ 
+                  fontWeight: 'bold', 
+                  color: '#ff9999',
+                  marginBottom: '10px' 
+                }}>
+                  Error Message:
+                </div>
+                <code style={{ 
+                  display: 'block',
+                  padding: '10px',
+                  background: 'rgba(0, 0, 0, 0.5)',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  overflowX: 'auto'
+                }}>
+                  {this.state.error.toString()}
+                </code>
               </div>
-              {this.state.errorInfo && (
-                <pre style={{ color: '#888', marginTop: '10px', fontSize: '11px' }}>
+            )}
+            
+            {this.state.errorInfo && process.env.NODE_ENV === 'development' && (
+              <details style={{ 
+                marginBottom: '20px',
+                cursor: 'pointer'
+              }}>
+                <summary style={{ 
+                  color: '#00d4ff',
+                  marginBottom: '10px',
+                  userSelect: 'none'
+                }}>
+                  Show Technical Details
+                </summary>
+                <pre style={{
+                  padding: '15px',
+                  background: 'rgba(0, 0, 0, 0.5)',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  overflowX: 'auto',
+                  maxHeight: '300px',
+                  overflowY: 'auto'
+                }}>
                   {this.state.errorInfo.componentStack}
                 </pre>
-              )}
-            </div>
-          )}
-          
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button
-              onClick={this.handleReset}
-              style={{
-                padding: '8px 16px',
-                background: '#00d4ff',
-                border: 'none',
-                borderRadius: '4px',
-                color: '#000',
-                fontWeight: 'bold',
-                cursor: 'pointer'
-              }}
-            >
-              Try Again
-            </button>
+              </details>
+            )}
             
-            <button
-              onClick={() => window.location.reload()}
-              style={{
-                padding: '8px 16px',
-                background: '#444',
-                border: '1px solid #666',
-                borderRadius: '4px',
-                color: '#fff',
-                cursor: 'pointer'
-              }}
-            >
-              Reload Page
-            </button>
+            <div style={{ 
+              display: 'flex', 
+              gap: '10px',
+              justifyContent: 'center' 
+            }}>
+              <button
+                onClick={this.handleReset}
+                style={{
+                  padding: '10px 20px',
+                  background: 'linear-gradient(135deg, #00d4ff, #0099cc)',
+                  border: 'none',
+                  borderRadius: '6px',
+                  color: '#fff',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s'
+                }}
+                onMouseOver={e => e.target.style.transform = 'scale(1.05)'}
+                onMouseOut={e => e.target.style.transform = 'scale(1)'}
+              >
+                Try Again
+              </button>
+              
+              <button
+                onClick={() => window.location.reload()}
+                style={{
+                  padding: '10px 20px',
+                  background: 'transparent',
+                  border: '1px solid #666',
+                  borderRadius: '6px',
+                  color: '#aaa',
+                  cursor: 'pointer',
+                  transition: 'border-color 0.2s'
+                }}
+                onMouseOver={e => e.target.style.borderColor = '#999'}
+                onMouseOut={e => e.target.style.borderColor = '#666'}
+              >
+                Reload Page
+              </button>
+            </div>
           </div>
-          
-          {process.env.NODE_ENV === 'development' && (
-            <details style={{ marginTop: '15px', fontSize: '11px', color: '#666' }}>
-              <summary style={{ cursor: 'pointer' }}>Developer Info</summary>
-              <pre style={{ marginTop: '10px', whiteSpace: 'pre-wrap' }}>
-                {JSON.stringify({
-                  timestamp: new Date().toISOString(),
-                  userAgent: navigator.userAgent,
-                  url: window.location.href
-                }, null, 2)}
-              </pre>
-            </details>
-          )}
         </div>
       );
     }

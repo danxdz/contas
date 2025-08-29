@@ -28,7 +28,7 @@ export const simulationReducer = (state, action) => {
       
     case 'RESET':
       return {
-        ...initialSimulationState,
+        ...simulationInitialState,
         speed: state.speed // Keep speed preference
       };
       
@@ -155,7 +155,7 @@ export const simulationReducer = (state, action) => {
 };
 
 // Initial simulation state
-export const initialSimulationState = {
+export const simulationInitialState = {
   isPlaying: false,
   currentLine: 0,
   speed: 1,

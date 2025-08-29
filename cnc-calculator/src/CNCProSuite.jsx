@@ -9,7 +9,7 @@ import './CNCProSuite.css';
 import MaterialRemovalSimulation from './components/MaterialRemovalSimulation';
 import LightingSetup from './components/LightingSetup';
 import { setupCNCShortcuts } from './utils/KeyboardShortcuts';
-import useErrorHandler, { ErrorNotification } from './hooks/useErrorHandler';
+import useErrorHandler, { ErrorNotification } from './hooks/useErrorHandler.jsx';
 
 // Components
 import DualChannelDebugger from './components/DualChannelDebugger';
