@@ -15,6 +15,7 @@ import ToolManagerProEnhanced from './components/ToolManagerProEnhanced';
 import MachineControl from './components/MachineControl';
 import FeatureTree from './components/FeatureTree';
 import ToolOffsetTable from './components/ToolOffsetTable';
+import WorkOffsetsManager from './components/WorkOffsetsManager';
 
 // Import calculator modules
 import {
