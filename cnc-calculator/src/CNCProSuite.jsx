@@ -16,16 +16,14 @@ import MachineControl from './components/MachineControl';
 import FeatureTree from './components/FeatureTree';
 import ToolOffsetTable from './components/ToolOffsetTable';
 
-// Import all calculator modules
+// Import calculator modules
 import {
+  FeedsSpeedsOptimizer,
   ToolLifeCalculator,
-  CircularInterpolation,
   PowerTorqueCalculator,
+  CircularInterpolation,
   GeometryTools,
   PocketMillingWizard,
-  UnifiedSimulator,
-  FeedsSpeedsOptimizer,
-  ToolDatabase,
   ShopFloorUtilities,
   MachineConfigurator,
   SetupManager
@@ -703,7 +701,6 @@ M30 ; End`
     
     // Initialize material removal simulation
     if (showMaterialRemoval) {
-      console.log('Initializing material removal simulation...');
       const materialSim = new MaterialRemovalSimulation(scene, stockDimensions);
       materialRemovalRef.current = materialSim;
       // Position the stock mesh correctly
@@ -2374,13 +2371,10 @@ M30 ; End`
       
       // Parse tools used in the program
       const programTools = parseToolsFromGCode(newGCode);
-      console.log('Tools found in program:', programTools);
       
-      // Show alert if tools are found
+      // Store tools for reference (accessible via simulation.programTools)
       if (programTools.length > 0) {
         const toolList = programTools.map(t => `T${t.number}${t.hCode ? ` H${t.hCode}` : ''}${t.dCode ? ` D${t.dCode}` : ''}`).join(', ');
-        console.log(`Program uses tools: ${toolList}`);
-        // TODO: Show tool setup panel or notification
       }
       
       // Reset simulation with proper starting position
@@ -2998,10 +2992,11 @@ M30 ; End`
             {[
               { label: '📝 G-Code Editor', panel: 'gcode' },
               { label: '🔧 Tool Manager', panel: 'tools' },
-              { label: '📦 Stock Setup', panel: 'stock' },
-              { label: '🔗 Fixture Setup', panel: 'fixture' },
-              { label: '🏭 Machine Setup', panel: 'machine' },
-              { label: '📏 Tool Offsets', panel: 'toolOffsetTable' }
+              { label: '📦 Stock Setup', panel: 'stockSetup' },
+              { label: '🔗 Fixture Setup', panel: 'fixtureSetup' },
+              { label: '🏭 Machine Setup', panel: 'machineSetup' },
+              { label: '📏 Tool Offsets', panel: 'toolOffsetTable' },
+              { label: '🔆 Lighting', panel: 'lighting' }
             ].map((item, idx) => (
               <button
                 key={idx}
@@ -3212,7 +3207,7 @@ M30 ; End`
               Tool Manager
             </button>
             <button 
-              onClick={() => { setPanels(prev => ({ ...prev, stock: { ...prev.stock, visible: true }})); setMobileBottomSheet(false); }}
+              onClick={() => { togglePanel('stockSetup'); setMobileBottomSheet(false); }}
               style={{
                 padding: '20px',
                 background: 'linear-gradient(135deg, #1a1f2e, #0f1420)',
@@ -3808,7 +3803,6 @@ M30 ; End`
           activeHCode={simulation.activeHCode}
           activeDCode={simulation.activeDCode}
           onApplyOffset={(type, register) => {
-            console.log(`Applying ${type}${register} offset`);
             // Update simulation with new active offset
             if (type === 'H') {
               setSimulation(prev => ({ ...prev, activeHCode: register }));
@@ -3863,7 +3857,7 @@ M30 ; End`
       {renderPanel('lighting',
         <LightingSetup 
           scene={sceneRef.current}
-          onUpdate={(lights) => console.log('Lighting updated:', lights)}
+          onUpdate={() => {}}
         />
       )}
       
