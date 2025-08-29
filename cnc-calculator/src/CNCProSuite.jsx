@@ -1604,20 +1604,35 @@ M30 ; End`
       const activeOffset = setupConfig.workOffsets[currentWorkOffset] || setupConfig.workOffsets[setupConfig.workOffsets.activeOffset];
       
       // Get actual tool length from spindle gauge line to tool tip
-      // This includes holder + stickout + extensions (complete assembly)
+      // This includes holder gauge + stickout + extensions (complete assembly)
       let actualToolLength = 30; // Default
       if (simulation.toolAssembly && simulation.toolAssembly.components) {
         const components = simulation.toolAssembly.components;
+        
+        // Holder gauge lengths (spindle gauge to holder nose)
+        const holderGaugeLengths = {
+          'BT30': 45, 'BT40': 65, 'BT50': 100,
+          'CAT40': 65, 'CAT50': 100,
+          'HSK63': 50, 'HSK100': 60,
+          'ER32': 40, 'ER40': 45,
+          'default': 60
+        };
+        
+        // Calculate total length
         actualToolLength = 0;
-        // Add holder length (from spindle gauge to holder nose)
-        if (components.holder?.length) actualToolLength += components.holder.length;
-        // Add tool stickout (from holder nose to tool tip)
-        if (components.tool?.stickout) {
-          actualToolLength += components.tool.stickout;
-        } else if (components.tool?.length) {
-          actualToolLength += components.tool.length;
+        
+        // Add holder gauge length
+        if (components.holder?.type) {
+          const holderType = components.holder.type.split('/')[0];
+          actualToolLength += holderGaugeLengths[holderType] || holderGaugeLengths.default;
+        } else {
+          actualToolLength += holderGaugeLengths.default;
         }
-        // Add any extensions
+        
+        // Add tool stickout
+        actualToolLength += components.tool?.stickout || 30;
+        
+        // Add extensions
         if (components.extension?.length) actualToolLength += components.extension.length;
       }
       
@@ -1789,16 +1804,30 @@ M30 ; End`
         let actualToolLength = 30; // Default
         if (simulation.toolAssembly && simulation.toolAssembly.components) {
           const components = simulation.toolAssembly.components;
+          
+          // Holder gauge lengths
+          const holderGaugeLengths = {
+            'BT30': 45, 'BT40': 65, 'BT50': 100,
+            'CAT40': 65, 'CAT50': 100,
+            'HSK63': 50, 'HSK100': 60,
+            'ER32': 40, 'ER40': 45,
+            'default': 60
+          };
+          
           actualToolLength = 0;
-          // Add holder length (from spindle gauge to holder nose)
-          if (components.holder?.length) actualToolLength += components.holder.length;
-          // Add tool stickout (from holder nose to tool tip)
-          if (components.tool?.stickout) {
-            actualToolLength += components.tool.stickout;
-          } else if (components.tool?.length) {
-            actualToolLength += components.tool.length;
+          
+          // Add holder gauge length
+          if (components.holder?.type) {
+            const holderType = components.holder.type.split('/')[0];
+            actualToolLength += holderGaugeLengths[holderType] || holderGaugeLengths.default;
+          } else {
+            actualToolLength += holderGaugeLengths.default;
           }
-          // Add any extensions
+          
+          // Add tool stickout
+          actualToolLength += components.tool?.stickout || 30;
+          
+          // Add extensions
           if (components.extension?.length) actualToolLength += components.extension.length;
         }
         
@@ -3636,16 +3665,37 @@ M30 ; End`
                 const holder = assembly.components.holder;
                 
                 // Calculate tool length from spindle gauge line to tool tip
-                // This is the complete assembly: holder + stickout + extensions
+                // This is the complete assembly: holder gauge + stickout + extensions
                 let totalLength = 0;
-                // Add holder length
-                if (holder?.length) totalLength += holder.length;
-                // Add tool stickout
-                if (tool.stickout) {
-                  totalLength += tool.stickout;
-                } else if (tool.length) {
-                  totalLength += tool.length;
+                
+                // Different holder types have different gauge lengths
+                // These are typical values from spindle gauge line to holder nose
+                const holderGaugeLengths = {
+                  'BT30': 45,
+                  'BT40': 65,
+                  'BT50': 100,
+                  'CAT40': 65,
+                  'CAT50': 100,
+                  'HSK63': 50,
+                  'HSK100': 60,
+                  'ER32': 40,  // Collet chuck
+                  'ER40': 45,  // Collet chuck
+                  'default': 60
+                };
+                
+                // Get holder gauge length based on type
+                let holderGauge = holderGaugeLengths.default;
+                if (holder?.type) {
+                  // Extract holder standard (BT40, CAT40, etc)
+                  const holderType = holder.type.split('/')[0];
+                  holderGauge = holderGaugeLengths[holderType] || holderGaugeLengths.default;
                 }
+                totalLength += holderGauge;
+                
+                // Add tool stickout (from holder nose to tool tip)
+                const stickout = tool.stickout || 30;  // Default 30mm stickout
+                totalLength += stickout;
+                
                 // Add any extensions
                 if (assembly.components.extension?.length) totalLength += assembly.components.extension.length;
                 
@@ -4096,17 +4146,29 @@ M30 ; End`
               const holder = assembly.components.holder;
               
               // Calculate tool length from spindle gauge line to tool tip
-              // This is the complete assembly: holder + stickout + extensions
+              // This is the complete assembly: holder gauge + stickout + extensions
+              const holderGaugeLengths = {
+                'BT30': 45, 'BT40': 65, 'BT50': 100,
+                'CAT40': 65, 'CAT50': 100,
+                'HSK63': 50, 'HSK100': 60,
+                'ER32': 40, 'ER40': 45,
+                'default': 60
+              };
+              
               let totalLength = 0;
-              // Add holder length
-              if (holder?.length) totalLength += holder.length;
-              // Add tool stickout
-              if (tool.stickout) {
-                totalLength += tool.stickout;
-              } else if (tool.length) {
-                totalLength += tool.length;
+              
+              // Add holder gauge length
+              if (holder?.type) {
+                const holderType = holder.type.split('/')[0];
+                totalLength += holderGaugeLengths[holderType] || holderGaugeLengths.default;
+              } else {
+                totalLength += holderGaugeLengths.default;
               }
-              // Add any extensions
+              
+              // Add tool stickout
+              totalLength += tool.stickout || 30;
+              
+              // Add extensions
               if (assembly.components.extension?.length) totalLength += assembly.components.extension.length;
               
               // Find or assign a tool number (T1, T2, etc.)
