@@ -619,30 +619,31 @@ M30 ; End`
   useEffect(() => {
     if (!mountRef.current) return;
 
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a0e1a);
-    scene.fog = new THREE.Fog(0x0a0e1a, 200, 2000);
-    sceneRef.current = scene;
+    try {
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0a0e1a);
+      scene.fog = new THREE.Fog(0x0a0e1a, 200, 2000);
+      sceneRef.current = scene;
 
-    const camera = new THREE.PerspectiveCamera(
-      45,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      5000
-    );
-    camera.position.set(300, 300, 500);
-    camera.up.set(0, 0, 1);
-    cameraRef.current = camera;
+      const camera = new THREE.PerspectiveCamera(
+        45,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        5000
+      );
+      camera.position.set(300, 300, 500);
+      camera.up.set(0, 0, 1);
+      cameraRef.current = camera;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
-    mountRef.current.appendChild(renderer.domElement);
-    rendererRef.current = renderer;
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      mountRef.current.appendChild(renderer.domElement);
+      rendererRef.current = renderer;
 
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controlsRef.current = controls;
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controlsRef.current = controls;
     
     // Add mouse interaction for tool
     const raycaster = new THREE.Raycaster();
@@ -1247,13 +1248,20 @@ M30 ; End`
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      if (mountRef.current && renderer.domElement) {
-        mountRef.current.removeChild(renderer.domElement);
+      if (mountRef.current && rendererRef.current?.domElement) {
+        mountRef.current.removeChild(rendererRef.current.domElement);
       }
-      renderer.dispose();
+      rendererRef.current?.dispose();
       if (materialRemovalRef.current) materialRemovalRef.current.dispose();
-      if (shortcuts) shortcuts.dispose();
+      if (keyboardShortcuts) keyboardShortcuts.dispose();
     };
+    } catch (error) {
+      console.error('Failed to initialize 3D scene:', error);
+      setError({
+        message: 'Failed to initialize 3D visualization',
+        details: error.message
+      });
+    }
   }, []); // Only initialize once
   
   // Update toolpath when G-code or work offset changes - with debounce for real-time updates
