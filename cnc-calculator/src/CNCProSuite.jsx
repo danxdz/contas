@@ -1603,13 +1603,20 @@ M30 ; End`
       const currentWorkOffset = positions[safeCurrentLine]?.workOffset || setupConfig.workOffsets.activeOffset;
       const activeOffset = setupConfig.workOffsets[currentWorkOffset] || setupConfig.workOffsets[setupConfig.workOffsets.activeOffset];
       
-      // Get actual tool length from spindle nose to tool tip
-      // This is the stickout + any extensions, NOT the holder length
+      // Get actual tool length from spindle gauge line to tool tip
+      // This includes holder + stickout + extensions (complete assembly)
       let actualToolLength = 30; // Default
       if (simulation.toolAssembly && simulation.toolAssembly.components) {
         const components = simulation.toolAssembly.components;
-        // Tool length is just the stickout from the spindle nose
-        actualToolLength = components.tool?.stickout || components.tool?.length || 30;
+        actualToolLength = 0;
+        // Add holder length (from spindle gauge to holder nose)
+        if (components.holder?.length) actualToolLength += components.holder.length;
+        // Add tool stickout (from holder nose to tool tip)
+        if (components.tool?.stickout) {
+          actualToolLength += components.tool.stickout;
+        } else if (components.tool?.length) {
+          actualToolLength += components.tool.length;
+        }
         // Add any extensions
         if (components.extension?.length) actualToolLength += components.extension.length;
       }
@@ -1778,12 +1785,19 @@ M30 ; End`
           toolLengthComp = hOffset.lengthGeometry + hOffset.lengthWear;
         }
         
-        // Get actual tool length from spindle nose to tool tip
+        // Get actual tool length from spindle gauge line to tool tip
         let actualToolLength = 30; // Default
         if (simulation.toolAssembly && simulation.toolAssembly.components) {
           const components = simulation.toolAssembly.components;
-          // Tool length is just the stickout from the spindle nose
-          actualToolLength = components.tool?.stickout || components.tool?.length || 30;
+          actualToolLength = 0;
+          // Add holder length (from spindle gauge to holder nose)
+          if (components.holder?.length) actualToolLength += components.holder.length;
+          // Add tool stickout (from holder nose to tool tip)
+          if (components.tool?.stickout) {
+            actualToolLength += components.tool.stickout;
+          } else if (components.tool?.length) {
+            actualToolLength += components.tool.length;
+          }
           // Add any extensions
           if (components.extension?.length) actualToolLength += components.extension.length;
         }
@@ -3621,9 +3635,17 @@ M30 ; End`
                 const tool = assembly.components.tool;
                 const holder = assembly.components.holder;
                 
-                // Calculate tool length from spindle nose to tool tip
-                // This is the stickout, NOT the entire assembly length
-                let totalLength = tool.stickout || tool.length || 0;
+                // Calculate tool length from spindle gauge line to tool tip
+                // This is the complete assembly: holder + stickout + extensions
+                let totalLength = 0;
+                // Add holder length
+                if (holder?.length) totalLength += holder.length;
+                // Add tool stickout
+                if (tool.stickout) {
+                  totalLength += tool.stickout;
+                } else if (tool.length) {
+                  totalLength += tool.length;
+                }
                 // Add any extensions
                 if (assembly.components.extension?.length) totalLength += assembly.components.extension.length;
                 
@@ -4073,9 +4095,17 @@ M30 ; End`
               const tool = assembly.components.tool;
               const holder = assembly.components.holder;
               
-              // Calculate tool length from spindle nose to tool tip
-              // This is the stickout, NOT the entire assembly length
-              let totalLength = tool.stickout || tool.length || 0;
+              // Calculate tool length from spindle gauge line to tool tip
+              // This is the complete assembly: holder + stickout + extensions
+              let totalLength = 0;
+              // Add holder length
+              if (holder?.length) totalLength += holder.length;
+              // Add tool stickout
+              if (tool.stickout) {
+                totalLength += tool.stickout;
+              } else if (tool.length) {
+                totalLength += tool.length;
+              }
               // Add any extensions
               if (assembly.components.extension?.length) totalLength += assembly.components.extension.length;
               
