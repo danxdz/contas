@@ -530,6 +530,54 @@ M30 ; End`
   const originMarkerRef = useRef(null);
   const toolpathMarkerRef = useRef(null);  // Marker showing current position on toolpath
 
+  // Parse G-code to find all tools used in the program
+  const parseToolsFromGCode = (gcode) => {
+    const tools = new Map();
+    const lines = gcode.split('\n');
+    
+    lines.forEach(line => {
+      const trimmed = line.trim().toUpperCase();
+      
+      // Look for T commands (tool changes)
+      const tMatch = trimmed.match(/T(\d+)/);
+      if (tMatch) {
+        const toolNumber = parseInt(tMatch[1]);
+        if (!tools.has(toolNumber)) {
+          tools.set(toolNumber, {
+            number: toolNumber,
+            hCode: null,
+            dCode: null,
+            usageLines: []
+          });
+        }
+        tools.get(toolNumber).usageLines.push(line);
+      }
+      
+      // Look for H codes (tool length compensation)
+      const hMatch = trimmed.match(/H(\d+)/);
+      if (hMatch) {
+        const hCode = parseInt(hMatch[1]);
+        // Associate with the current or most recent tool
+        const currentTool = Array.from(tools.values()).pop();
+        if (currentTool) {
+          currentTool.hCode = hCode;
+        }
+      }
+      
+      // Look for D codes (cutter diameter compensation)
+      const dMatch = trimmed.match(/D(\d+)/);
+      if (dMatch && !trimmed.includes('G0')) { // Avoid G0D moves
+        const dCode = parseInt(dMatch[1]);
+        const currentTool = Array.from(tools.values()).pop();
+        if (currentTool) {
+          currentTool.dCode = dCode;
+        }
+      }
+    });
+    
+    return Array.from(tools.values());
+  };
+
   // Enhanced G-code parser with tool compensation
   const parseGCodePositions = (gcode) => {
     const lines = gcode.split('\n');
@@ -1349,10 +1397,20 @@ M30 ; End`
       // Position tool at actual cutting position with work offset and tool compensation
       const activeOffset = setupConfig.workOffsets[setupConfig.workOffsets.activeOffset];
       
+      // Get actual tool assembly length if available
+      let actualToolLength = 30; // Default
+      if (simulation.toolAssembly && simulation.toolAssembly.components) {
+        const components = simulation.toolAssembly.components;
+        actualToolLength = 0;
+        if (components.tool?.length) actualToolLength += components.tool.length;
+        if (components.holder?.length) actualToolLength += components.holder.length;
+        if (components.extension?.length) actualToolLength += components.extension.length;
+      }
+      
       // The tool control point is at the tip when G43 is active
       const toolControlZ = currentPos.g43 ? 
         currentPos.z + activeOffset.z - toolLengthComp :  // Compensated position
-        currentPos.z + activeOffset.z + 30;  // Default tool visual offset
+        currentPos.z + activeOffset.z - actualToolLength;  // Use actual tool assembly length
       
       const toolPosition = {
         x: currentPos.x + activeOffset.x,
@@ -1476,9 +1534,19 @@ M30 ; End`
           toolLengthComp = hOffset.lengthGeometry + hOffset.lengthWear;
         }
         
+        // Get actual tool assembly length if available
+        let actualToolLength = 30; // Default
+        if (simulation.toolAssembly && simulation.toolAssembly.components) {
+          const components = simulation.toolAssembly.components;
+          actualToolLength = 0;
+          if (components.tool?.length) actualToolLength += components.tool.length;
+          if (components.holder?.length) actualToolLength += components.holder.length;
+          if (components.extension?.length) actualToolLength += components.extension.length;
+        }
+        
         const toolControlZ = currentPos?.g43 ? 
           currentZ + activeOffset.z - toolLengthComp :
-          currentZ + activeOffset.z + 30;
+          currentZ + activeOffset.z - actualToolLength;
         
         toolRef.current.position.set(
           currentX + activeOffset.x,
@@ -2278,6 +2346,17 @@ M30 ; End`
       const positions = parseGCodePositions(newGCode);
       const startPos = positions.length > 0 ? positions[0] : { x: 0, y: 0, z: 50 };
       
+      // Parse tools used in the program
+      const programTools = parseToolsFromGCode(newGCode);
+      console.log('Tools found in program:', programTools);
+      
+      // Show alert if tools are found
+      if (programTools.length > 0) {
+        const toolList = programTools.map(t => `T${t.number}${t.hCode ? ` H${t.hCode}` : ''}${t.dCode ? ` D${t.dCode}` : ''}`).join(', ');
+        console.log(`Program uses tools: ${toolList}`);
+        // TODO: Show tool setup panel or notification
+      }
+      
       // Reset simulation with proper starting position
       setSimulation(prev => ({
         ...prev,
@@ -2290,7 +2369,8 @@ M30 ; End`
           a: 0, 
           b: 0, 
           c: 0 
-        }
+        },
+        programTools: programTools // Store tools needed by program
       }));
       
       // Force immediate toolpath update
@@ -3186,8 +3266,52 @@ M30 ; End`
               }
             }}
             onAssemblySelect={(assembly) => {
+              // Update simulation with selected tool assembly
               setSimulation(prev => ({ ...prev, toolAssembly: assembly }));
+              
+              // Update 3D visualization
               window.updateTool3D?.(assembly);
+              
+              // Auto-populate tool offset table with tool data
+              if (assembly && assembly.components?.tool) {
+                const tool = assembly.components.tool;
+                const holder = assembly.components.holder;
+                
+                // Calculate total tool length (tool + holder + extensions)
+                let totalLength = 0;
+                if (tool.length) totalLength += tool.length;
+                if (holder?.length) totalLength += holder.length;
+                if (assembly.components.extension?.length) totalLength += assembly.components.extension.length;
+                
+                // Find or assign a tool number (T1, T2, etc.)
+                const toolNumber = assembly.toolNumber || simulation.tool || 1;
+                
+                // Update the H register in tool offset table
+                setToolOffsetTable(prev => {
+                  const newTable = { ...prev };
+                  // Update H register for this tool
+                  if (!newTable.H[toolNumber]) {
+                    newTable.H[toolNumber] = { lengthGeometry: 0, lengthWear: 0 };
+                  }
+                  newTable.H[toolNumber].lengthGeometry = totalLength;
+                  
+                  // Update D register for cutter compensation
+                  if (!newTable.D[toolNumber]) {
+                    newTable.D[toolNumber] = { diameterGeometry: 0, diameterWear: 0 };
+                  }
+                  newTable.D[toolNumber].diameterGeometry = tool.diameter || 0;
+                  
+                  return newTable;
+                });
+                
+                // Set this as the active tool
+                setSimulation(prev => ({ 
+                  ...prev, 
+                  tool: toolNumber,
+                  activeHCode: toolNumber,
+                  activeDCode: toolNumber
+                }));
+              }
             }}
             onAssemblyDelete={(id) => {
               setToolAssemblies(prev => prev.filter(a => a.id !== id));
@@ -3594,8 +3718,52 @@ M30 ; End`
             }
           }}
           onAssemblySelect={(assembly) => {
+            // Update simulation with selected tool assembly
             setSimulation(prev => ({ ...prev, toolAssembly: assembly }));
+            
+            // Update 3D visualization
             window.updateTool3D?.(assembly);
+            
+            // Auto-populate tool offset table with tool data
+            if (assembly && assembly.components?.tool) {
+              const tool = assembly.components.tool;
+              const holder = assembly.components.holder;
+              
+              // Calculate total tool length (tool + holder + extensions)
+              let totalLength = 0;
+              if (tool.length) totalLength += tool.length;
+              if (holder?.length) totalLength += holder.length;
+              if (assembly.components.extension?.length) totalLength += assembly.components.extension.length;
+              
+              // Find or assign a tool number (T1, T2, etc.)
+              const toolNumber = assembly.toolNumber || simulation.tool || 1;
+              
+              // Update the H register in tool offset table
+              setToolOffsetTable(prev => {
+                const newTable = { ...prev };
+                // Update H register for this tool
+                if (!newTable.H[toolNumber]) {
+                  newTable.H[toolNumber] = { lengthGeometry: 0, lengthWear: 0 };
+                }
+                newTable.H[toolNumber].lengthGeometry = totalLength;
+                
+                // Update D register for cutter compensation
+                if (!newTable.D[toolNumber]) {
+                  newTable.D[toolNumber] = { diameterGeometry: 0, diameterWear: 0 };
+                }
+                newTable.D[toolNumber].diameterGeometry = tool.diameter || 0;
+                
+                return newTable;
+              });
+              
+              // Set this as the active tool
+              setSimulation(prev => ({ 
+                ...prev, 
+                tool: toolNumber,
+                activeHCode: toolNumber,
+                activeDCode: toolNumber
+              }));
+            }
           }}
           onAssemblyDelete={(id) => {
             setToolAssemblies(prev => prev.filter(a => a.id !== id));
