@@ -253,20 +253,7 @@ const WorkOffsetsManager = ({
         </div>
       ))}
       
-      <div style={{
-        marginTop: '20px',
-        padding: '10px',
-        background: '#0a0e1a',
-        borderRadius: '5px',
-        fontSize: '12px',
-        color: '#666'
-      }}>
-        <div>💡 Tips:</div>
-        <div>• Active offset shown in bright colors</div>
-        <div>• Click 👁️ to show/hide in 3D</div>
-        <div>• G54 typically at stock top</div>
-        <div>• Use G55-G59 for multiple setups</div>
-      </div>
+
     </div>
   );
 };
