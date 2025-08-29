@@ -207,14 +207,14 @@ const CNCProSuite = () => {
       title: 'STEP Processor'
     },
     machineControl: {
-      visible: true,
-      floating: false,
+      visible: false,  // Start hidden
+      floating: true,
       docked: 'bottom',
-      position: { x: 20, y: window.innerHeight - 200 },
-      size: { width: window.innerWidth - 40, height: 150 },
+      position: { x: 20, y: window.innerHeight - 80 },
+      size: { width: 'auto', height: 45 },
       zIndex: 1,
       minimized: false,
-      title: 'Machine Control'
+      title: 'Manual'
     },
     features: {
       visible: false,
@@ -1789,21 +1789,25 @@ M30 ; End`
     const panel = panels[panelId];
     if (!panel.visible) return null;
 
-    // Compact panels that don't need title bar
-    const compactPanels = ['gcode', 'machineControl'];
+    // Compact panels that don't need full title bar
+    const compactPanels = ['gcode'];
     const isCompact = compactPanels.includes(panelId);
+    
+    // Single bar panels (like machineControl)
+    const barPanels = ['machineControl'];
+    const isBar = barPanels.includes(panelId);
 
     // Always use inline styles for proper sizing
     const panelStyle = {
       position: 'fixed',
       left: `${panel.position.x}px`,
       top: `${panel.position.y}px`,
-      width: `${panel.size.width}px`,
-      height: panel.minimized ? '40px' : `${panel.size.height}px`,
+      width: isBar ? 'auto' : `${panel.size.width}px`,
+      height: isBar ? '45px' : (panel.minimized ? '40px' : `${panel.size.height}px`),
       zIndex: panel.zIndex,
-      background: '#0a0e1a',
+      background: isBar ? 'linear-gradient(135deg, #1a1f2e, #0f1420)' : '#0a0e1a',
       border: '1px solid #333',
-      borderRadius: isCompact ? '4px' : '8px',
+      borderRadius: isBar ? '6px' : (isCompact ? '4px' : '8px'),
       boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
       display: 'flex',
       flexDirection: 'column',
@@ -1816,7 +1820,22 @@ M30 ; End`
         style={panelStyle}
         onMouseDown={() => bringToFront(panelId)}
       >
-        {isCompact ? (
+        {isBar ? (
+          // Bar panel - draggable by clicking anywhere
+          <div 
+            style={{
+              cursor: 'move',
+              width: '100%',
+              height: '100%'
+            }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              startDragging(e, panelId);
+            }}
+          >
+            {content}
+          </div>
+        ) : isCompact ? (
           // Compact header - just a thin draggable strip with minimal controls
           <div 
             style={{
