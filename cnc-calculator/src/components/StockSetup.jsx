@@ -1,9 +1,15 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import * as THREE from 'three';
 import '../styles/SetupComponents.css';
 
 const StockSetup = ({ config, onUpdate, sceneRef }) => {
-  const applyStockToScene = () => {
+  // Real-time update whenever config changes
+  useEffect(() => {
+    updateStockInScene();
+  }, [config.type, config.dimensions.x, config.dimensions.y, config.dimensions.z, 
+      config.position.x, config.position.y, config.position.z, config.material]);
+
+  const updateStockInScene = () => {
     if (!sceneRef?.current) return;
     
     const scene = sceneRef.current;
@@ -62,12 +68,29 @@ const StockSetup = ({ config, onUpdate, sceneRef }) => {
     }
     
     scene.add(stock);
-    console.log('Stock applied to scene:', config);
   };
 
   return (
     <div style={{ padding: '20px' }}>
-      <h3 style={{ color: '#00d4ff', marginBottom: '20px' }}>Stock Setup</h3>
+      <h3 style={{ 
+        color: '#00d4ff', 
+        marginBottom: '20px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+      }}>
+        Stock Setup
+        <span style={{ 
+          fontSize: '10px', 
+          color: '#4caf50',
+          padding: '2px 6px',
+          background: 'rgba(76, 175, 80, 0.2)',
+          borderRadius: '3px',
+          border: '1px solid #4caf50'
+        }}>
+          LIVE
+        </span>
+      </h3>
       
       <div style={{ marginBottom: '20px' }}>
         <h4>Stock Type</h4>
@@ -256,26 +279,6 @@ const StockSetup = ({ config, onUpdate, sceneRef }) => {
           {config.material === 'wood' && 'Cutting Speed: 300-1000 m/min | Feed: 0.3-1.0 mm/tooth'}
         </div>
       </div>
-      
-      <button 
-        onClick={applyStockToScene}
-        style={{
-          width: '100%',
-          padding: '12px',
-          background: 'linear-gradient(135deg, #00d4ff 0%, #0099cc 100%)',
-          color: '#000',
-          border: 'none',
-          borderRadius: '4px',
-          fontWeight: 'bold',
-          cursor: 'pointer',
-          fontSize: '14px',
-          transition: 'transform 0.2s'
-        }}
-        onMouseEnter={(e) => e.target.style.transform = 'scale(1.02)'}
-        onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-      >
-        Apply Stock to Scene
-      </button>
     </div>
   );
 };

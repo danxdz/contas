@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
 import '../styles/SetupComponents.css';
@@ -6,6 +6,27 @@ import '../styles/SetupComponents.css';
 const PartSetup = ({ config, onUpdate, sceneRef }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const partMeshRef = useRef(null);
+
+  // Real-time update for position, opacity, and wireframe
+  useEffect(() => {
+    if (partMeshRef.current) {
+      // Update position
+      partMeshRef.current.position.set(
+        config.position.x,
+        config.position.y,
+        config.position.z
+      );
+      
+      // Update material properties
+      if (partMeshRef.current.material) {
+        partMeshRef.current.material.opacity = config.opacity || 0.5;
+        partMeshRef.current.material.wireframe = config.showWireframe || false;
+        partMeshRef.current.material.needsUpdate = true;
+      }
+    }
+  }, [config.position.x, config.position.y, config.position.z, 
+      config.opacity, config.showWireframe]);
 
   const loadPartFile = (file) => {
     if (!file) return;
@@ -78,6 +99,7 @@ const PartSetup = ({ config, onUpdate, sceneRef }) => {
     );
     
     scene.add(mesh);
+    partMeshRef.current = mesh;  // Store reference for real-time updates
     
     // Update config with part dimensions
     const size = box.getSize(new THREE.Vector3());
@@ -91,7 +113,6 @@ const PartSetup = ({ config, onUpdate, sceneRef }) => {
     });
     
     setLoading(false);
-    console.log('Part loaded:', fileName);
   };
 
   const createSimplePart = (type) => {
@@ -157,6 +178,7 @@ const PartSetup = ({ config, onUpdate, sceneRef }) => {
     );
     
     scene.add(mesh);
+    partMeshRef.current = mesh;  // Store reference for real-time updates
     
     onUpdate({
       ...config,

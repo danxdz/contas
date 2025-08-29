@@ -1,9 +1,15 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import * as THREE from 'three';
 import '../styles/SetupComponents.css';
 
 const FixtureSetup = ({ config, onUpdate, sceneRef }) => {
-  const applyFixtureToScene = () => {
+  // Real-time update whenever config changes
+  useEffect(() => {
+    updateFixtureInScene();
+  }, [config.type, config.position.x, config.position.y, config.position.z, 
+      config.jawWidth, config.jawOpening, config.chuckDiameter, config.jawStroke]);
+
+  const updateFixtureInScene = () => {
     if (!sceneRef?.current) return;
     
     const scene = sceneRef.current;
@@ -114,12 +120,29 @@ const FixtureSetup = ({ config, onUpdate, sceneRef }) => {
     );
     
     scene.add(fixtureGroup);
-    console.log('Fixture applied to scene:', config);
   };
 
   return (
     <div style={{ padding: '20px' }}>
-      <h3 style={{ color: '#00d4ff', marginBottom: '20px' }}>Fixture Setup</h3>
+      <h3 style={{ 
+        color: '#00d4ff', 
+        marginBottom: '20px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+      }}>
+        Fixture Setup
+        <span style={{ 
+          fontSize: '10px', 
+          color: '#4caf50',
+          padding: '2px 6px',
+          background: 'rgba(76, 175, 80, 0.2)',
+          borderRadius: '3px',
+          border: '1px solid #4caf50'
+        }}>
+          LIVE
+        </span>
+      </h3>
       
       <div style={{ marginBottom: '20px' }}>
         <h4>Fixture Type</h4>
@@ -318,26 +341,6 @@ const FixtureSetup = ({ config, onUpdate, sceneRef }) => {
           <span>Heavy</span>
         </div>
       </div>
-      
-      <button 
-        onClick={applyFixtureToScene}
-        style={{
-          width: '100%',
-          padding: '12px',
-          background: 'linear-gradient(135deg, #00d4ff 0%, #0099cc 100%)',
-          color: '#000',
-          border: 'none',
-          borderRadius: '4px',
-          fontWeight: 'bold',
-          cursor: 'pointer',
-          fontSize: '14px',
-          transition: 'transform 0.2s'
-        }}
-        onMouseEnter={(e) => e.target.style.transform = 'scale(1.02)'}
-        onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-      >
-        Apply Fixture to Scene
-      </button>
     </div>
   );
 };

@@ -1,7 +1,13 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import '../styles/SetupComponents.css';
 
 const MachineSetup = ({ config, onUpdate }) => {
+  // Real-time updates - just trigger onUpdate immediately when config changes
+  // This ensures parent component gets updates in real-time
+  useEffect(() => {
+    // Any machine-specific scene updates could go here in the future
+    // For now, the parent component handles the config changes
+  }, [config.type, config.workEnvelope, config.spindleMax]);
   const machineTypes = {
     '3-axis': {
       name: '3-Axis Mill',
