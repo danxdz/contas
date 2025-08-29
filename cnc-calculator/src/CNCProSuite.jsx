@@ -1458,18 +1458,18 @@ M30 ; End`
     toolXCone.position.x = 10;
     toolCoordGroup.add(toolXCone);
     
-    // Y axis - Green  
+    // Y axis - Green (pointing forward/back in CNC convention)
     const toolYGeometry = new THREE.CylinderGeometry(0.2, 0.2, 10, 4);
     const toolYMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
     const toolYAxis = new THREE.Mesh(toolYGeometry, toolYMaterial);
-    toolYAxis.rotation.x = Math.PI / 2;
+    toolYAxis.rotation.x = -Math.PI / 2;  // Corrected rotation
     toolYAxis.position.y = 5;
     toolCoordGroup.add(toolYAxis);
     
     // Y cone
     const toolYConeGeometry = new THREE.ConeGeometry(0.8, 2, 4);
     const toolYCone = new THREE.Mesh(toolYConeGeometry, toolYMaterial);
-    toolYCone.rotation.x = Math.PI / 2;
+    toolYCone.rotation.x = -Math.PI / 2;  // Corrected rotation
     toolYCone.position.y = 10;
     toolCoordGroup.add(toolYCone);
     
@@ -1618,18 +1618,18 @@ M30 ; End`
     xCone.position.x = 30;
     originGroup.add(xCone);
     
-    // Y axis - Green
+    // Y axis - Green (pointing forward/back in CNC convention)
     const yAxisGeometry = new THREE.CylinderGeometry(0.5, 0.5, 30, 8);
     const yAxisMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
     const yAxis = new THREE.Mesh(yAxisGeometry, yAxisMaterial);
-    yAxis.rotation.x = Math.PI / 2;
+    yAxis.rotation.x = -Math.PI / 2;  // Corrected rotation
     yAxis.position.y = 15;
     originGroup.add(yAxis);
     
     // Y cone
     const yConeGeometry = new THREE.ConeGeometry(2, 5, 8);
     const yCone = new THREE.Mesh(yConeGeometry, yAxisMaterial);
-    yCone.rotation.x = Math.PI / 2;
+    yCone.rotation.x = -Math.PI / 2;  // Corrected rotation
     yCone.position.y = 30;
     originGroup.add(yCone);
     
@@ -2748,13 +2748,14 @@ M30 ; End`
       
       <div style={{ display: 'flex', gap: '5px' }}>
         <button 
-          onClick={() => setSimulation(prev => ({ ...prev, isPlaying: !prev.isPlaying }))}
+          onClick={() => simulation.isPlaying ? pauseSimulation() : setSimulation(prev => ({ ...prev, isPlaying: true }))}
           className={simulation.isPlaying ? 'active' : ''}
           title="Play/Pause"
         >
           {simulation.isPlaying ? '⏸️' : '▶️'}
         </button>
         <button onClick={() => stopSimulation()} title="Stop">⏹️</button>
+        <button onClick={() => resetSimulation()} title="Reset">🔄</button>
         <button onClick={() => stepBackward()} title="Step Back">⏮️</button>
         <button onClick={() => stepForward()} title="Step Forward">⏭️</button>
         <input 
@@ -3157,8 +3158,20 @@ M30 ; End`
     a.click();
   };
 
+  const pauseSimulation = () => {
+    // Pause - just stop playing but keep position
+    if (simulationIntervalRef.current) {
+      clearInterval(simulationIntervalRef.current);
+      simulationIntervalRef.current = null;
+    }
+    setSimulation(prev => ({
+      ...prev,
+      isPlaying: false
+    }));
+  };
+
   const stopSimulation = () => {
-    // Actually stop the simulation by clearing the interval
+    // Stop - reset to beginning
     if (simulationIntervalRef.current) {
       clearInterval(simulationIntervalRef.current);
       simulationIntervalRef.current = null;
@@ -3167,8 +3180,25 @@ M30 ; End`
       ...prev,
       isPlaying: false,
       currentLine: 0,
-      position: { x: 0, y: 0, z: 0, a: 0, b: 0, c: 0 }
+      position: { x: 0, y: 0, z: 250 }  // Start at safe Z height
     }));
+    // Reset tool position
+    if (toolRef.current) {
+      toolRef.current.position.set(0, 0, 250);
+    }
+  };
+
+  const resetSimulation = () => {
+    // Full reset - stop and clear everything
+    stopSimulation();
+    // Clear toolpath visualization
+    if (toolpathLinesRef.current) {
+      toolpathLinesRef.current.geometry.setFromPoints([]);
+    }
+    // Reset material removal if active
+    if (materialRemovalRef.current) {
+      materialRemovalRef.current.reset();
+    }
   };
   
   const playPauseSimulation = () => {
