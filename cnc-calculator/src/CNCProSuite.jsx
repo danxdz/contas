@@ -2991,7 +2991,7 @@ M30 ; End`
             )}
           </div>
       </div>
-    </div>
+    </>
   );
   
   // Mobile Panel Component - Modern Bottom Sheet
