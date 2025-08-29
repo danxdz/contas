@@ -321,31 +321,31 @@ const CNCProSuite = () => {
       title: 'Setup Manager'
     },
     stockSetup: {
-      visible: false,
+      visible: true,  // Made visible by default
       floating: true,
       docked: null,
       position: { x: 100, y: 100 },
-      size: { width: 400, height: 500 },
+      size: { width: 400, height: 600 },
       zIndex: 2,
       minimized: false,
       title: 'Stock Setup'
     },
     fixtureSetup: {
-      visible: false,
+      visible: true,  // Made visible by default
       floating: true,
       docked: null,
-      position: { x: 150, y: 120 },
-      size: { width: 400, height: 450 },
+      position: { x: 520, y: 100 },
+      size: { width: 400, height: 600 },
       zIndex: 2,
       minimized: false,
       title: 'Fixture Setup'
     },
     machineSetup: {
-      visible: false,
+      visible: true,  // Made visible by default
       floating: true,
       docked: null,
-      position: { x: 200, y: 100 },
-      size: { width: 450, height: 550 },
+      position: { x: 940, y: 100 },
+      size: { width: 450, height: 650 },
       zIndex: 2,
       minimized: false,
       title: 'Machine Setup'

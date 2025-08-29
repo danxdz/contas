@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import * as THREE from 'three';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
+import '../styles/SetupComponents.css';
 
 const PartSetup = ({ config, onUpdate, sceneRef }) => {
   const [loading, setLoading] = useState(false);

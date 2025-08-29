@@ -1,5 +1,6 @@
 import React from 'react';
 import * as THREE from 'three';
+import '../styles/SetupComponents.css';
 
 const StockSetup = ({ config, onUpdate, sceneRef }) => {
   const applyStockToScene = () => {

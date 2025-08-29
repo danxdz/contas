@@ -1,4 +1,5 @@
 import React from 'react';
+import '../styles/SetupComponents.css';
 
 const MachineSetup = ({ config, onUpdate }) => {
   const machineTypes = {
