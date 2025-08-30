@@ -2578,7 +2578,6 @@ M30 ; Program end`;
         };
         animateStep();
       }
-    }
     
     dispatch(actions.setSimulation({
       currentLine: nextLine,
