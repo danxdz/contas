@@ -64,19 +64,38 @@ The module automatically:
 
 ## Version Management
 
-Current Version: **v0.002**
+Current Version: **v0.006**
 
 ### Version History
-- **v0.002** - Fixed initialization, added status indicator and version tracking
+- **v0.005** - Fixed panel styling to match CNC Studio design
+- **v0.004** - Added 4-axis, 5-axis, lathe, save/load configs
+- **v0.003** - Fixed Machine-Viewer integration
+- **v0.002** - Fixed initialization, added status indicator
 - **v0.001** - Initial simplified machine with real 3D geometry
 
-### Updating Version
-To update the version for a new commit:
+### Committing with Version
+
+#### Automatic (Recommended):
 ```bash
-node update-version.js "Your change description" "Another change"
+# From Machine module directory
+./commit-with-version.sh "Your commit message"
+# This will create: [v0.006] Your commit message
 ```
 
-Or manually edit `version.js` and increment the version number.
+#### Manual:
+```bash
+# Update version first
+node update-version.js "Your change description"
+# Then commit with version in message
+git commit -m "[v0.006] feat: Your feature description"
+```
+
+### Version Format
+Always include version in commit messages:
+- `[v0.XXX] type: description`
+- Examples:
+  - `[v0.006] feat: Add tool changer visualization`
+  - `[v0.007] fix: Correct spindle rotation direction`
 
 ## Troubleshooting
 

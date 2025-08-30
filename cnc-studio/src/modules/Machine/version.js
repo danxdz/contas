@@ -1,9 +1,18 @@
 // Machine Module Version
 // Update this with each significant change
-export const MACHINE_MODULE_VERSION = 'v0.005';
+export const MACHINE_MODULE_VERSION = 'v0.006';
 
 // Version History
 export const VERSION_HISTORY = [
+  {
+    version: 'v0.006',
+    date: '2024-12-30',
+    changes: [
+      'Added commit-with-version.sh script',
+      'Updated documentation for version in commit messages',
+      'Established version commit format [vX.XXX]'
+    ]
+  },
   {
     version: 'v0.005',
     date: '2024-12-30',
