@@ -22,6 +22,21 @@
 .panel-actions > button:hover { background: rgba(21, 32, 59, 0.75); }
 .panel-body { padding: var(--panel-padding, 6px); overflow: auto; }
 
+/* Translucent modern inputs */
+.panel-body input, .panel-body select, .panel-body textarea {
+  background: rgba(20, 30, 55, 0.55);
+  color: #e6f0ff;
+  border: 1px solid rgba(23,48,77,0.55);
+  border-radius: 8px;
+  padding: 6px 8px;
+  outline: none;
+}
+.panel-body input::placeholder { color: rgba(200,220,255,0.5); }
+.panel-body input:focus, .panel-body select:focus, .panel-body textarea:focus {
+  border-color: #00d4ff;
+  box-shadow: 0 0 0 2px rgba(0,212,255,0.15);
+}
+
 /* Mobile <= 480px */
 @media (max-width: 480px) {
   .workspace { flex-direction: column; }
