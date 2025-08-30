@@ -53,10 +53,11 @@ export default function ViewerModule() {
     scene.add(grid);
 
     scene.add(createAxes(1.0));
-    const table = createTable(2, 2, 0.1);
+    let table = createTable(2, 1.2, 0.1);
     scene.add(table);
     const tool = createTool();
-    tool.position.set(0, 0, 1.2);
+    let spindleHome = 0.25; // 250mm default
+    tool.position.set(0, 0, spindleHome);
     scene.add(tool);
 
     let path = createPathLine([
@@ -147,6 +148,17 @@ export default function ViewerModule() {
         currentIndex = 0;
       },
       setBackground: (c) => { scene.background = new THREE.Color(c); },
+      setTable: ({ x, y }) => {
+        if (x || y) {
+          scene.remove(table);
+          table = createTable(x || 2, y || 1.2, 0.1);
+          scene.add(table);
+        }
+      },
+      setSpindleHome: (z) => {
+        spindleHome = z;
+        tool.position.setZ(spindleHome);
+      },
       play: () => { isPlaying = true; },
       pause: () => { isPlaying = false; },
       stop: () => { isPlaying = false; currentIndex = 0; },

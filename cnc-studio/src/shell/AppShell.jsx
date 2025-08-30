@@ -28,6 +28,8 @@ const defaultLayout = {
   center: [],
 };
 
+const VERSION = 'v0.0.3';
+
 export default function AppShell() {
   const modules = useMemo(() => normalizeModules(discoveredModules), []);
 
@@ -154,7 +156,7 @@ export default function AppShell() {
   return (
     <div className="shell">
       <header className="topbar">
-        <div className="brand">CNC Studio</div>
+        <div className="brand">CNC Studio {VERSION}</div>
         <nav className="module-switcher">
           {modules.filter(m => m.id !== 'viewer').map(m => (
             <button key={m.id} onClick={() => toggleVisibility(m.id)} className="nav-item">
