@@ -52,6 +52,7 @@ export default function SceneControls() {
             onMouseLeave={() => setShow(false)}
             onTouchStart={() => setShow(true)}
             onTouchEnd={() => setShow(false)}
+            style={{ WebkitAppearance: 'none', appearance: 'none' }}
           />
         </div>
       </label>

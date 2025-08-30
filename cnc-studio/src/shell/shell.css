@@ -25,7 +25,7 @@
 .panel-body { padding: var(--panel-padding, 6px); overflow: auto; }
 
 /* Translucent modern inputs */
-.panel-body input, .panel-body select, .panel-body textarea {
+.panel-body input:not([type="range"]), .panel-body select, .panel-body textarea {
   background: rgba(20, 30, 55, 0.55);
   color: #e6f0ff;
   border: 1px solid rgba(23,48,77,0.55);
@@ -35,10 +35,11 @@
   outline: none;
 }
 .panel-body input::placeholder { color: rgba(200,220,255,0.5); }
-.panel-body input:focus, .panel-body select:focus, .panel-body textarea:focus {
+.panel-body input:not([type="range"]):focus, .panel-body select:focus, .panel-body textarea:focus {
   border-color: #00d4ff;
   box-shadow: 0 0 0 2px rgba(0,212,255,0.15);
 }
+.panel-body input[type="range"] { width: 100%; background: transparent; border: none; padding: 0; cursor: pointer; }
 
 .panel-body button {
   background: rgba(15, 26, 51, 0.65);

@@ -88,6 +88,9 @@ export default function ViewerModule() {
       if (isPlaying && parsedPts.length > 0) {
         const target = parsedPts[currentIndex];
         tool.position.set(target.x, target.y, target.z + 1.0);
+        tool.rotation.x = Math.PI / 2; // ensure tool axis is Z
+        tool.rotation.y = 0;
+        // Spin around Z axis only
         currentIndex = (currentIndex + Math.max(1, Math.floor(speed))) % parsedPts.length;
         if (window.cncViewer && typeof window.cncViewer.tick === 'function') {
           window.cncViewer.tick(currentIndex);
