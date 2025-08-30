@@ -50,10 +50,7 @@ const CNCProSuite = () => {
   const { error, isLoading, handleAsync, handleSync, wrapHandler, clearError } = useErrorHandler();
   
   // Main app state using reducer
-  const [state, dispatch] = useReducer(appReducer, {
-    ...initialState,
-    ui: { ...initialState.ui, isMobile: window.innerWidth <= 768 }
-  });
+  const [state, dispatch] = useReducer(appReducer, initialState);
   
   // Extract state for easier access
   const { simulation, panels, setupConfig, ui, features, project, toolDatabase, toolAssemblies, toolOffsetTable, activePanelId } = state;
@@ -2243,34 +2240,48 @@ M30 ; Program end`;
         // Load G-code
         await loadGCodeFile(file);
       }
-    }, `Failed to load file: ${file.name}`);
+    }, { errorMessage: `Failed to load file: ${file.name}` });
   };
 
   const loadSTEPFile = (file) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      // Parse STEP file content
-      const stepContent = e.target.result;
-      
-      // Extract basic features from STEP (simplified - real implementation would parse STEP format)
-      const features = detectFeaturesFromSTEP(stepContent);
-      const suggestedTools = generateToolsFromFeatures(features);
-      
-      setProject(prev => ({
-        ...prev,
-        stepFile: file.name,
-        stepContent: stepContent,
-        features: features,
-        suggestedTools: suggestedTools
-      }));
-      
-      // Show STEP processor panel
-      setPanels(prev => ({
-        ...prev,
-        stepProcessor: { ...prev.stepProcessor, visible: true }
-      }));
-    };
-    reader.readAsText(file);
+    handleAsync(async () => {
+      const reader = new FileReader();
+      return new Promise((resolve, reject) => {
+        reader.onload = (e) => {
+          try {
+            // Parse STEP file content
+            const stepContent = e.target.result;
+            
+            // Extract basic features from STEP (simplified - real implementation would parse STEP format)
+            const features = detectFeaturesFromSTEP(stepContent);
+            const suggestedTools = generateToolsFromFeatures(features);
+            
+            setProject(prev => ({
+              ...prev,
+              stepFile: file.name,
+              stepContent: stepContent,
+              features: features,
+              suggestedTools: suggestedTools
+            }));
+            
+            // Show STEP processor panel
+            setPanels(prev => ({
+              ...prev,
+              stepProcessor: { ...prev.stepProcessor, visible: true }
+            }));
+            
+            resolve();
+          } catch (err) {
+            reject(err);
+          }
+        };
+        reader.onerror = () => reject(new Error('Failed to read STEP file'));
+        reader.readAsText(file);
+      });
+    }, {
+      errorMessage: 'Failed to load STEP file',
+      onError: (err) => console.error('STEP load error:', err)
+    });
   };
   
   const detectFeaturesFromSTEP = (content) => {
@@ -2366,61 +2377,88 @@ M30 ; Program end`;
   };
 
   const loadSTLFile = (file) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const loader = new STLLoader();
-      const geometry = loader.parse(e.target.result);
-      const material = new THREE.MeshPhongMaterial({ color: 0x8888ff, opacity: 0.8, transparent: true });
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.position.z = 50;
-      sceneRef.current.add(mesh);
-    };
-    reader.readAsArrayBuffer(file);
+    handleAsync(async () => {
+      const reader = new FileReader();
+      return new Promise((resolve, reject) => {
+        reader.onload = (e) => {
+          try {
+            const loader = new STLLoader();
+            const geometry = loader.parse(e.target.result);
+            const material = new THREE.MeshPhongMaterial({ color: 0x8888ff, opacity: 0.8, transparent: true });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.z = 50;
+            sceneRef.current.add(mesh);
+            resolve();
+          } catch (err) {
+            reject(err);
+          }
+        };
+        reader.onerror = () => reject(new Error('Failed to read STL file'));
+        reader.readAsArrayBuffer(file);
+      });
+    }, {
+      errorMessage: 'Failed to load STL file',
+      onError: (err) => console.error('STL load error:', err)
+    });
   };
 
   const loadGCodeFile = (file) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const newGCode = e.target.result;
-      
-      // Update project with new G-code
-      setProject(prev => ({
-        ...prev,
-        gcode: { ...prev.gcode, channel1: newGCode }
-      }));
-      
-      // Parse the new G-code to get starting position
-      const positions = parseGCodePositions(newGCode);
-      const startPos = positions.length > 0 ? positions[0] : { x: 0, y: 0, z: 200 };  // Default to machine home
-      
-      // Parse tools used in the program
-      const programTools = parseToolsFromGCode(newGCode);
-      
-      // Store tools for reference (accessible via simulation.programTools)
-      if (programTools.length > 0) {
-        const toolList = programTools.map(t => `T${t.number}${t.hCode ? ` H${t.hCode}` : ''}${t.dCode ? ` D${t.dCode}` : ''}`).join(', ');
-      }
-      
-      // Reset simulation with proper starting position
-      dispatch(actions.setSimulation({
-        currentLine: 0,
-        isPlaying: false,
-        position: { 
-          x: startPos.x, 
-          y: startPos.y, 
-          z: startPos.z, 
-          a: 0, 
-          b: 0, 
-          c: 0 
-        },
-        programTools: programTools // Store tools needed by program
-      }));
-      
-      // IMPORTANT: The useEffect will handle the toolpath update automatically
-      // when project.gcode.channel1 changes, so we don't need setTimeout here
-      console.log('NC file loaded, toolpath will update via useEffect');
-    };
-    reader.readAsText(file);
+    handleAsync(async () => {
+      const reader = new FileReader();
+      return new Promise((resolve, reject) => {
+        reader.onload = (e) => {
+          try {
+            const newGCode = e.target.result;
+            
+            // Update project with new G-code
+            setProject(prev => ({
+              ...prev,
+              gcode: { ...prev.gcode, channel1: newGCode }
+            }));
+            
+            // Parse the new G-code to get starting position
+            const positions = parseGCodePositions(newGCode);
+            const startPos = positions.length > 0 ? positions[0] : { x: 0, y: 0, z: 200 };  // Default to machine home
+            
+            // Parse tools used in the program
+            const programTools = parseToolsFromGCode(newGCode);
+            
+            // Store tools for reference (accessible via simulation.programTools)
+            if (programTools.length > 0) {
+              const toolList = programTools.map(t => `T${t.number}${t.hCode ? ` H${t.hCode}` : ''}${t.dCode ? ` D${t.dCode}` : ''}`).join(', ');
+            }
+            
+            // Reset simulation with proper starting position
+            dispatch(actions.setSimulation({
+              currentLine: 0,
+              isPlaying: false,
+              position: { 
+                x: startPos.x, 
+                y: startPos.y, 
+                z: startPos.z, 
+                a: 0, 
+                b: 0, 
+                c: 0 
+              },
+              programTools: programTools // Store tools needed by program
+            }));
+            
+            // IMPORTANT: The useEffect will handle the toolpath update automatically
+            // when project.gcode.channel1 changes, so we don't need setTimeout here
+            console.log('NC file loaded, toolpath will update via useEffect');
+            
+            resolve();
+          } catch (err) {
+            reject(err);
+          }
+        };
+        reader.onerror = () => reject(new Error('Failed to read G-code file'));
+        reader.readAsText(file);
+      });
+    }, {
+      errorMessage: 'Failed to load G-code file',
+      onError: (err) => console.error('G-code load error:', err)
+    });
   };
 
   const setCameraView = (view) => {
@@ -2462,19 +2500,19 @@ M30 ; Program end`;
       a.download = `${project.name}.cnc`;
       a.click();
       URL.revokeObjectURL(url);
-    }, 'Failed to save project');
+    }, { errorMessage: 'Failed to save project' });
   };
 
-  const pauseSimulation = wrapHandler(() => {
+  const pauseSimulation = () => {
     // Pause - just stop playing but keep position
     if (simulationIntervalRef.current) {
       clearInterval(simulationIntervalRef.current);
       simulationIntervalRef.current = null;
     }
     dispatch(actions.pauseSimulation());
-  });
+  };
 
-  const stopSimulation = wrapHandler(() => {
+  const stopSimulation = () => {
     // Stop - reset to beginning
     if (simulationIntervalRef.current) {
       clearInterval(simulationIntervalRef.current);
@@ -2485,9 +2523,9 @@ M30 ; Program end`;
     if (toolRef.current) {
       toolRef.current.position.set(0, 0, 250);
     }
-  });
+  };
 
-  const resetSimulation = wrapHandler(() => {
+  const resetSimulation = () => {
     // Full reset - stop and clear everything
     stopSimulation();
     // Clear toolpath visualization
@@ -2498,7 +2536,7 @@ M30 ; Program end`;
     if (materialRemovalRef.current) {
       materialRemovalRef.current.reset();
     }
-  });
+  };
   
   const playPauseSimulation = () => {
     if (simulation.isPlaying) {
