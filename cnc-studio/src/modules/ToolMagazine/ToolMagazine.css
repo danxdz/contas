@@ -1,0 +1,466 @@
+.tool-magazine {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  padding: 8px;
+}
+
+/* Magazine Status */
+.magazine-status {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.status-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.status-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+}
+
+.status-value {
+  font-size: 14px;
+  font-weight: bold;
+  color: #4CAF50;
+}
+
+.status-select {
+  padding: 2px 4px;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  border-radius: 3px;
+}
+
+/* Tool Change Progress */
+.tool-change-progress {
+  padding: 10px;
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid #4CAF50;
+  border-radius: 4px;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.progress-header span {
+  font-size: 12px;
+  font-weight: bold;
+  color: #4CAF50;
+}
+
+.btn-emergency {
+  padding: 4px 8px;
+  background: #f44336;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+  animation: blink 0.5s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { background: #f44336; }
+  50% { background: #ff6659; }
+}
+
+.progress-bar {
+  height: 20px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4CAF50, #66BB6A);
+  transition: width 0.3s ease;
+}
+
+.progress-stage {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: center;
+}
+
+/* Magazine Configuration */
+.magazine-config {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.magazine-config label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.magazine-config select,
+.magazine-config input {
+  padding: 4px 6px;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  border-radius: 3px;
+}
+
+/* Magazine Visualization */
+.magazine-visual {
+  display: flex;
+  justify-content: center;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+}
+
+.magazine-canvas {
+  cursor: pointer;
+}
+
+/* Quick Access */
+.quick-access {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.quick-access h4 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  color: #4CAF50;
+}
+
+.quick-slots {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.quick-slot {
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.quick-slot:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.quick-slot.current {
+  background: rgba(76, 175, 80, 0.2);
+  border-color: #4CAF50;
+}
+
+.quick-slot.selected {
+  background: rgba(33, 150, 243, 0.2);
+  border-color: #2196F3;
+}
+
+.slot-number {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 4px;
+}
+
+.slot-tool {
+  font-size: 12px;
+  font-weight: bold;
+  color: white;
+}
+
+/* Slot Details */
+.slot-details {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.slot-details h4 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  color: #4CAF50;
+}
+
+.tool-in-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tool-info {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.tool-info strong {
+  font-size: 14px;
+  color: #4CAF50;
+}
+
+.tool-info span {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.tool-specs {
+  display: flex;
+  gap: 10px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.slot-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.empty-slot {
+  text-align: center;
+  padding: 10px;
+}
+
+.empty-slot p {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Buttons */
+.btn-primary,
+.btn-secondary {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: #4CAF50;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #45a049;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Load Dialog */
+.load-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.dialog-content {
+  background: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 20px;
+  max-width: 400px;
+  width: 90%;
+  max-height: 500px;
+  display: flex;
+  flex-direction: column;
+}
+
+.dialog-content h3 {
+  margin: 0 0 15px 0;
+  font-size: 14px;
+  color: #4CAF50;
+}
+
+.tool-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 15px;
+  max-height: 300px;
+}
+
+.tool-option {
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  transition: all 0.2s;
+}
+
+.tool-option:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.tool-option.selected {
+  background: rgba(76, 175, 80, 0.2);
+  border-color: #4CAF50;
+}
+
+.tool-option strong {
+  font-size: 12px;
+  color: #4CAF50;
+}
+
+.tool-option span {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Magazine Statistics */
+.magazine-stats {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.magazine-stats h4 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  color: #4CAF50;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: center;
+}
+
+.stat span {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.stat strong {
+  font-size: 14px;
+  color: white;
+}
+
+/* Tool Constraints */
+.tool-constraints {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.tool-constraints h4 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  color: #4CAF50;
+}
+
+.constraint-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.constraint {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.constraint span {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.constraint strong {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Scrollbar */
+.tool-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tool-list::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.tool-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.tool-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}

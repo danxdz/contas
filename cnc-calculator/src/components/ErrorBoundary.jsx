@@ -3,57 +3,121 @@ import React from 'react';
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null, errorInfo: null };
+    this.state = { 
+      hasError: false, 
+      error: null,
+      errorInfo: null,
+      errorCount: 0
+    };
   }
 
   static getDerivedStateFromError(error) {
+    // Update state so the next render will show the fallback UI
     return { hasError: true };
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo);
-    this.setState({
-      error: error,
-      errorInfo: errorInfo
-    });
+    // Log error details for debugging
+    console.error('ErrorBoundary caught:', error, errorInfo);
+    
+    this.setState(prevState => ({
+      error,
+      errorInfo,
+      errorCount: prevState.errorCount + 1
+    }));
+
+    // You can also log the error to an error reporting service here
+    if (this.props.onError) {
+      this.props.onError(error, errorInfo);
+    }
   }
+
+  handleReset = () => {
+    this.setState({
+      hasError: false,
+      error: null,
+      errorInfo: null
+    });
+  };
 
   render() {
     if (this.state.hasError) {
+      // Custom error UI
       return (
         <div style={{
           padding: '20px',
           margin: '20px',
-          background: '#1a1e2a',
+          background: 'rgba(255, 0, 0, 0.1)',
           border: '2px solid #ff4444',
           borderRadius: '8px',
-          color: '#ffffff'
+          color: '#ffffff',
+          fontFamily: 'monospace'
         }}>
-          <h2 style={{ color: '#ff4444' }}>Something went wrong</h2>
-          <details style={{ whiteSpace: 'pre-wrap', marginTop: '10px' }}>
-            <summary style={{ cursor: 'pointer', color: '#00d4ff' }}>Error Details</summary>
-            <div style={{ marginTop: '10px', padding: '10px', background: '#0a0e1a', borderRadius: '4px' }}>
-              <p style={{ color: '#ff6666' }}>{this.state.error && this.state.error.toString()}</p>
-              <pre style={{ color: '#888888', fontSize: '12px', overflow: 'auto' }}>
-                {this.state.errorInfo && this.state.errorInfo.componentStack}
+          <h2 style={{ color: '#ff4444', marginBottom: '10px' }}>
+            ⚠️ Application Error
+          </h2>
+          
+          <div style={{ marginBottom: '15px' }}>
+            <strong>Error:</strong> {this.state.error && this.state.error.toString()}
+          </div>
+          
+          {this.state.errorInfo && (
+            <details style={{ whiteSpace: 'pre-wrap', marginBottom: '15px' }}>
+              <summary style={{ cursor: 'pointer', color: '#00d4ff' }}>
+                View Stack Trace
+              </summary>
+              <pre style={{ 
+                fontSize: '12px', 
+                background: 'rgba(0, 0, 0, 0.3)',
+                padding: '10px',
+                borderRadius: '4px',
+                overflow: 'auto',
+                maxHeight: '200px'
+              }}>
+                {this.state.errorInfo.componentStack}
               </pre>
-            </div>
-          </details>
-          <button 
-            onClick={() => window.location.reload()}
-            style={{
-              marginTop: '15px',
-              padding: '10px 20px',
-              background: '#00d4ff',
-              color: '#000',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontWeight: 'bold'
-            }}
-          >
-            Reload App
-          </button>
+            </details>
+          )}
+          
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              onClick={this.handleReset}
+              style={{
+                padding: '8px 16px',
+                background: '#00d4ff',
+                border: 'none',
+                borderRadius: '4px',
+                color: '#000',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              Reset Application
+            </button>
+            
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                padding: '8px 16px',
+                background: '#ff9800',
+                border: 'none',
+                borderRadius: '4px',
+                color: '#000',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              Reload Page
+            </button>
+          </div>
+          
+          <div style={{ 
+            marginTop: '15px', 
+            fontSize: '12px', 
+            color: '#888' 
+          }}>
+            Error Count: {this.state.errorCount}
+          </div>
         </div>
       );
     }

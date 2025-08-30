@@ -1,11 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useReducer } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
+import { parseGCodePositions, parseToolsFromGCode } from './utils/gcodeParser';
+import { rebuildToolGeometry, createRuler } from './utils/toolGeometry';
+import { createAxisHelper, createToolAxisIndicator, createWorkOffsetAxis } from './utils/axisHelper';
 import './CNCProSuite.css';
 import MaterialRemovalSimulation from './components/MaterialRemovalSimulation';
 import LightingSetup from './components/LightingSetup';
 import { setupCNCShortcuts } from './utils/KeyboardShortcuts';
+import useErrorHandler, { ErrorNotification } from './hooks/useErrorHandler.jsx';
+import { appReducer, initialState, actions } from './reducers/appReducer';
+import GlobalErrorHandler from './components/GlobalErrorHandler';
+import PerformanceMonitor from './components/PerformanceMonitor';
 
 // Components
 import DualChannelDebugger from './components/DualChannelDebugger';
@@ -20,6 +27,7 @@ import StockSetup from './components/StockSetup';
 import FixtureSetup from './components/FixtureSetup';
 import PartSetup from './components/PartSetup';
 import MachineSetup from './components/MachineSetup';
+import ModernTopBar from './components/ModernTopBar';
 import MenuBar from './components/MenuBar';
 import { MainToolbar, StatusBar } from './components/Toolbar';
 import { MobileToolbar, MobileMenu, MobilePanel, MobileQuickAccess } from './components/MobileUI';
@@ -38,21 +46,21 @@ import {
 } from './components/modules';
 
 const CNCProSuite = () => {
-  // Mobile detection
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeMobilePanel, setActiveMobilePanel] = useState(null);
-  const [mobileBottomSheet, setMobileBottomSheet] = useState(false);
+  // Error handling
+  const { error, isLoading, handleAsync, handleSync, wrapHandler, clearError } = useErrorHandler();
+  
+  // Main app state using reducer
+  const [state, dispatch] = useReducer(appReducer, initialState);
+  
+  // Extract state for easier access
+  const { simulation, panels, setupConfig, ui, features, project, toolDatabase, toolAssemblies, toolOffsetTable, activePanelId } = state;
+  
+  // Local state for UI-only concerns
   const materialRemovalRef = useRef(null);
-  const [showMaterialRemoval, setShowMaterialRemoval] = useState(true);
-  const [collisionDetection, setCollisionDetection] = useState(true);
   const [keyboardShortcuts, setKeyboardShortcuts] = useState(null);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
-  
-  // Collision tracking
-  const [collisionCount, setCollisionCount] = useState(0);
-  const [stopOnCollision, setStopOnCollision] = useState(true);
   const [collisionAlert, setCollisionAlert] = useState(null);
+  const [showPerformanceMonitor, setShowPerformanceMonitor] = useState(false);
   
   // Lighting configuration (persistent)
   const [lightingConfig, setLightingConfig] = useState({
@@ -76,7 +84,6 @@ const CNCProSuite = () => {
     }
   });
   const lightsRef = useRef({});
-  const [collisionHistory, setCollisionHistory] = useState([]);
   
   // Function to update lights without recreating them
   const updateLights = (newConfig) => {
@@ -119,49 +126,28 @@ const CNCProSuite = () => {
     }
   };
   
-  // Setup states for stock, fixture, and machine
-  const [setupConfig, setSetupConfig] = useState({
-    stock: {
-      type: 'block', // block, cylinder, custom
-      dimensions: { x: 100, y: 100, z: 50 },
-      material: 'aluminum',
-      position: { x: 0, y: 0, z: 0 }
-    },
-    fixture: {
-      type: 'vise', // vise, chuck, custom
-      jawWidth: 150,
-      clampingForce: 5000,
-      position: { x: 0, y: 0, z: -50 }
-    },
-    machine: {
-      type: '3-axis', // 3-axis, 4-axis, 5-axis
-      workEnvelope: { x: 800, y: 600, z: 500 },
-      spindleMax: 24000,
-      rapidFeed: 15000,
-      maxFeed: 10000
-    },
-    workOffsets: {
-      activeOffset: 'G54',
-      G54: { x: 0, y: 0, z: 50, description: 'Primary Setup' },  // Top of stock at Z=0
-      G55: { x: 100, y: 100, z: -150, description: 'Secondary Setup' },
-      G56: { x: 0, y: 0, z: -150, description: 'Third Setup' },
-      G57: { x: 0, y: 0, z: -150, description: 'Fourth Setup' },
-      G58: { x: 0, y: 0, z: -150, description: 'Fifth Setup' },
-      G59: { x: 0, y: 0, z: -150, description: 'Sixth Setup' }
-    }
+  // Work offsets configuration (kept separate for now)
+  const [workOffsets, setWorkOffsets] = useState({
+    activeOffset: 'G54',
+    G54: { x: 0, y: 0, z: 50, description: 'Primary Setup' },  // Top of stock at Z=0
+    G55: { x: 100, y: 100, z: -150, description: 'Secondary Setup' },
+    G56: { x: 0, y: 0, z: -150, description: 'Third Setup' },
+    G57: { x: 0, y: 0, z: -150, description: 'Fourth Setup' },
+    G58: { x: 0, y: 0, z: -150, description: 'Fifth Setup' },
+    G59: { x: 0, y: 0, z: -150, description: 'Sixth Setup' }
   });
   
   // Handle window resize
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
+      dispatch(actions.setMobile(window.innerWidth <= 768));
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  // Panel system - each panel can be floating or docked
-  const [panels, setPanels] = useState({
+  // Additional refs and local state not in reducer
+  const [panels_temp, setPanels_temp] = useState({
     gcode: {
       visible: false,  // Start closed
       floating: true,
@@ -203,14 +189,14 @@ const CNCProSuite = () => {
       title: 'STEP Processor'
     },
     machineControl: {
-      visible: true,
-      floating: false,
+      visible: false,  // Start hidden
+      floating: true,
       docked: 'bottom',
-      position: { x: 20, y: window.innerHeight - 200 },
-      size: { width: window.innerWidth - 40, height: 150 },
+      position: { x: 20, y: window.innerHeight - 80 },
+      size: { width: 'auto', height: 45 },
       zIndex: 1,
       minimized: false,
-      title: 'Machine Control'
+      title: 'Manual'
     },
     features: {
       visible: false,
@@ -415,84 +401,10 @@ const CNCProSuite = () => {
     }
   });
 
-  const [simulation, setSimulation] = useState({
-    isPlaying: false,
-    speed: 1.0,
-    currentLine: 0,
-    position: { x: 0, y: 0, z: 250, a: 0, b: 0, c: 0 },  // Start at safe machine home
-    feedRate: 500,
-    spindleSpeed: 12000,
-    tool: 1,
-    toolLengthCompActive: false,  // G43 active
-    cutterCompActive: false,  // G41/G42 active
-    activeHCode: 0,  // H code (tool length register)
-    activeDCode: 0,  // D code (cutter diameter register)
-    machinePosition: { x: 0, y: 0, z: 0 },  // Machine coordinates
-    workPosition: { x: 0, y: 0, z: 0 },  // Work coordinates
-    compMode: 'none'  // none, left (G41), right (G42)
-  });
+  // Old state variables removed - now using reducer
   
-  const [toolDatabase, setToolDatabase] = useState([
-    { 
-      id: 1, tNumber: 'T1', name: 'End Mill 10mm', diameter: 10, flutes: 4, type: 'endmill', 
-      material: 'Carbide', coating: 'TiAlN', lengthOffset: 75.5, wearOffset: 0,
-      holder: { type: 'SK40/BT40', holderType: 'Collet Chuck', collet: 'ER32-10' },
-      stickout: 35, cuttingLength: 22, overallLength: 72
-    },
-    { 
-      id: 2, tNumber: 'T2', name: 'End Mill 6mm', diameter: 6, flutes: 3, type: 'endmill', 
-      material: 'Carbide', coating: 'TiN', lengthOffset: 65.2, wearOffset: 0,
-      holder: { type: 'SK40/BT40', holderType: 'Hydraulic Chuck', collet: null },
-      stickout: 30, cuttingLength: 18, overallLength: 63
-    },
-    { 
-      id: 3, tNumber: 'T3', name: 'Ball End 8mm', diameter: 8, flutes: 2, type: 'ballend', 
-      material: 'HSS', coating: 'None', lengthOffset: 70.0, wearOffset: 0,
-      holder: { type: 'SK40/BT40', holderType: 'Collet Chuck', collet: 'ER32-8' },
-      stickout: 32, cuttingLength: 16, overallLength: 65
-    },
-    { 
-      id: 4, tNumber: 'T4', name: 'Drill 5mm', diameter: 5, flutes: 2, type: 'drill', 
-      material: 'Carbide', coating: 'TiAlN', lengthOffset: 85.3, wearOffset: 0,
-      holder: { type: 'SK30/BT30', holderType: 'Collet Chuck', collet: 'ER32-5' },
-      stickout: 40, cuttingLength: 28, overallLength: 80
-    },
-    { 
-      id: 5, tNumber: 'T5', name: 'Face Mill 50mm', diameter: 50, flutes: 6, type: 'facemill', 
-      material: 'Carbide', coating: 'TiAlN', lengthOffset: 50.0, wearOffset: 0,
-      holder: { type: 'SK50/BT50', holderType: 'Shell Mill Holder', collet: null },
-      stickout: 0, cuttingLength: 10, overallLength: 45
-    },
-    { 
-      id: 6, tNumber: 'T6', name: 'Chamfer Mill 90°', diameter: 12, flutes: 4, type: 'chamfer', 
-      material: 'Carbide', coating: 'TiN', lengthOffset: 68.7, wearOffset: 0,
-      holder: { type: 'SK40/BT40', holderType: 'End Mill Holder', collet: null },
-      stickout: 28, cuttingLength: 15, overallLength: 60
-    }
-  ]);
-  
-  const [toolAssemblies, setToolAssemblies] = useState([]);
-  
-  // Tool Offset Table (like real CNC machine)
-  const [toolOffsetTable, setToolOffsetTable] = useState({
-    // H codes (Tool Length Offsets) - up to 99 in real machines
-    H: Array(100).fill(null).map((_, i) => ({
-      register: i,
-      lengthGeometry: i === 0 ? 0 : (i <= 6 ? [75.5, 65.2, 70.0, 85.3, 50.0, 68.7][i-1] || 0 : 0),
-      lengthWear: 0
-    })),
-    // D codes (Cutter Diameter Compensation) - up to 99 in real machines  
-    D: Array(100).fill(null).map((_, i) => ({
-      register: i,
-      diameterGeometry: i === 0 ? 0 : (i <= 6 ? [10, 6, 8, 5, 50, 12][i-1] || 0 : 0),
-      diameterWear: 0
-    }))
-  });
-
-  const [project, setProject] = useState({
-    name: 'Example Pocket Milling',
-    gcode: {
-      channel1: `; POCKET MILLING EXAMPLE
+  // Default G-code for initial project
+  const defaultGCode = `; POCKET MILLING EXAMPLE
 ; Material: Aluminum 6061
 ; Tool: 10mm End Mill
 ; ====================
@@ -566,36 +478,7 @@ M09 ; Coolant OFF
 M05 ; Spindle OFF
 G28 G91 Z0 ; Home Z
 G28 X0 Y0 ; Home XY
-M30 ; Program end`,
-      channel2: `; SUB SPINDLE PROGRAM
-; For dual-spindle lathes
-; ====================
-
-G21 G90 G94
-G55 ; Second work offset
-T11 M06
-S8000 M03
-G0 X0 Y0 Z5
-
-; Waiting for main spindle
-M00 ; Optional stop
-
-; Sub operations here
-G01 Z-10 F200
-G01 X20 F500
-G01 Y20
-G01 X-20
-G01 Y-20
-G0 Z5
-
-M30 ; End`
-    },
-    stepFile: null,
-    stepContent: null,
-    features: [],
-    suggestedTools: [],
-    tools: []
-  });
+M30 ; Program end`;
 
   const [draggedPanel, setDraggedPanel] = useState(null);
   const [resizingPanel, setResizingPanel] = useState(null);
@@ -613,170 +496,6 @@ M30 ; End`
   const updateToolpathRef = useRef(null);
   const originMarkerRef = useRef(null);
   const toolpathMarkerRef = useRef(null);  // Marker showing current position on toolpath
-
-  // Parse G-code to find all tools used in the program
-  const parseToolsFromGCode = (gcode) => {
-    const tools = new Map();
-    const lines = gcode.split('\n');
-    
-    lines.forEach(line => {
-      const trimmed = line.trim().toUpperCase();
-      
-      // Look for T commands (tool changes)
-      const tMatch = trimmed.match(/T(\d+)/);
-      if (tMatch) {
-        const toolNumber = parseInt(tMatch[1]);
-        if (!tools.has(toolNumber)) {
-          tools.set(toolNumber, {
-            number: toolNumber,
-            hCode: null,
-            dCode: null,
-            usageLines: []
-          });
-        }
-        tools.get(toolNumber).usageLines.push(line);
-      }
-      
-      // Look for H codes (tool length compensation)
-      const hMatch = trimmed.match(/H(\d+)/);
-      if (hMatch) {
-        const hCode = parseInt(hMatch[1]);
-        // Associate with the current or most recent tool
-        const currentTool = Array.from(tools.values()).pop();
-        if (currentTool) {
-          currentTool.hCode = hCode;
-        }
-      }
-      
-      // Look for D codes (cutter diameter compensation)
-      const dMatch = trimmed.match(/D(\d+)/);
-      if (dMatch && !trimmed.includes('G0')) { // Avoid G0D moves
-        const dCode = parseInt(dMatch[1]);
-        const currentTool = Array.from(tools.values()).pop();
-        if (currentTool) {
-          currentTool.dCode = dCode;
-        }
-      }
-    });
-    
-    return Array.from(tools.values());
-  };
-
-  // Enhanced G-code parser with tool compensation
-  const parseGCodePositions = (gcode) => {
-    const lines = gcode.split('\n');
-    const positions = [];
-    // Machine home position (G28 returns here)
-    const machineHome = { x: 0, y: 0, z: 200 };  // Z200 is typical machine home
-    // Start at machine home position
-    let current = { 
-      x: machineHome.x, 
-      y: machineHome.y, 
-      z: machineHome.z, 
-      f: 500, 
-      s: 0, 
-      g43: false, 
-      g41: false, 
-      g42: false, 
-      h: 0, 
-      d: 0,
-      workOffset: 'G54'  // Default work offset
-    };
-    let isRelative = false;  // G91 mode
-    
-    lines.forEach(line => {
-      const trimmed = line.trim();
-      // Check for empty lines or comments (both ; and parentheses style)
-      if (trimmed === '' || trimmed.startsWith(';') || trimmed.startsWith('(')) {
-        positions.push({ ...current, comment: true, line: trimmed });
-        return;
-      }
-      
-      // Check for G28 (Return to home)
-      if (/G28/i.test(line)) {
-        // G28 can be used with intermediate point or direct
-        // G28 Z0 means go to Z0 first, then home Z
-        // G28 G91 Z0 means move Z by 0 (no move) then home Z
-        const hasG91 = /G91/i.test(line);
-        const x = line.match(/X([-\d.]+)/i);
-        const y = line.match(/Y([-\d.]+)/i);
-        const z = line.match(/Z([-\d.]+)/i);
-        
-        // If G91 is in the line, intermediate moves are relative
-        if (hasG91) {
-          // Move to intermediate point (relative)
-          if (x) current.x += parseFloat(x[1]);
-          if (y) current.y += parseFloat(y[1]);
-          if (z) current.z += parseFloat(z[1]);
-          positions.push({ ...current, rapid: true, comment: false, line: trimmed + ' (intermediate)' });
-        } else if (x || y || z) {
-          // Move to intermediate point (absolute)
-          if (x) current.x = parseFloat(x[1]);
-          if (y) current.y = parseFloat(y[1]);
-          if (z) current.z = parseFloat(z[1]);
-          positions.push({ ...current, rapid: true, comment: false, line: trimmed + ' (intermediate)' });
-        }
-        
-        // Then move to home for specified axes
-        if (z || (!x && !y && !z)) current.z = machineHome.z;  // Home Z if specified or no axes
-        if (x || (!x && !y && !z && line.match(/X/i))) current.x = machineHome.x;
-        if (y || (!x && !y && !z && line.match(/Y/i))) current.y = machineHome.y;
-        
-        positions.push({ ...current, rapid: true, comment: false, line: trimmed + ' (home)' });
-        return;
-      }
-      
-      // Check for G90/G91 (absolute/relative mode)
-      if (/G90/i.test(line)) isRelative = false;
-      if (/G91/i.test(line)) isRelative = true;
-      
-      const x = line.match(/X([-\d.]+)/i);
-      const y = line.match(/Y([-\d.]+)/i);
-      const z = line.match(/Z([-\d.]+)/i);
-      const f = line.match(/F([\d.]+)/i);
-      const s = line.match(/S([\d]+)/i);
-      const h = line.match(/H([\d]+)/i);
-      const d = line.match(/D([\d]+)/i);
-      
-      // Check for work offset codes (G54-G59)
-      if (/G54/i.test(line)) current.workOffset = 'G54';
-      if (/G55/i.test(line)) current.workOffset = 'G55';
-      if (/G56/i.test(line)) current.workOffset = 'G56';
-      if (/G57/i.test(line)) current.workOffset = 'G57';
-      if (/G58/i.test(line)) current.workOffset = 'G58';
-      if (/G59/i.test(line)) current.workOffset = 'G59';
-      
-      // Check for tool compensation codes
-      if (/G43/i.test(line)) current.g43 = true;  // Tool length comp on
-      if (/G49/i.test(line)) current.g43 = false; // Tool length comp off
-      if (/G41/i.test(line)) { current.g41 = true; current.g42 = false; } // Cutter comp left
-      if (/G42/i.test(line)) { current.g42 = true; current.g41 = false; } // Cutter comp right
-      if (/G40/i.test(line)) { current.g41 = false; current.g42 = false; } // Cutter comp off
-      
-      // Handle relative vs absolute positioning
-      if (isRelative) {
-        if (x) current.x += parseFloat(x[1]);
-        if (y) current.y += parseFloat(y[1]);
-        if (z) current.z += parseFloat(z[1]);
-      } else {
-        if (x) current.x = parseFloat(x[1]);
-        if (y) current.y = parseFloat(y[1]);
-        if (z) current.z = parseFloat(z[1]);
-      }
-      
-      if (f) current.f = parseFloat(f[1]);
-      if (s) current.s = parseInt(s[1]);
-      if (h) current.h = parseInt(h[1]);
-      if (d) current.d = parseInt(d[1]);
-      
-      // Check for rapid move (G0 or G00)
-      const isRapid = /G0+\b/i.test(line);
-      
-      positions.push({ ...current, rapid: isRapid, comment: false, line: trimmed });
-    });
-    
-    return positions;
-  };
   
   // Store simulation in ref for animation loop
   const simulationRef = useRef(simulation);
@@ -794,30 +513,31 @@ M30 ; End`
   useEffect(() => {
     if (!mountRef.current) return;
 
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a0e1a);
-    scene.fog = new THREE.Fog(0x0a0e1a, 200, 2000);
-    sceneRef.current = scene;
+    try {
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0a0e1a);
+      scene.fog = new THREE.Fog(0x0a0e1a, 200, 2000);
+      sceneRef.current = scene;
 
-    const camera = new THREE.PerspectiveCamera(
-      45,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      5000
-    );
-    camera.position.set(300, 300, 500);
-    camera.up.set(0, 0, 1);
-    cameraRef.current = camera;
+      const camera = new THREE.PerspectiveCamera(
+        45,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        5000
+      );
+      camera.position.set(300, 300, 500);
+      camera.up.set(0, 0, 1);
+      cameraRef.current = camera;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
-    mountRef.current.appendChild(renderer.domElement);
-    rendererRef.current = renderer;
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      mountRef.current.appendChild(renderer.domElement);
+      rendererRef.current = renderer;
 
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controlsRef.current = controls;
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controlsRef.current = controls;
     
     // Add mouse interaction for tool
     const raycaster = new THREE.Raycaster();
@@ -1045,9 +765,9 @@ M30 ; End`
     gridHelper.rotateX(Math.PI / 2);
     scene.add(gridHelper);
 
-    // Axes
-    const axesHelper = new THREE.AxesHelper(200);
-    scene.add(axesHelper);
+    // Main machine axes
+    const mainAxes = createAxisHelper(200, 1, false);
+    scene.add(mainAxes);
 
     // Machine bed
     const bedGeometry = new THREE.BoxGeometry(600, 400, 20);
@@ -1123,295 +843,12 @@ M30 ; End`
     const toolGroup = new THREE.Group();
     
     // Function to rebuild tool geometry based on assembly
-    const rebuildToolGeometry = (assembly) => {
-      // Store current assembly in tool userData
-      toolGroup.userData.currentAssembly = assembly;
-      
-      // Clear existing tool meshes (keep coordinate system and ruler)
-      const coordSystem = toolGroup.getObjectByName('toolCoordSystem');
-      const ruler = toolGroup.getObjectByName('stickoutRuler');
-      toolGroup.clear();
-      if (coordSystem) toolGroup.add(coordSystem);
-      if (ruler) {
-        // Update ruler indicator position based on assembly stickout
-        const stickout = assembly?.components?.tool?.stickout || 30;
-        const indicator = ruler.getObjectByName('stickoutIndicator');
-        if (indicator) {
-          indicator.position.z = -stickout;
-        }
-        toolGroup.add(ruler);
-      }
-      
-      // Check for new assembly structure from ToolManagerPro
-      const hasComponents = assembly?.components;
-      const tool = hasComponents ? assembly.components.tool : assembly?.tool;
-      const holder = hasComponents ? assembly.components.holder : assembly?.holder;
-      
-      if (!assembly || !tool) {
-        // Default tool visualization
-        const holderGeometry = new THREE.CylinderGeometry(12, 12, 40, 32);
-        const holderMaterial = new THREE.MeshStandardMaterial({ 
-          color: 0x333333,
-          metalness: 0.9,
-          roughness: 0.1
-        });
-        const holderMesh = new THREE.Mesh(holderGeometry, holderMaterial);
-        holderMesh.rotation.x = Math.PI / 2;
-        holderMesh.position.z = 20;
-        toolGroup.add(holderMesh);
-        
-        const toolGeometry = new THREE.CylinderGeometry(5, 5, 30, 32);
-        const toolMaterial = new THREE.MeshPhongMaterial({ 
-          color: 0x00ff00,
-          emissive: 0x00ff00,
-          emissiveIntensity: 0.3
-        });
-        const toolMesh = new THREE.Mesh(toolGeometry, toolMaterial);
-        toolMesh.rotation.x = Math.PI / 2;
-        toolMesh.position.z = -5;
-        toolGroup.add(toolMesh);
-        return;
-      }
-      
-      // Build tool based on assembly data
-      const holderType = holder || 'ISO40';
-      const toolData = tool;
-      
-      // Holder visualization
-      let holderColor = 0x333333;
-      let holderSize = 40;
-      if (holderType.includes('SK40')) {
-        holderColor = 0x2a2a2a;
-        holderSize = 45;
-      } else if (holderType.includes('CAT40')) {
-        holderColor = 0x3a3a3a;
-        holderSize = 48;
-      } else if (holderType.includes('HSK')) {
-        holderColor = 0x4a4a4a;
-        holderSize = 42;
-      }
-      
-      // Create holder with taper
-      const holderTopRadius = 15;
-      const holderBottomRadius = 10;
-      const holderGeometry = new THREE.CylinderGeometry(
-        holderBottomRadius, 
-        holderTopRadius, 
-        holderSize, 
-        32
-      );
-      const holderMaterial = new THREE.MeshStandardMaterial({ 
-        color: holderColor,
-        metalness: 0.95,
-        roughness: 0.05
-      });
-      const holderMesh = new THREE.Mesh(holderGeometry, holderMaterial);
-      holderMesh.rotation.x = Math.PI / 2;
-      holderMesh.position.z = holderSize / 2;
-      toolGroup.add(holderMesh);
-      
-      // Collet/Chuck
-      const colletRadius = (toolData.diameter / 2) + 2;
-      const colletGeometry = new THREE.CylinderGeometry(
-        colletRadius, 
-        colletRadius + 2, 
-        15, 
-        16
-      );
-      const colletMaterial = new THREE.MeshStandardMaterial({ 
-        color: 0x666666,
-        metalness: 0.9,
-        roughness: 0.1
-      });
-      const collet = new THREE.Mesh(colletGeometry, colletMaterial);
-      collet.rotation.x = Math.PI / 2;
-      collet.position.z = -5;
-      toolGroup.add(collet);
-      
-      // Tool visualization based on type
-      const toolRadius = toolData.diameter / 2;
-      const cuttingLength = toolData.cuttingLength || 30;
-      const flutes = toolData.flutes || 2;
-      
-      // Tool shank
-      const shankGeometry = new THREE.CylinderGeometry(
-        toolRadius, 
-        toolRadius, 
-        20, 
-        16
-      );
-      const shankMaterial = new THREE.MeshStandardMaterial({ 
-        color: 0x888888,
-        metalness: 0.98,
-        roughness: 0.02
-      });
-      const shank = new THREE.Mesh(shankGeometry, shankMaterial);
-      shank.rotation.x = Math.PI / 2;
-      shank.position.z = -15;
-      toolGroup.add(shank);
-      
-      // Cutting part with coating color
-      let toolColor = 0xcccccc;
-      let emissiveColor = 0x00ff00;
-      if (toolData.coating === 'TiAlN') {
-        toolColor = 0x9966ff;
-        emissiveColor = 0x6633ff;
-      } else if (toolData.coating === 'AlTiN') {
-        toolColor = 0x6666ff;
-        emissiveColor = 0x3333ff;
-      } else if (toolData.coating === 'TiN') {
-        toolColor = 0xffcc00;
-        emissiveColor = 0xff9900;
-      } else if (toolData.coating === 'DLC') {
-        toolColor = 0x111111;
-        emissiveColor = 0x333333;
-      }
-      
-      if (toolData.type === 'End Mill') {
-        // End mill with flutes
-        const cuttingGeometry = new THREE.CylinderGeometry(
-          toolRadius * 0.95, 
-          toolRadius, 
-          cuttingLength, 
-          flutes * 6
-        );
-        const cuttingMaterial = new THREE.MeshPhongMaterial({ 
-          color: toolColor,
-          emissive: emissiveColor,
-          emissiveIntensity: 0.2,
-          metalness: 0.99,
-          roughness: 0.01
-        });
-        const cutting = new THREE.Mesh(cuttingGeometry, cuttingMaterial);
-        cutting.rotation.x = Math.PI / 2;
-        cutting.position.z = -25 - cuttingLength / 2;
-        cutting.userData.isCuttingPart = true;
-        cutting.userData.originalZ = -25 - cuttingLength / 2;
-        toolGroup.add(cutting);
-        
-        // Add flute spirals
-        for (let i = 0; i < flutes; i++) {
-          const angle = (i * Math.PI * 2) / flutes;
-          const fluteGeometry = new THREE.BoxGeometry(0.5, 0.5, cuttingLength);
-          const fluteMaterial = new THREE.MeshPhongMaterial({ 
-            color: 0x001100,
-            emissive: 0x00ff00,
-            emissiveIntensity: 0.1
-          });
-          const flute = new THREE.Mesh(fluteGeometry, fluteMaterial);
-          flute.position.x = Math.cos(angle) * toolRadius * 0.8;
-          flute.position.y = Math.sin(angle) * toolRadius * 0.8;
-          flute.position.z = -25 - cuttingLength / 2;
-          toolGroup.add(flute);
-        }
-      } else if (toolData.type === 'Ball Mill') {
-        // Ball nose end mill
-        const ballGeometry = new THREE.SphereGeometry(toolRadius, 16, 16);
-        const ballMaterial = new THREE.MeshPhongMaterial({ 
-          color: toolColor,
-          emissive: emissiveColor,
-          emissiveIntensity: 0.2
-        });
-        const ball = new THREE.Mesh(ballGeometry, ballMaterial);
-        ball.position.z = -25 - cuttingLength;
-        ball.userData.isCuttingPart = true;
-        ball.userData.originalZ = -25 - cuttingLength;
-        toolGroup.add(ball);
-        
-        const neckGeometry = new THREE.CylinderGeometry(
-          toolRadius * 0.9, 
-          toolRadius, 
-          cuttingLength - toolRadius, 
-          16
-        );
-        const neck = new THREE.Mesh(neckGeometry, ballMaterial);
-        neck.rotation.x = Math.PI / 2;
-        neck.position.z = -25 - (cuttingLength - toolRadius) / 2;
-        toolGroup.add(neck);
-      } else if (toolData.type === 'Face Mill') {
-        // Face mill with inserts
-        const faceGeometry = new THREE.CylinderGeometry(
-          toolRadius, 
-          toolRadius * 1.1, 
-          10, 
-          8
-        );
-        const faceMaterial = new THREE.MeshStandardMaterial({ 
-          color: 0x666666,
-          metalness: 0.9,
-          roughness: 0.1
-        });
-        const face = new THREE.Mesh(faceGeometry, faceMaterial);
-        face.rotation.x = Math.PI / 2;
-        face.position.z = -30;
-        toolGroup.add(face);
-        
-        // Add carbide inserts
-        const insertCount = toolData.inserts || 5;
-        for (let i = 0; i < insertCount; i++) {
-          const angle = (i * Math.PI * 2) / insertCount;
-          const insertGeometry = new THREE.BoxGeometry(3, 3, 1.5);
-          const insertMaterial = new THREE.MeshPhongMaterial({ 
-            color: 0xffcc00,
-            emissive: 0xffaa00,
-            emissiveIntensity: 0.4
-          });
-          const insert = new THREE.Mesh(insertGeometry, insertMaterial);
-          insert.position.x = Math.cos(angle) * toolRadius * 0.85;
-          insert.position.y = Math.sin(angle) * toolRadius * 0.85;
-          insert.position.z = -30;
-          insert.rotation.z = angle;
-          toolGroup.add(insert);
-        }
-      } else if (toolData.type === 'Drill') {
-        // Drill with point
-        const drillBodyGeometry = new THREE.CylinderGeometry(
-          toolRadius, 
-          toolRadius, 
-          cuttingLength - toolRadius * 2, 
-          16
-        );
-        const drillMaterial = new THREE.MeshPhongMaterial({ 
-          color: toolColor,
-          emissive: emissiveColor,
-          emissiveIntensity: 0.2
-        });
-        const drillBody = new THREE.Mesh(drillBodyGeometry, drillMaterial);
-        drillBody.rotation.x = Math.PI / 2;
-        drillBody.position.z = -25 - (cuttingLength - toolRadius * 2) / 2;
-        toolGroup.add(drillBody);
-        
-        // Drill point
-        const pointGeometry = new THREE.ConeGeometry(toolRadius, toolRadius * 2, 16);
-        const point = new THREE.Mesh(pointGeometry, drillMaterial);
-        point.rotation.x = Math.PI;
-        point.position.z = -25 - cuttingLength + toolRadius;
-        toolGroup.add(point);
-      } else {
-        // Default tool
-        const defaultGeometry = new THREE.CylinderGeometry(
-          toolRadius, 
-          toolRadius, 
-          cuttingLength, 
-          16
-        );
-        const defaultMaterial = new THREE.MeshPhongMaterial({ 
-          color: toolColor,
-          emissive: emissiveColor,
-          emissiveIntensity: 0.2
-        });
-        const defaultTool = new THREE.Mesh(defaultGeometry, defaultMaterial);
-        defaultTool.rotation.x = Math.PI / 2;
-        defaultTool.position.z = -25 - cuttingLength / 2;
-        toolGroup.add(defaultTool);
-      }
-    };
     
     // Build initial tool
-    rebuildToolGeometry(simulation.toolAssembly);
+    rebuildToolGeometry(toolGroup, simulation.toolAssembly);
     
     // Store function for updates
-    window.updateTool3D = rebuildToolGeometry;
+    window.updateTool3D = (assembly) => rebuildToolGeometry(toolGroup, assembly);
     
     // Store function to update stickout from 3D interaction
     window.updateToolStickout = (newStickout) => {
@@ -1443,48 +880,9 @@ M30 ; End`
     const controlPoint = new THREE.Mesh(controlPointGeometry, controlPointMaterial);
     toolCoordGroup.add(controlPoint);
     
-    // X axis - Red
-    const toolXGeometry = new THREE.CylinderGeometry(0.2, 0.2, 10, 4);
-    const toolXMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-    const toolXAxis = new THREE.Mesh(toolXGeometry, toolXMaterial);
-    toolXAxis.rotation.z = Math.PI / 2;
-    toolXAxis.position.x = 5;
-    toolCoordGroup.add(toolXAxis);
-    
-    // X cone
-    const toolXConeGeometry = new THREE.ConeGeometry(0.8, 2, 4);
-    const toolXCone = new THREE.Mesh(toolXConeGeometry, toolXMaterial);
-    toolXCone.rotation.z = -Math.PI / 2;
-    toolXCone.position.x = 10;
-    toolCoordGroup.add(toolXCone);
-    
-    // Y axis - Green  
-    const toolYGeometry = new THREE.CylinderGeometry(0.2, 0.2, 10, 4);
-    const toolYMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    const toolYAxis = new THREE.Mesh(toolYGeometry, toolYMaterial);
-    toolYAxis.rotation.x = Math.PI / 2;
-    toolYAxis.position.y = 5;
-    toolCoordGroup.add(toolYAxis);
-    
-    // Y cone
-    const toolYConeGeometry = new THREE.ConeGeometry(0.8, 2, 4);
-    const toolYCone = new THREE.Mesh(toolYConeGeometry, toolYMaterial);
-    toolYCone.rotation.x = Math.PI / 2;
-    toolYCone.position.y = 10;
-    toolCoordGroup.add(toolYCone);
-    
-    // Z axis - Blue
-    const toolZGeometry = new THREE.CylinderGeometry(0.2, 0.2, 10, 4);
-    const toolZMaterial = new THREE.MeshBasicMaterial({ color: 0x0080ff });
-    const toolZAxis = new THREE.Mesh(toolZGeometry, toolZMaterial);
-    toolZAxis.position.z = 5;
-    toolCoordGroup.add(toolZAxis);
-    
-    // Z cone
-    const toolZConeGeometry = new THREE.ConeGeometry(0.8, 2, 4);
-    const toolZCone = new THREE.Mesh(toolZConeGeometry, toolZMaterial);
-    toolZCone.position.z = 10;
-    toolCoordGroup.add(toolZCone);
+    // Add small axis indicator for tool
+    const toolAxes = createToolAxisIndicator();
+    toolCoordGroup.add(toolAxes);
     
     // Position coordinate system at control point
     // This will move based on G43 status
@@ -1500,96 +898,6 @@ M30 ; End`
     };
     
     // Add stickout ruler visualization (will be updated based on tool)
-    const createRuler = (maxLength = 100) => {
-      const rulerGroup = new THREE.Group();
-      rulerGroup.name = 'stickoutRuler';
-      rulerGroup.visible = false; // Hidden by default
-      
-      // Create ruler line
-      const rulerGeometry = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(0, 0, 0),
-        new THREE.Vector3(0, 0, -maxLength)
-      ]);
-      const rulerMaterial = new THREE.LineBasicMaterial({ 
-        color: 0x00ff88, 
-        linewidth: 2,
-        transparent: true,
-        opacity: 0.8
-      });
-      const rulerLine = new THREE.Line(rulerGeometry, rulerMaterial);
-      rulerLine.position.x = 15; // Offset to side of tool
-      rulerGroup.add(rulerLine);
-      
-      // Add tick marks every 10mm
-      for (let i = 0; i <= maxLength; i += 10) {
-        const tickGeometry = new THREE.BufferGeometry().setFromPoints([
-          new THREE.Vector3(13, 0, -i),
-          new THREE.Vector3(17, 0, -i)
-        ]);
-        const tick = new THREE.Line(tickGeometry, rulerMaterial);
-        rulerGroup.add(tick);
-        
-        // Add text labels for major ticks
-        if (i % 20 === 0) {
-          // Use sprites for text labels
-          const canvas = document.createElement('canvas');
-          const context = canvas.getContext('2d');
-          canvas.width = 64;
-          canvas.height = 32;
-          context.font = '16px Arial';
-          context.fillStyle = '#00ff88';
-          context.textAlign = 'center';
-          context.fillText(`${i}`, 32, 24);
-          
-          const texture = new THREE.CanvasTexture(canvas);
-          const spriteMaterial = new THREE.SpriteMaterial({ 
-            map: texture,
-            transparent: true
-          });
-          const sprite = new THREE.Sprite(spriteMaterial);
-          sprite.position.set(25, 0, -i);
-          sprite.scale.set(8, 4, 1);
-          rulerGroup.add(sprite);
-        }
-      }
-      
-      // Add stickout indicator
-      const indicatorGeometry = new THREE.ConeGeometry(3, 6, 8);
-      const indicatorMaterial = new THREE.MeshBasicMaterial({ 
-        color: 0xffaa00,
-        transparent: true,
-        opacity: 0.9
-      });
-      const stickoutIndicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
-      stickoutIndicator.rotation.z = -Math.PI / 2;
-      stickoutIndicator.position.set(10, 0, -30); // Default 30mm stickout
-      stickoutIndicator.name = 'stickoutIndicator';
-      rulerGroup.add(stickoutIndicator);
-      
-      // Add current stickout text display
-      const textCanvas = document.createElement('canvas');
-      textCanvas.width = 128;
-      textCanvas.height = 64;
-      const textContext = textCanvas.getContext('2d');
-      textContext.font = 'bold 24px Arial';
-      textContext.fillStyle = '#ffaa00';
-      textContext.textAlign = 'center';
-      textContext.fillText('30.0mm', 64, 32);
-      
-      const textTexture = new THREE.CanvasTexture(textCanvas);
-      const textMaterial = new THREE.SpriteMaterial({ 
-        map: textTexture,
-        transparent: true
-      });
-      const textSprite = new THREE.Sprite(textMaterial);
-      textSprite.position.set(10, 10, -30);
-      textSprite.scale.set(20, 10, 1);
-      textSprite.name = 'stickoutText';
-      rulerGroup.add(textSprite);
-      
-      return rulerGroup;
-    };
-    
     const rulerGroup = createRuler();
     toolGroup.add(rulerGroup);
     
@@ -1601,50 +909,8 @@ M30 ; End`
     toolRef.current = toolGroup;
     
     // Add work origin marker (coordinate system axes)
-    const originGroup = new THREE.Group();
-    
-    // X axis - Red
-    const xAxisGeometry = new THREE.CylinderGeometry(0.5, 0.5, 30, 8);
-    const xAxisMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-    const xAxis = new THREE.Mesh(xAxisGeometry, xAxisMaterial);
-    xAxis.rotation.z = Math.PI / 2;
-    xAxis.position.x = 15;
-    originGroup.add(xAxis);
-    
-    // X cone
-    const xConeGeometry = new THREE.ConeGeometry(2, 5, 8);
-    const xCone = new THREE.Mesh(xConeGeometry, xAxisMaterial);
-    xCone.rotation.z = -Math.PI / 2;
-    xCone.position.x = 30;
-    originGroup.add(xCone);
-    
-    // Y axis - Green
-    const yAxisGeometry = new THREE.CylinderGeometry(0.5, 0.5, 30, 8);
-    const yAxisMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    const yAxis = new THREE.Mesh(yAxisGeometry, yAxisMaterial);
-    yAxis.rotation.x = Math.PI / 2;
-    yAxis.position.y = 15;
-    originGroup.add(yAxis);
-    
-    // Y cone
-    const yConeGeometry = new THREE.ConeGeometry(2, 5, 8);
-    const yCone = new THREE.Mesh(yConeGeometry, yAxisMaterial);
-    yCone.rotation.x = Math.PI / 2;
-    yCone.position.y = 30;
-    originGroup.add(yCone);
-    
-    // Z axis - Blue
-    const zAxisGeometry = new THREE.CylinderGeometry(0.5, 0.5, 30, 8);
-    const zAxisMaterial = new THREE.MeshBasicMaterial({ color: 0x0080ff });
-    const zAxis = new THREE.Mesh(zAxisGeometry, zAxisMaterial);
-    zAxis.position.z = 15;
-    originGroup.add(zAxis);
-    
-    // Z cone
-    const zConeGeometry = new THREE.ConeGeometry(2, 5, 8);
-    const zCone = new THREE.Mesh(zConeGeometry, zAxisMaterial);
-    zCone.position.z = 30;
-    originGroup.add(zCone);
+    // Use the work offset axis helper
+    const originGroup = createWorkOffsetAxis();
     
     // Origin sphere
     const originSphereGeometry = new THREE.SphereGeometry(2, 16, 16);
@@ -1857,8 +1123,8 @@ M30 ; End`
       stepBackward,
       setView: setCameraView,
       togglePanel,
-      increaseSpeed: () => setSimulation(prev => ({ ...prev, speed: Math.min(prev.speed * 2, 10) })),
-      decreaseSpeed: () => setSimulation(prev => ({ ...prev, speed: Math.max(prev.speed / 2, 0.1) })),
+      increaseSpeed: () => dispatch(actions.setSimulation({ speed: Math.min(simulation.speed * 2, 10) })),
+      decreaseSpeed: () => dispatch(actions.setSimulation({ speed: Math.max(simulation.speed / 2, 0.1) })),
       newProject,
       openFile: () => document.getElementById('file-input')?.click(),
       saveFile: saveProject,
@@ -1876,13 +1142,20 @@ M30 ; End`
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      if (mountRef.current && renderer.domElement) {
-        mountRef.current.removeChild(renderer.domElement);
+      if (mountRef.current && rendererRef.current?.domElement) {
+        mountRef.current.removeChild(rendererRef.current.domElement);
       }
-      renderer.dispose();
+      rendererRef.current?.dispose();
       if (materialRemovalRef.current) materialRemovalRef.current.dispose();
-      if (shortcuts) shortcuts.dispose();
+      if (keyboardShortcuts) keyboardShortcuts.dispose();
     };
+    } catch (error) {
+      console.error('Failed to initialize 3D scene:', error);
+      setError({
+        message: 'Failed to initialize 3D visualization',
+        details: error.message
+      });
+    }
   }, []); // Only initialize once
   
   // Update toolpath when G-code or work offset changes - with debounce for real-time updates
@@ -2068,7 +1341,7 @@ M30 ; End`
             
             // Only pause if stopOnCollision is enabled
             if (stopOnCollision) {
-              setSimulation(prev => ({ ...prev, isPlaying: false }));
+              dispatch(actions.pauseSimulation());
             }
           }
         }
@@ -2092,8 +1365,7 @@ M30 ; End`
       // Update simulation state with compensation info
       if (currentPos.g43 !== simulation.toolLengthCompActive || 
           currentPos.h !== simulation.activeHCode) {
-        setSimulation(prev => ({ 
-          ...prev, 
+        dispatch(actions.setSimulation({ 
           toolLengthCompActive: currentPos.g43,
           activeHCode: currentPos.h,
           activeDCode: currentPos.d
@@ -2102,7 +1374,7 @@ M30 ; End`
       
       // Update spindle speed from G-code
       if (currentPos.s !== undefined && currentPos.s !== simulation.spindleSpeed) {
-        setSimulation(prev => ({ ...prev, spindleSpeed: currentPos.s }));
+        dispatch(actions.setSimulation({ spindleSpeed: currentPos.s }));
       }
     }
   }, [simulation.currentLine, project.gcode.channel1, setupConfig.workOffsets, toolOffsetTable]);
@@ -2231,39 +1503,39 @@ M30 ; End`
     
     // Line advancement timer
     simulationIntervalRef.current = setInterval(() => {
-      setSimulation(prev => {
-        if (prev.currentLine >= lines.length - 1) {
-          return { ...prev, isPlaying: false };
-        }
-        
-        // Find next non-comment line
-        let nextLine = prev.currentLine + 1;
-        while (nextLine < lines.length && 
-               (lines[nextLine].trim().startsWith(';') || 
-                lines[nextLine].trim().startsWith('(') ||
-                lines[nextLine].trim() === '')) {
-          nextLine++;
-        }
-        
-        if (nextLine >= lines.length) {
-          return { ...prev, isPlaying: false };
-        }
-        
-        // Set up tweening for next move
-        const currentPos = positions[prev.currentLine] || prev.position;
-        const nextPos = positions[nextLine] || prev.position;
-        
-        lastPositionRef.current = { x: currentPos.x, y: currentPos.y, z: currentPos.z };
-        targetPositionRef.current = { x: nextPos.x, y: nextPos.y, z: nextPos.z };
-        tweenProgressRef.current = 0;
-        
-        return { 
-          ...prev, 
-          currentLine: nextLine,
-          position: { x: nextPos.x, y: nextPos.y, z: nextPos.z, a: 0, b: 0, c: 0 }
-        };
-      });
-    }, 200 / simulation.speed); // Adjust speed for line advancement
+      // Check if we've reached the end
+      if (simulation.currentLine >= lines.length - 1) {
+        dispatch(actions.pauseSimulation());
+        return;
+      }
+      
+      // Find next non-comment line
+      let nextLine = simulation.currentLine + 1;
+      while (nextLine < lines.length && 
+             (lines[nextLine].trim().startsWith(';') || 
+              lines[nextLine].trim().startsWith('(') ||
+              lines[nextLine].trim() === '')) {
+        nextLine++;
+      }
+      
+      if (nextLine >= lines.length) {
+        dispatch(actions.pauseSimulation());
+        return;
+      }
+      
+      // Set up tweening for next move
+      const currentPos = positions[simulation.currentLine] || simulation.position;
+      const nextPos = positions[nextLine] || simulation.position;
+      
+      lastPositionRef.current = { x: currentPos.x, y: currentPos.y, z: currentPos.z };
+      targetPositionRef.current = { x: nextPos.x, y: nextPos.y, z: nextPos.z };
+      tweenProgressRef.current = 0;
+      
+      dispatch(actions.setSimulation({
+        currentLine: nextLine,
+        position: { x: nextPos.x, y: nextPos.y, z: nextPos.z, a: 0, b: 0, c: 0 }
+      }));
+    }, 200 / (simulation.speed || 1)); // Adjust speed for line advancement
     
     return () => {
       if (simulationIntervalRef.current) {
@@ -2324,11 +1596,13 @@ M30 ; End`
   };
 
   const bringToFront = (panelId) => {
+    setActivePanelId(panelId);
+    const maxZ = getMaxZIndex();
     setPanels(prev => ({
       ...prev,
       [panelId]: {
         ...prev[panelId],
-        zIndex: getMaxZIndex() + 1
+        zIndex: maxZ + 1
       }
     }));
   };
@@ -2401,21 +1675,25 @@ M30 ; End`
     const panel = panels[panelId];
     if (!panel.visible) return null;
 
-    // Compact panels that don't need title bar
-    const compactPanels = ['gcode', 'machineControl'];
+    // Compact panels that don't need full title bar
+    const compactPanels = ['gcode'];
     const isCompact = compactPanels.includes(panelId);
+    
+    // Single bar panels (like machineControl)
+    const barPanels = ['machineControl'];
+    const isBar = barPanels.includes(panelId);
 
     // Always use inline styles for proper sizing
     const panelStyle = {
       position: 'fixed',
       left: `${panel.position.x}px`,
       top: `${panel.position.y}px`,
-      width: `${panel.size.width}px`,
-      height: panel.minimized ? '40px' : `${panel.size.height}px`,
+      width: isBar ? 'auto' : `${panel.size.width}px`,
+      height: isBar ? '45px' : (panel.minimized ? '40px' : `${panel.size.height}px`),
       zIndex: panel.zIndex,
-      background: '#0a0e1a',
+      background: isBar ? 'linear-gradient(135deg, #1a1f2e, #0f1420)' : '#0a0e1a',
       border: '1px solid #333',
-      borderRadius: isCompact ? '4px' : '8px',
+      borderRadius: isBar ? '6px' : (isCompact ? '4px' : '8px'),
       boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
       display: 'flex',
       flexDirection: 'column',
@@ -2426,8 +1704,24 @@ M30 ; End`
       <div 
         key={panelId}
         style={panelStyle}
+        onMouseDown={() => bringToFront(panelId)}
       >
-        {isCompact ? (
+        {isBar ? (
+          // Bar panel - draggable by clicking anywhere
+          <div 
+            style={{
+              cursor: 'move',
+              width: '100%',
+              height: '100%'
+            }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              startDragging(e, panelId);
+            }}
+          >
+            {content}
+          </div>
+        ) : isCompact ? (
           // Compact header - just a thin draggable strip with minimal controls
           <div 
             style={{
@@ -2441,7 +1735,10 @@ M30 ; End`
               userSelect: 'none',
               height: '24px'
             }}
-            onMouseDown={(e) => startDragging(e, panelId)}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              startDragging(e, panelId);
+            }}
           >
             <div style={{ display: 'flex', gap: '2px' }}>
               <button 
@@ -2487,7 +1784,10 @@ M30 ; End`
               cursor: 'move',
               userSelect: 'none'
             }}
-            onMouseDown={(e) => startDragging(e, panelId)}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              startDragging(e, panelId);
+            }}
           >
             <span style={{ 
               color: '#00d4ff', 
@@ -2621,7 +1921,7 @@ M30 ; End`
           <button
             onClick={() => {
               setCollisionAlert(null);
-              setSimulation(prev => ({ ...prev, isPlaying: true }));
+              dispatch(actions.playSimulation());
             }}
             style={{
               flex: 1,
@@ -2748,13 +2048,14 @@ M30 ; End`
       
       <div style={{ display: 'flex', gap: '5px' }}>
         <button 
-          onClick={() => setSimulation(prev => ({ ...prev, isPlaying: !prev.isPlaying }))}
+          onClick={() => simulation.isPlaying ? pauseSimulation() : dispatch(actions.playSimulation())}
           className={simulation.isPlaying ? 'active' : ''}
           title="Play/Pause"
         >
           {simulation.isPlaying ? '⏸️' : '▶️'}
         </button>
         <button onClick={() => stopSimulation()} title="Stop">⏹️</button>
+        <button onClick={() => resetSimulation()} title="Reset">🔄</button>
         <button onClick={() => stepBackward()} title="Step Back">⏮️</button>
         <button onClick={() => stepForward()} title="Step Forward">⏭️</button>
         <input 
@@ -2763,7 +2064,7 @@ M30 ; End`
           max="5"
           step="0.1"
           value={simulation.speed}
-          onChange={(e) => setSimulation(prev => ({ ...prev, speed: parseFloat(e.target.value) }))}
+          onChange={(e) => dispatch(actions.setSimulation({ speed: parseFloat(e.target.value) }))}
           className="speed-slider"
           title={`Speed: ${simulation.speed}x`}
         />
@@ -2926,45 +2227,61 @@ M30 ; End`
   const handleFileLoad = (file) => {
     if (!file) return;
     
-    const ext = file.name.toLowerCase();
-    if (ext.endsWith('.step') || ext.endsWith('.stp')) {
-      // Load STEP file
-      loadSTEPFile(file);
-      togglePanel('stepProcessor');
-    } else if (ext.endsWith('.stl')) {
-      // Load STL file
-      loadSTLFile(file);
-    } else {
-      // Load G-code
-      loadGCodeFile(file);
-    }
+    handleAsync(async () => {
+      const ext = file.name.toLowerCase();
+      if (ext.endsWith('.step') || ext.endsWith('.stp')) {
+        // Load STEP file
+        await loadSTEPFile(file);
+        togglePanel('stepProcessor');
+      } else if (ext.endsWith('.stl')) {
+        // Load STL file
+        await loadSTLFile(file);
+      } else {
+        // Load G-code
+        await loadGCodeFile(file);
+      }
+    }, { errorMessage: `Failed to load file: ${file.name}` });
   };
 
   const loadSTEPFile = (file) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      // Parse STEP file content
-      const stepContent = e.target.result;
-      
-      // Extract basic features from STEP (simplified - real implementation would parse STEP format)
-      const features = detectFeaturesFromSTEP(stepContent);
-      const suggestedTools = generateToolsFromFeatures(features);
-      
-      setProject(prev => ({
-        ...prev,
-        stepFile: file.name,
-        stepContent: stepContent,
-        features: features,
-        suggestedTools: suggestedTools
-      }));
-      
-      // Show STEP processor panel
-      setPanels(prev => ({
-        ...prev,
-        stepProcessor: { ...prev.stepProcessor, visible: true }
-      }));
-    };
-    reader.readAsText(file);
+    handleAsync(async () => {
+      const reader = new FileReader();
+      return new Promise((resolve, reject) => {
+        reader.onload = (e) => {
+          try {
+            // Parse STEP file content
+            const stepContent = e.target.result;
+            
+            // Extract basic features from STEP (simplified - real implementation would parse STEP format)
+            const features = detectFeaturesFromSTEP(stepContent);
+            const suggestedTools = generateToolsFromFeatures(features);
+            
+            setProject(prev => ({
+              ...prev,
+              stepFile: file.name,
+              stepContent: stepContent,
+              features: features,
+              suggestedTools: suggestedTools
+            }));
+            
+            // Show STEP processor panel
+            setPanels(prev => ({
+              ...prev,
+              stepProcessor: { ...prev.stepProcessor, visible: true }
+            }));
+            
+            resolve();
+          } catch (err) {
+            reject(err);
+          }
+        };
+        reader.onerror = () => reject(new Error('Failed to read STEP file'));
+        reader.readAsText(file);
+      });
+    }, {
+      errorMessage: 'Failed to load STEP file',
+      onError: (err) => console.error('STEP load error:', err)
+    });
   };
   
   const detectFeaturesFromSTEP = (content) => {
@@ -3060,62 +2377,88 @@ M30 ; End`
   };
 
   const loadSTLFile = (file) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const loader = new STLLoader();
-      const geometry = loader.parse(e.target.result);
-      const material = new THREE.MeshPhongMaterial({ color: 0x8888ff, opacity: 0.8, transparent: true });
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.position.z = 50;
-      sceneRef.current.add(mesh);
-    };
-    reader.readAsArrayBuffer(file);
+    handleAsync(async () => {
+      const reader = new FileReader();
+      return new Promise((resolve, reject) => {
+        reader.onload = (e) => {
+          try {
+            const loader = new STLLoader();
+            const geometry = loader.parse(e.target.result);
+            const material = new THREE.MeshPhongMaterial({ color: 0x8888ff, opacity: 0.8, transparent: true });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.z = 50;
+            sceneRef.current.add(mesh);
+            resolve();
+          } catch (err) {
+            reject(err);
+          }
+        };
+        reader.onerror = () => reject(new Error('Failed to read STL file'));
+        reader.readAsArrayBuffer(file);
+      });
+    }, {
+      errorMessage: 'Failed to load STL file',
+      onError: (err) => console.error('STL load error:', err)
+    });
   };
 
   const loadGCodeFile = (file) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const newGCode = e.target.result;
-      
-      // Update project with new G-code
-      setProject(prev => ({
-        ...prev,
-        gcode: { ...prev.gcode, channel1: newGCode }
-      }));
-      
-      // Parse the new G-code to get starting position
-      const positions = parseGCodePositions(newGCode);
-      const startPos = positions.length > 0 ? positions[0] : { x: 0, y: 0, z: 200 };  // Default to machine home
-      
-      // Parse tools used in the program
-      const programTools = parseToolsFromGCode(newGCode);
-      
-      // Store tools for reference (accessible via simulation.programTools)
-      if (programTools.length > 0) {
-        const toolList = programTools.map(t => `T${t.number}${t.hCode ? ` H${t.hCode}` : ''}${t.dCode ? ` D${t.dCode}` : ''}`).join(', ');
-      }
-      
-      // Reset simulation with proper starting position
-      setSimulation(prev => ({
-        ...prev,
-        currentLine: 0,
-        isPlaying: false,
-        position: { 
-          x: startPos.x, 
-          y: startPos.y, 
-          z: startPos.z, 
-          a: 0, 
-          b: 0, 
-          c: 0 
-        },
-        programTools: programTools // Store tools needed by program
-      }));
-      
-      // IMPORTANT: The useEffect will handle the toolpath update automatically
-      // when project.gcode.channel1 changes, so we don't need setTimeout here
-      console.log('NC file loaded, toolpath will update via useEffect');
-    };
-    reader.readAsText(file);
+    handleAsync(async () => {
+      const reader = new FileReader();
+      return new Promise((resolve, reject) => {
+        reader.onload = (e) => {
+          try {
+            const newGCode = e.target.result;
+            
+            // Update project with new G-code
+            setProject(prev => ({
+              ...prev,
+              gcode: { ...prev.gcode, channel1: newGCode }
+            }));
+            
+            // Parse the new G-code to get starting position
+            const positions = parseGCodePositions(newGCode);
+            const startPos = positions.length > 0 ? positions[0] : { x: 0, y: 0, z: 200 };  // Default to machine home
+            
+            // Parse tools used in the program
+            const programTools = parseToolsFromGCode(newGCode);
+            
+            // Store tools for reference (accessible via simulation.programTools)
+            if (programTools.length > 0) {
+              const toolList = programTools.map(t => `T${t.number}${t.hCode ? ` H${t.hCode}` : ''}${t.dCode ? ` D${t.dCode}` : ''}`).join(', ');
+            }
+            
+            // Reset simulation with proper starting position
+            dispatch(actions.setSimulation({
+              currentLine: 0,
+              isPlaying: false,
+              position: { 
+                x: startPos.x, 
+                y: startPos.y, 
+                z: startPos.z, 
+                a: 0, 
+                b: 0, 
+                c: 0 
+              },
+              programTools: programTools // Store tools needed by program
+            }));
+            
+            // IMPORTANT: The useEffect will handle the toolpath update automatically
+            // when project.gcode.channel1 changes, so we don't need setTimeout here
+            console.log('NC file loaded, toolpath will update via useEffect');
+            
+            resolve();
+          } catch (err) {
+            reject(err);
+          }
+        };
+        reader.onerror = () => reject(new Error('Failed to read G-code file'));
+        reader.readAsText(file);
+      });
+    }, {
+      errorMessage: 'Failed to load G-code file',
+      onError: (err) => console.error('G-code load error:', err)
+    });
   };
 
   const setCameraView = (view) => {
@@ -3148,57 +2491,81 @@ M30 ; End`
   };
 
   const saveProject = () => {
-    const data = JSON.stringify(project);
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${project.name}.cnc`;
-    a.click();
+    handleSync(() => {
+      const data = JSON.stringify(project);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${project.name}.cnc`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }, { errorMessage: 'Failed to save project' });
   };
 
-  const stopSimulation = () => {
-    // Actually stop the simulation by clearing the interval
+  const pauseSimulation = () => {
+    // Pause - just stop playing but keep position
     if (simulationIntervalRef.current) {
       clearInterval(simulationIntervalRef.current);
       simulationIntervalRef.current = null;
     }
-    setSimulation(prev => ({
-      ...prev,
-      isPlaying: false,
-      currentLine: 0,
-      position: { x: 0, y: 0, z: 0, a: 0, b: 0, c: 0 }
-    }));
+    dispatch(actions.pauseSimulation());
+  };
+
+  const stopSimulation = () => {
+    // Stop - reset to beginning
+    if (simulationIntervalRef.current) {
+      clearInterval(simulationIntervalRef.current);
+      simulationIntervalRef.current = null;
+    }
+    dispatch(actions.stopSimulation());
+    // Reset tool position
+    if (toolRef.current) {
+      toolRef.current.position.set(0, 0, 250);
+    }
+  };
+
+  const resetSimulation = () => {
+    // Full reset - stop and clear everything
+    stopSimulation();
+    // Clear toolpath visualization
+    if (toolpathLinesRef.current) {
+      toolpathLinesRef.current.geometry.setFromPoints([]);
+    }
+    // Reset material removal if active
+    if (materialRemovalRef.current) {
+      materialRemovalRef.current.reset();
+    }
   };
   
   const playPauseSimulation = () => {
-    setSimulation(prev => ({
-      ...prev,
-      isPlaying: !prev.isPlaying
-    }));
+    if (simulation.isPlaying) {
+      dispatch(actions.pauseSimulation());
+    } else {
+      dispatch(actions.playSimulation());
+    }
   };
 
   const stepForward = () => {
     const lines = project.gcode.channel1.split('\n');
     const positions = parseGCodePositions(project.gcode.channel1);
     
-    setSimulation(prev => {
-      let nextLine = prev.currentLine + 1;
-      // Skip comments and empty lines
-      while (nextLine < lines.length && 
-             (lines[nextLine].trim().startsWith(';') || 
-              lines[nextLine].trim().startsWith('(') ||
-              lines[nextLine].trim() === '')) {
-        nextLine++;
-      }
-      nextLine = Math.min(nextLine, lines.length - 1);
-      const pos = positions[nextLine] || prev.position;
-      
-      // Trigger smooth animation
-      if (toolRef.current && pos) {
-        lastPositionRef.current = { ...prev.position };
-        targetPositionRef.current = { x: pos.x, y: pos.y, z: pos.z };
-        tweenProgressRef.current = 0;
+    let nextLine = simulation.currentLine + 1;
+    // Skip comments and empty lines
+    while (nextLine < lines.length && 
+           (lines[nextLine].trim().startsWith(';') || 
+            lines[nextLine].trim().startsWith('(') ||
+            lines[nextLine].trim() === '')) {
+      nextLine++;
+    }
+    nextLine = Math.min(nextLine, lines.length - 1);
+    const pos = positions[nextLine] || simulation.position;
+    
+    // Trigger smooth animation
+    if (toolRef.current && pos) {
+      lastPositionRef.current = { ...simulation.position };
+      targetPositionRef.current = { x: pos.x, y: pos.y, z: pos.z };
+      tweenProgressRef.current = 0;
         
         // Animate over 500ms
         const animateStep = () => {
@@ -3211,39 +2578,35 @@ M30 ; End`
         };
         animateStep();
       }
-      
-      return {
-        ...prev,
-        currentLine: nextLine,
-        position: { x: pos.x, y: pos.y, z: pos.z, a: 0, b: 0, c: 0 },
-        isPlaying: false
-      };
-    });
+    }
+    
+    dispatch(actions.setSimulation({
+      currentLine: nextLine,
+      position: { x: pos.x, y: pos.y, z: pos.z, a: 0, b: 0, c: 0 },
+      isPlaying: false
+    }));
   };
   
   const stepBackward = () => {
     const lines = project.gcode.channel1.split('\n');
     const positions = parseGCodePositions(project.gcode.channel1);
     
-    setSimulation(prev => {
-      let prevLine = prev.currentLine - 1;
-      // Skip comments and empty lines
-      while (prevLine >= 0 && 
-             (lines[prevLine].trim().startsWith(';') || 
-              lines[prevLine].trim().startsWith('(') ||
-              lines[prevLine].trim() === '')) {
-        prevLine--;
-      }
-      prevLine = Math.max(prevLine, 0);
-      const pos = positions[prevLine] || prev.position;
-      
-      return {
-        ...prev,
-        currentLine: prevLine,
-        position: { x: pos.x, y: pos.y, z: pos.z, a: 0, b: 0, c: 0 },
-        isPlaying: false
-      };
-    });
+    let prevLine = simulation.currentLine - 1;
+    // Skip comments and empty lines
+    while (prevLine >= 0 && 
+           (lines[prevLine].trim().startsWith(';') || 
+            lines[prevLine].trim().startsWith('(') ||
+            lines[prevLine].trim() === '')) {
+      prevLine--;
+    }
+    prevLine = Math.max(prevLine, 0);
+    const pos = positions[prevLine] || simulation.position;
+    
+    dispatch(actions.setSimulation({
+      currentLine: prevLine,
+      position: { x: pos.x, y: pos.y, z: pos.z, a: 0, b: 0, c: 0 },
+      isPlaying: false
+    }));
   };
 
   // Top menu system
@@ -3310,7 +2673,7 @@ M30 ; End`
     simulation: {
       label: 'Simulation',
       items: [
-        { id: 'play', label: simulation.isPlaying ? 'Pause' : 'Play', action: () => setSimulation(prev => ({ ...prev, isPlaying: !prev.isPlaying })) },
+        { id: 'play', label: simulation.isPlaying ? 'Pause' : 'Play', action: playPauseSimulation },
         { id: 'stop', label: 'Stop', action: stopSimulation },
         { id: 'stepForward', label: 'Step Forward', action: stepForward },
         { id: 'stepBackward', label: 'Step Backward', action: stepBackward },
@@ -3480,57 +2843,33 @@ M30 ; End`
       overflow: 'hidden',
       position: 'relative'
     }}>
-      {/* Top Menu Bar - Desktop Only */}
+      {/* Modern Top Bar - Desktop Only */}
       {!isMobile && (
-        <div className="top-menu-bar">
-        <div className="menu-items">
-          {Object.entries(menuItems).map(([key, menu]) => (
-            <div 
-              key={key} 
-              className={`menu-item ${activeMenu === key ? 'active' : ''}`}
-              onMouseEnter={() => setActiveMenu(key)}
-              onClick={() => setActiveMenu(activeMenu === key ? null : key)}
-            >
-              {menu.label}
-              {activeMenu === key && (
-                <div className="menu-dropdown" onMouseLeave={() => setActiveMenu(null)}>
-                  {menu.items.map((item, idx) => (
-                    item.divider ? (
-                      <div key={idx} className="menu-divider" />
-                    ) : (
-                      <div 
-                        key={item.id} 
-                        className={`menu-dropdown-item ${item.disabled ? 'disabled' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (!item.disabled && item.action) {
-                            item.action();
-                            setActiveMenu(null);
-                          }
-                        }}
-                      >
-                        <span className="menu-label">
-                          {item.checked !== undefined && (
-                            <span className="menu-check">{item.checked ? '✓' : ' '}</span>
-                          )}
-                          {item.label}
-                        </span>
-                        {item.shortcut && (
-                          <span className="menu-shortcut">{item.shortcut}</span>
-                        )}
-                        {item.submenu && (
-                          <span className="menu-arrow">▶</span>
-                        )}
-                      </div>
-                    )
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="menu-title">CNC Pro Suite v2.0</div>
-      </div>
+        <ModernTopBar
+          panels={panels}
+          togglePanel={togglePanel}
+          simulation={simulation}
+          onSimulationControl={(action) => {
+            if (action === 'playPause') {
+              simulation.isPlaying ? pauseSimulation() : dispatch(actions.playSimulation());
+            } else if (action === 'stop') {
+              stopSimulation();
+            } else if (action === 'reset') {
+              resetSimulation();
+            } else if (action === 'step') {
+              stepForward();
+            }
+          }}
+          onFileAction={(action) => {
+            if (action === 'new') newProject();
+            else if (action === 'open') document.getElementById('file-input')?.click();
+            else if (action === 'save') saveProject();
+            else if (action === 'import') document.getElementById('file-input')?.click();
+            else if (action === 'export') saveProject();
+          }}
+          onViewChange={(view) => setCameraView(view)}
+          projectName={project.name}
+        />
       )}
       
       {/* 3D Viewport - Full screen background */}
@@ -3546,8 +2885,7 @@ M30 ; End`
         }} 
       />
       
-      {/* Quick Access Toolbar - Desktop Only */}
-      {!isMobile && <QuickToolbar />}
+
       
       {/* Collision Alert Modal */}
       <CollisionAlert />
@@ -3643,8 +2981,7 @@ M30 ; End`
                 gcode: { ...prev.gcode, channel1: newCode } 
               }))}
               currentLine={simulation.currentLine}
-              onLineClick={(lineNum) => setSimulation(prev => ({ 
-                ...prev, 
+              onLineClick={(lineNum) => dispatch(actions.setSimulation({ 
                 currentLine: lineNum 
               }))}
             />
@@ -3661,7 +2998,7 @@ M30 ; End`
           }}
           onAssemblySelect={(assembly) => {
             // Update simulation with selected tool assembly
-            setSimulation(prev => ({ ...prev, toolAssembly: assembly }));
+            dispatch(actions.setSimulation({ toolAssembly: assembly }));
             
             // Update 3D visualization
             window.updateTool3D?.(assembly);
@@ -3719,8 +3056,7 @@ M30 ; End`
               });
               
               // Set this as the active tool
-              setSimulation(prev => ({ 
-                ...prev, 
+              dispatch(actions.setSimulation({ 
                 tool: toolNumber,
                 activeHCode: toolNumber,
                 activeDCode: toolNumber
@@ -3744,9 +3080,9 @@ M30 ; End`
           onApplyOffset={(type, register) => {
             // Update simulation with new active offset
             if (type === 'H') {
-              setSimulation(prev => ({ ...prev, activeHCode: register }));
+              dispatch(actions.setSimulation({ activeHCode: register }));
             } else {
-              setSimulation(prev => ({ ...prev, activeDCode: register }));
+              dispatch(actions.setSimulation({ activeDCode: register }));
             }
           }}
         />
@@ -3776,6 +3112,8 @@ M30 ; End`
         <MachineControl 
           simulation={simulation}
           onChange={setSimulation}
+          toolRef={toolRef}
+          sceneRef={sceneRef}
         />
       )}
       
@@ -3902,6 +3240,37 @@ M30 ; End`
           <MobilePanel />
         </>
       )}
+      
+      {/* Error Notification */}
+      <GlobalErrorHandler 
+        error={error} 
+        isLoading={isLoading} 
+        onClearError={clearError} 
+      />
+      
+      {/* Performance Monitor */}
+      <PerformanceMonitor enabled={showPerformanceMonitor} />
+      
+      {/* Debug Toggle */}
+      <button
+        onClick={() => setShowPerformanceMonitor(prev => !prev)}
+        style={{
+          position: 'fixed',
+          bottom: '10px',
+          right: '10px',
+          background: 'rgba(0, 0, 0, 0.8)',
+          border: '1px solid #00d4ff',
+          borderRadius: '5px',
+          padding: '5px 10px',
+          color: '#00d4ff',
+          fontSize: '12px',
+          cursor: 'pointer',
+          zIndex: 9998
+        }}
+        title="Toggle Performance Monitor"
+      >
+        📊 Perf
+      </button>
     </div>
   );
 };

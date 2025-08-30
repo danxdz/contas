@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 import Scene3D from './components/Scene3D';
 import MobileLayout from './components/MobileLayout';
 import DesktopLayout from './components/DesktopLayout';
+<<<<<<< HEAD
 import ModernTopBar from './components/ModernTopBar';
+=======
+import ErrorBoundary from './components/ErrorBoundary';
+>>>>>>> cursor/create-cnc-studio-status-bar-module-1378
 import './App.css';
 
 const App = () => {
@@ -219,6 +223,7 @@ M30 ; Program end`,
   };
 
   return (
+<<<<<<< HEAD
     <div className="app" style={{ 
       width: '100vw', 
       height: '100vh', 
@@ -260,16 +265,34 @@ M30 ; Program end`,
         width: '100%',
         height: !isMobile ? 'calc(100% - 35px)' : '100%',
         display: isMobile && simulation.currentTab !== 'viewer' ? 'none' : 'block'
+=======
+    <ErrorBoundary>
+      <div className="app" style={{ 
+        width: '100vw', 
+        height: '100vh', 
+        overflow: 'hidden',
+        position: 'relative'
+>>>>>>> cursor/create-cnc-studio-status-bar-module-1378
       }}>
-        <Scene3D
-          simulation={simulation}
-          gcode={project.gcode.channel1}
-          setupConfig={setupConfig}
-          toolOffsetTable={toolOffsetTable}
-          onSceneReady={handleSceneReady}
-        />
-      </div>
+        {/* 3D Scene - Always rendered but may be hidden on mobile */}
+        <div style={{ 
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          display: isMobile && simulation.currentTab !== 'viewer' ? 'none' : 'block'
+        }}>
+          <Scene3D
+            simulation={simulation}
+            gcode={project.gcode.channel1}
+            setupConfig={setupConfig}
+            toolOffsetTable={toolOffsetTable}
+            onSceneReady={handleSceneReady}
+          />
+        </div>
 
+<<<<<<< HEAD
       {/* UI Layout */}
       <div style={{ 
         position: 'absolute',
@@ -295,6 +318,25 @@ M30 ; Program end`,
         onChange={handleLoadProject}
       />
     </div>
+=======
+        {/* UI Layout */}
+        <div style={{ 
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          pointerEvents: isMobile ? 'auto' : 'none'
+        }}>
+          {isMobile ? (
+            <MobileLayout {...commonProps} />
+          ) : (
+            <DesktopLayout {...commonProps} scene3D={scene3D} />
+          )}
+        </div>
+      </div>
+    </ErrorBoundary>
+>>>>>>> cursor/create-cnc-studio-status-bar-module-1378
   );
 };
 

@@ -1,159 +1,110 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-const MachineControl = ({ simulation, onChange }) => {
-  const jogStep = 1; // mm
+const MachineControl = ({ simulation, onChange, toolRef }) => {
+  const [jogStep, setJogStep] = useState(1);
   
   const jog = (axis, direction) => {
+    const newPosition = {
+      ...simulation.position,
+      [axis]: simulation.position[axis] + (direction * jogStep)
+    };
+    
     onChange(prev => ({
       ...prev,
-      position: {
-        ...prev.position,
-        [axis]: prev.position[axis] + (direction * jogStep)
-      }
+      position: newPosition
     }));
+    
+    if (toolRef?.current) {
+      if (axis === 'x') toolRef.current.position.x = newPosition.x;
+      if (axis === 'y') toolRef.current.position.y = newPosition.y;
+      if (axis === 'z') toolRef.current.position.z = newPosition.z;
+    }
   };
   
   const home = () => {
     onChange(prev => ({
       ...prev,
-      position: { x: 0, y: 0, z: 0, a: 0, b: 0, c: 0 }
+      position: { x: 0, y: 0, z: 250 }
     }));
+    
+    if (toolRef?.current) {
+      toolRef.current.position.set(0, 0, 250);
+    }
   };
   
   return (
-    <div style={{ display: 'flex', gap: '20px', alignItems: 'center', height: '100%' }}>
+    <div style={{ 
+      display: 'flex',
+      alignItems: 'center',
+      gap: '15px',
+      padding: '8px 15px',
+      height: '100%'
+    }}>
       {/* Position Display */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(3, 1fr)', 
-        gap: '10px',
-        padding: '10px',
-        background: 'rgba(0, 0, 0, 0.3)',
-        borderRadius: '6px'
-      }}>
+      <div style={{ display: 'flex', gap: '10px' }}>
         {['x', 'y', 'z'].map(axis => (
-          <div key={axis} style={{ textAlign: 'center' }}>
-            <div style={{ color: '#00d4ff', fontSize: '14px', fontWeight: 'bold' }}>
-              {axis.toUpperCase()}
-            </div>
-            <div style={{ 
-              color: '#00ff88', 
-              fontSize: '18px', 
-              fontFamily: 'Consolas, monospace',
-              marginTop: '4px'
+          <div key={axis} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <span style={{ 
+              color: axis === 'x' ? '#ff6666' : axis === 'y' ? '#66ff66' : '#6666ff',
+              fontSize: '11px',
+              fontWeight: 'bold'
             }}>
-              {simulation.position[axis].toFixed(3)}
-            </div>
+              {axis.toUpperCase()}
+            </span>
+            <span style={{ 
+              fontFamily: 'monospace',
+              color: '#00ff88',
+              minWidth: '60px',
+              textAlign: 'right'
+            }}>
+              {simulation.position[axis].toFixed(2)}
+            </span>
           </div>
         ))}
       </div>
       
+      <div style={{ width: '1px', height: '20px', background: '#333' }} />
+      
       {/* Jog Controls */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px' }}>
-          <div />
-          <button onClick={() => jog('y', 1)} title="Y+">↑</button>
-          <div />
-          <button onClick={() => jog('x', -1)} title="X-">←</button>
-          <button onClick={home} title="Home">⌂</button>
-          <button onClick={() => jog('x', 1)} title="X+">→</button>
-          <div />
-          <button onClick={() => jog('y', -1)} title="Y-">↓</button>
-          <div />
-        </div>
-        <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-          <button onClick={() => jog('z', 1)} title="Z+">Z↑</button>
-          <button onClick={() => jog('z', -1)} title="Z-">Z↓</button>
-        </div>
+      <div style={{ display: 'flex', gap: '4px' }}>
+        <button onClick={() => jog('x', -1)} style={{ padding: '4px 8px', background: '#2a2f3e', border: '1px solid #444', borderRadius: '3px', color: '#ff6666', cursor: 'pointer' }}>X-</button>
+        <button onClick={() => jog('x', 1)} style={{ padding: '4px 8px', background: '#2a2f3e', border: '1px solid #444', borderRadius: '3px', color: '#ff6666', cursor: 'pointer' }}>X+</button>
+        <button onClick={() => jog('y', -1)} style={{ padding: '4px 8px', background: '#2a2f3e', border: '1px solid #444', borderRadius: '3px', color: '#66ff66', cursor: 'pointer' }}>Y-</button>
+        <button onClick={() => jog('y', 1)} style={{ padding: '4px 8px', background: '#2a2f3e', border: '1px solid #444', borderRadius: '3px', color: '#66ff66', cursor: 'pointer' }}>Y+</button>
+        <button onClick={() => jog('z', -1)} style={{ padding: '4px 8px', background: '#2a2f3e', border: '1px solid #444', borderRadius: '3px', color: '#6666ff', cursor: 'pointer' }}>Z-</button>
+        <button onClick={() => jog('z', 1)} style={{ padding: '4px 8px', background: '#2a2f3e', border: '1px solid #444', borderRadius: '3px', color: '#6666ff', cursor: 'pointer' }}>Z+</button>
       </div>
       
-      {/* Spindle & Feed */}
-      <div style={{ display: 'flex', gap: '20px' }}>
-        <div>
-          <label style={{ display: 'block', color: '#718096', fontSize: '11px', marginBottom: '4px' }}>
-            Spindle (RPM)
-          </label>
-          <input 
-            type="number"
-            value={simulation.spindleSpeed}
-            onChange={(e) => onChange(prev => ({ ...prev, spindleSpeed: parseInt(e.target.value) || 0 }))}
-            style={{
-              width: '80px',
-              padding: '4px 8px',
-              background: '#0a0e1a',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '4px',
-              color: '#00ff88',
-              fontSize: '14px'
-            }}
-          />
-        </div>
-        <div>
-          <label style={{ display: 'block', color: '#718096', fontSize: '11px', marginBottom: '4px' }}>
-            Feed (mm/min)
-          </label>
-          <input 
-            type="number"
-            value={simulation.feedRate}
-            onChange={(e) => onChange(prev => ({ ...prev, feedRate: parseInt(e.target.value) || 0 }))}
-            style={{
-              width: '80px',
-              padding: '4px 8px',
-              background: '#0a0e1a',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '4px',
-              color: '#00ff88',
-              fontSize: '14px'
-            }}
-          />
-        </div>
-      </div>
+      <div style={{ width: '1px', height: '20px', background: '#333' }} />
       
-      {/* Tool Info */}
-      <div style={{ 
-        padding: '10px',
-        background: 'rgba(0, 0, 0, 0.3)',
-        borderRadius: '6px'
-      }}>
-        <div style={{ color: '#718096', fontSize: '11px' }}>Active Tool</div>
-        <div style={{ color: '#00d4ff', fontSize: '16px', fontWeight: 'bold' }}>
-          {simulation.tool || 'None'}
-        </div>
-      </div>
+      {/* Step Size */}
+      <select 
+        value={jogStep}
+        onChange={(e) => setJogStep(parseFloat(e.target.value))}
+        style={{
+          background: '#2a2f3e',
+          border: '1px solid #444',
+          borderRadius: '3px',
+          color: '#fff',
+          padding: '4px',
+          fontSize: '12px'
+        }}
+      >
+        <option value="0.01">0.01</option>
+        <option value="0.1">0.1</option>
+        <option value="1">1</option>
+        <option value="10">10</option>
+        <option value="100">100</option>
+      </select>
       
-      {/* Status Indicators */}
-      <div style={{ display: 'flex', gap: '10px', marginLeft: 'auto' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ 
-            width: '40px', 
-            height: '40px', 
-            borderRadius: '50%',
-            background: simulation.spindleSpeed > 0 ? '#00ff88' : '#333',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '20px'
-          }}>
-            ⚙️
-          </div>
-          <div style={{ fontSize: '10px', color: '#718096', marginTop: '4px' }}>Spindle</div>
-        </div>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ 
-            width: '40px', 
-            height: '40px', 
-            borderRadius: '50%',
-            background: simulation.coolant ? '#00d4ff' : '#333',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '20px'
-          }}>
-            💧
-          </div>
-          <div style={{ fontSize: '10px', color: '#718096', marginTop: '4px' }}>Coolant</div>
-        </div>
-      </div>
+      <button onClick={home} style={{ padding: '4px 12px', background: '#333', border: '1px solid #555', borderRadius: '3px', color: '#ffaa00', cursor: 'pointer' }}>HOME</button>
+      
+      <div style={{ width: '1px', height: '20px', background: '#333' }} />
+      
+      {/* Status */}
+      <span style={{ fontSize: '12px', color: '#888' }}>
+        T{simulation.tool || '0'} | {simulation.isPlaying ? 'RUN' : 'IDLE'}
+      </span>
     </div>
   );
 };

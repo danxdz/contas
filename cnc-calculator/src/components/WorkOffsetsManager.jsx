@@ -154,157 +154,106 @@ const WorkOffsetsManager = ({
   };
 
   return (
-    <div style={{ 
-      padding: '15px',
-      background: '#1a1f2e',
-      color: '#e0e0e0',
-      height: '100%',
-      overflow: 'auto'
-    }}>
-      <h3 style={{ color: '#00d4ff', marginBottom: '15px' }}>
-        Work Coordinate Systems
+    <div style={{ padding: '20px' }}>
+      <h3 style={{ 
+        color: '#00d4ff', 
+        marginBottom: '20px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+      }}>
+        Work Offsets
+        <span style={{ 
+          fontSize: '10px', 
+          color: '#4caf50',
+          padding: '2px 6px',
+          background: 'rgba(76, 175, 80, 0.2)',
+          borderRadius: '3px',
+          border: '1px solid #4caf50'
+        }}>
+          LIVE
+        </span>
       </h3>
       
       {Object.entries(offsets).map(([name, offset]) => (
         <div key={name} style={{
-          marginBottom: '15px',
-          padding: '10px',
-          background: name === activeOffset ? '#2a3f5f' : '#0f1420',
-          border: name === activeOffset ? '2px solid #00ff88' : '1px solid #333',
-          borderRadius: '5px'
+          marginBottom: '10px',
+          padding: '12px',
+          background: name === activeOffset ? 'rgba(0, 212, 255, 0.1)' : 'rgba(26, 31, 46, 0.5)',
+          border: name === activeOffset ? '1px solid #00d4ff' : '1px solid rgba(0, 212, 255, 0.1)',
+          borderRadius: '8px'
         }}>
           <div style={{ 
             display: 'flex', 
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: '10px'
+            marginBottom: '8px'
           }}>
-            <h4 style={{ 
-              color: name === activeOffset ? '#00ff88' : '#00d4ff',
-              margin: 0
-            }}>
-              {name}
-            </h4>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button
-                onClick={() => handleActiveChange(name)}
-                style={{
-                  padding: '5px 10px',
-                  background: name === activeOffset ? '#00ff88' : '#333',
-                  color: name === activeOffset ? '#000' : '#888',
-                  border: 'none',
-                  borderRadius: '3px',
-                  cursor: 'pointer',
-                  fontSize: '12px'
-                }}
-              >
-                {name === activeOffset ? 'ACTIVE' : 'Set Active'}
-              </button>
-              <button
-                onClick={() => setVisibility(prev => ({ ...prev, [name]: !prev[name] }))}
-                style={{
-                  padding: '5px 10px',
-                  background: visibility[name] ? '#00d4ff' : '#333',
-                  color: visibility[name] ? '#000' : '#888',
-                  border: 'none',
-                  borderRadius: '3px',
-                  cursor: 'pointer',
-                  fontSize: '12px'
-                }}
-              >
-                {visibility[name] ? '👁️' : '👁️‍🗨️'}
-              </button>
-            </div>
-          </div>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
-            <div>
-              <label style={{ fontSize: '11px', color: '#888' }}>X</label>
-              <input
-                type="number"
-                value={offset.x}
-                onChange={(e) => handleOffsetChange(name, 'x', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '5px',
-                  background: '#0a0e1a',
-                  border: '1px solid #333',
-                  borderRadius: '3px',
-                  color: '#ff6666',
-                  fontSize: '14px'
-                }}
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: '11px', color: '#888' }}>Y</label>
-              <input
-                type="number"
-                value={offset.y}
-                onChange={(e) => handleOffsetChange(name, 'y', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '5px',
-                  background: '#0a0e1a',
-                  border: '1px solid #333',
-                  borderRadius: '3px',
-                  color: '#66ff66',
-                  fontSize: '14px'
-                }}
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: '11px', color: '#888' }}>Z</label>
-              <input
-                type="number"
-                value={offset.z}
-                onChange={(e) => handleOffsetChange(name, 'z', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '5px',
-                  background: '#0a0e1a',
-                  border: '1px solid #333',
-                  borderRadius: '3px',
-                  color: '#6666ff',
-                  fontSize: '14px'
-                }}
-              />
-            </div>
-          </div>
-          
-          <div style={{ marginTop: '5px' }}>
-            <input
-              type="text"
-              placeholder="Description"
-              value={offset.description || ''}
-              onChange={(e) => handleOffsetChange(name, 'description', e.target.value)}
+            <button
+              onClick={() => handleActiveChange(name)}
               style={{
-                width: '100%',
-                padding: '5px',
-                background: '#0a0e1a',
-                border: '1px solid #333',
-                borderRadius: '3px',
-                color: '#888',
-                fontSize: '12px'
+                background: 'transparent',
+                border: 'none',
+                color: name === activeOffset ? '#00d4ff' : '#888',
+                fontSize: '14px',
+                fontWeight: name === activeOffset ? 'bold' : 'normal',
+                cursor: 'pointer',
+                padding: 0
               }}
-            />
+            >
+              {name} {name === activeOffset && '✓'}
+            </button>
+            <button
+              onClick={() => setVisibility(prev => ({ ...prev, [name]: !prev[name] }))}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: visibility[name] ? '#00d4ff' : '#444',
+                cursor: 'pointer',
+                fontSize: '16px',
+                padding: '0 5px'
+              }}
+              title={visibility[name] ? 'Hide' : 'Show'}
+            >
+              {visibility[name] ? '👁️' : '🙈'}
+            </button>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+            {[
+              { axis: 'x', color: '#ff6666' },
+              { axis: 'y', color: '#66ff66' },
+              { axis: 'z', color: '#6666ff' }
+            ].map(({ axis, color }) => (
+              <div key={axis}>
+                <label style={{ 
+                  fontSize: '10px', 
+                  color: '#888',
+                  textTransform: 'uppercase'
+                }}>
+                  {axis}
+                </label>
+                <input
+                  type="number"
+                  value={offset[axis]}
+                  onChange={(e) => handleOffsetChange(name, axis, e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '6px',
+                    background: '#2a2f3e',
+                    border: '1px solid #444',
+                    borderRadius: '4px',
+                    color: color,
+                    fontSize: '13px'
+                  }}
+                />
+              </div>
+            ))}
           </div>
         </div>
       ))}
       
-      <div style={{
-        marginTop: '20px',
-        padding: '10px',
-        background: '#0a0e1a',
-        borderRadius: '5px',
-        fontSize: '12px',
-        color: '#666'
-      }}>
-        <div>💡 Tips:</div>
-        <div>• Active offset shown in bright colors</div>
-        <div>• Click 👁️ to show/hide in 3D</div>
-        <div>• G54 typically at stock top</div>
-        <div>• Use G55-G59 for multiple setups</div>
-      </div>
+
     </div>
   );
 };
