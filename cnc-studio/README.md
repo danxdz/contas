@@ -25,3 +25,11 @@ Build:
 ```bash
 npm run build && npm run preview
 ```
+
+Deploy to Netlify:
+
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/yourusername/cnc-studio)
+
+Netlify will detect Vite automatically; if needed, use:
+- Build command: `npm run build`
+- Publish directory: `dist`
