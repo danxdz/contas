@@ -1,9 +1,20 @@
 // Machine Module Version
 // Update this with each significant change
-export const MACHINE_MODULE_VERSION = 'v0.006';
+export const MACHINE_MODULE_VERSION = 'v0.007';
 
 // Version History
 export const VERSION_HISTORY = [
+  {
+    version: 'v0.007',
+    date: '2024-12-30',
+    changes: [
+      'Made panel more compact (2x2 grid for dimensions)',
+      'Machine persists when panel closes',
+      'Smaller fonts and buttons for space saving',
+      'Single letter preset buttons (S/M/L)',
+      'Compact saved machines list'
+    ]
+  },
   {
     version: 'v0.006',
     date: '2024-12-30',
