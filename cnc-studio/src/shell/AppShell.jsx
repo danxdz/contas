@@ -31,14 +31,29 @@ const defaultLayout = {
 export default function AppShell() {
   const modules = useMemo(() => normalizeModules(discoveredModules), []);
 
-  // Group modules by area
-  const grouped = useMemo(() => {
+  // Overridable per-module order (by id)
+  const [panelOrder, setPanelOrder] = useState(() => {
+    const map = {};
+    for (const m of modules) map[m.id] = m.order ?? 0;
+    return map;
+  });
+
+  // Group modules by area (excluding background viewer) with order overrides
+  const { grouped, viewerModules } = useMemo(() => {
     const g = JSON.parse(JSON.stringify(defaultLayout));
+    const viewers = [];
     for (const m of modules) {
+      if (m.id === 'viewer') {
+        viewers.push(m);
+        continue;
+      }
       g[m.area].push(m);
     }
-    return g;
-  }, [modules]);
+    for (const key of Object.keys(g)) {
+      g[key].sort((a, b) => (panelOrder[a.id] ?? a.order) - (panelOrder[b.id] ?? b.order));
+    }
+    return { grouped: g, viewerModules: viewers };
+  }, [modules, panelOrder]);
 
   // Panel UI state
   const [panelState, setPanelState] = useState(() => {
@@ -59,6 +74,24 @@ export default function AppShell() {
     setPanelState(s => ({ ...s, [id]: { ...s[id], visible: !s[id].visible } }));
   }, []);
 
+  // Move module up/down within its area
+  const moveModule = useCallback((id, dir) => {
+    setPanelOrder(prev => {
+      const next = { ...prev };
+      // Simple: adjust numeric order
+      next[id] = (next[id] ?? 0) + (dir === 'up' ? -1 : 1);
+      return next;
+    });
+  }, []);
+
+  // Active panel z-index management
+  const [panelZ, setPanelZ] = useState({});
+  const [zCounter, setZCounter] = useState(10);
+  const bringToFront = useCallback((id) => {
+    setZCounter(n => n + 1);
+    setPanelZ(z => ({ ...z, [id]: zCounter + 1 }));
+  }, [zCounter]);
+
   const renderPanel = (m) => {
     const state = panelState[m.id];
     if (!state?.visible) return null;
@@ -68,7 +101,7 @@ export default function AppShell() {
       state.maximized ? 'is-max' : '',
     ].join(' ');
     return (
-      <div key={m.id} className={classNames}>
+      <div key={m.id} className={classNames} style={{ position: 'relative', zIndex: panelZ[m.id] || 1 }} onMouseDown={() => bringToFront(m.id)}>
         <div className="panel-titlebar">
           <span className="panel-title">{m.icon} {m.name}</span>
           <div className="panel-actions">
@@ -79,7 +112,7 @@ export default function AppShell() {
         </div>
         {!state.minimized && (
           <div className="panel-body">
-            <m.Component />
+            <m.Component app={{ modules, panelState, setPanelState, panelOrder, setPanelOrder, moveModule, toggleVisibility }} />
           </div>
         )}
       </div>
@@ -98,6 +131,12 @@ export default function AppShell() {
           ))}
         </nav>
       </header>
+      {/* Background Viewer Layer */}
+      <div className="background-viewer">
+        {viewerModules.map(m => (
+          <m.Component key={m.id} />
+        ))}
+      </div>
 
       <div className="workspace">
         <aside className="column left">

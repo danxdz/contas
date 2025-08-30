@@ -6,6 +6,8 @@
 .nav-item:hover { background: rgba(19, 34, 68, 0.75); }
 
 .workspace { display: flex; flex: 1 1 auto; min-height: 0; }
+.background-viewer { position: absolute; inset: 40px 0 52px 0; z-index: 0; }
+.background-viewer > * { position: absolute; inset: 0; }
 .column { display: flex; flex-direction: column; gap: var(--panel-gap, 8px); padding: 8px; min-width: 0; }
 .left { width: 320px; max-width: 40vw; border-right: 1px solid rgba(23, 48, 77, 0.35); }
 .right { width: 360px; max-width: 45vw; border-left: 1px solid rgba(23, 48, 77, 0.35); }

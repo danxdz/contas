@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { createAxes, createTable, createTool, createPathLine } from './machine';
 
 export const meta = {
   id: 'viewer',
@@ -36,17 +37,25 @@ export default function ViewerModule() {
     scene.add(new THREE.AmbientLight(0xffffff, 0.25));
 
     const grid = new THREE.GridHelper(10, 10, 0x123a5a, 0x123a5a);
-    grid.material.opacity = 0.2;
+    grid.material.opacity = 0.15;
     grid.material.transparent = true;
     scene.add(grid);
 
-    const axes = new THREE.AxesHelper(1.5);
-    scene.add(axes);
+    scene.add(createAxes(1.0));
+    const table = createTable(2, 2, 0.1);
+    scene.add(table);
+    const tool = createTool();
+    tool.position.set(0, 0, 1.2);
+    scene.add(tool);
 
-    const geom = new THREE.BoxGeometry(1, 1, 1);
-    const mat = new THREE.MeshStandardMaterial({ color: 0x2aa8ff, roughness: 0.4, metalness: 0.2 });
-    const mesh = new THREE.Mesh(geom, mat);
-    scene.add(mesh);
+    const path = createPathLine([
+      { x: -0.6, y: -0.4, z: 0.2 },
+      { x: -0.6, y: 0.4, z: 0.15 },
+      { x: 0.6, y: 0.4, z: 0.15 },
+      { x: 0.6, y: -0.4, z: 0.15 },
+      { x: -0.6, y: -0.4, z: 0.15 },
+    ]);
+    scene.add(path);
 
     const handleResize = () => {
       const w = mount.clientWidth;
@@ -61,8 +70,7 @@ export default function ViewerModule() {
     let raf = 0;
     const animate = () => {
       raf = requestAnimationFrame(animate);
-      mesh.rotation.y += 0.01;
-      mesh.rotation.x += 0.005;
+      tool.rotation.z += 0.08;
       renderer.render(scene, camera);
     };
     animate();
@@ -76,13 +84,11 @@ export default function ViewerModule() {
       window.removeEventListener('resize', handleResize);
       mount.removeChild(renderer.domElement);
       renderer.dispose();
-      geom.dispose();
-      mat.dispose();
     };
   }, []);
 
   return (
-    <div ref={mountRef} style={{ width: '100%', height: '100%', borderRadius: 10, overflow: 'hidden', boxShadow: 'inset 0 0 0 1px rgba(23,48,77,.35)' }} />
+    <div ref={mountRef} style={{ width: '100%', height: '100%' }} />
   );
 }
 
