@@ -17,16 +17,39 @@ const saveMachines = (machines) => {
   localStorage.setItem('cnc_saved_machines', JSON.stringify(machines));
 };
 
+// Load last machine configuration from localStorage
+const loadLastConfig = () => {
+  try {
+    const saved = localStorage.getItem('cnc_last_machine_config');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch {}
+  return {
+    machineType: '3axis-mill',
+    tableSize: { x: 400, y: 300 },
+    spindleHeight: 250,
+    showMachine: true
+  };
+};
+
+// Save current configuration to localStorage
+const saveLastConfig = (config) => {
+  localStorage.setItem('cnc_last_machine_config', JSON.stringify(config));
+};
+
 export default function SimpleMachine() {
-  const [machineType, setMachineType] = useState('3axis-mill');
-  const [tableSize, setTableSize] = useState({ x: 400, y: 300 });
-  const [spindleHeight, setSpindleHeight] = useState(250);
-  const [showMachine, setShowMachine] = useState(true);
+  const lastConfig = loadLastConfig();
+  const [machineType, setMachineType] = useState(lastConfig.machineType);
+  const [tableSize, setTableSize] = useState(lastConfig.tableSize);
+  const [spindleHeight, setSpindleHeight] = useState(lastConfig.spindleHeight);
+  const [showMachine, setShowMachine] = useState(lastConfig.showMachine);
   const [isInitialized, setIsInitialized] = useState(false);
   const [savedMachines, setSavedMachines] = useState(loadSavedMachines());
   const [machineName, setMachineName] = useState('');
   const machineGroupRef = useRef(null);
   const hasCreatedMachine = useRef(false);
+  const lastRenderedConfig = useRef(null);
 
   // Initialize and check for viewer
   useEffect(() => {
@@ -309,18 +332,53 @@ export default function SimpleMachine() {
     const scene = window.cncViewer.scene;
     if (!scene) return;
 
-    // Only update if showMachine is true or if we need to update existing machine
-    if (!showMachine && !hasCreatedMachine.current) return;
+    // Create a config object for comparison
+    const currentConfig = {
+      machineType,
+      tableSize,
+      spindleHeight,
+      showMachine
+    };
 
+    // Save current configuration
+    saveLastConfig(currentConfig);
+
+    // Check if configuration has actually changed
+    const configChanged = !lastRenderedConfig.current || 
+      JSON.stringify(lastRenderedConfig.current) !== JSON.stringify(currentConfig);
+
+    // If nothing changed and machine exists, do nothing
+    if (!configChanged && machineGroupRef.current) {
+      return;
+    }
+
+    // Handle visibility toggle without recreating
+    if (!configChanged && !showMachine && machineGroupRef.current) {
+      machineGroupRef.current.visible = false;
+      if (window.cncViewer.render) {
+        window.cncViewer.render();
+      }
+      return;
+    }
+
+    if (!configChanged && showMachine && machineGroupRef.current) {
+      machineGroupRef.current.visible = true;
+      if (window.cncViewer.render) {
+        window.cncViewer.render();
+      }
+      return;
+    }
+
+    // Configuration changed, need to recreate machine
     // Remove old machine group if exists
     if (machineGroupRef.current) {
       scene.remove(machineGroupRef.current);
       machineGroupRef.current = null;
     }
 
-    // If showMachine is false, just hide it but keep the reference
+    // If showMachine is false, don't create new machine
     if (!showMachine) {
-      hasCreatedMachine.current = false;
+      lastRenderedConfig.current = currentConfig;
       if (window.cncViewer.render) {
         window.cncViewer.render();
       }
@@ -373,6 +431,9 @@ export default function SimpleMachine() {
       machineGroupRef.current = machineGroup;
       scene.add(machineGroup);
       hasCreatedMachine.current = true;
+      
+      // Save the configuration that was actually rendered
+      lastRenderedConfig.current = currentConfig;
 
       // Store machine in window.cncViewer so it persists
       if (window.cncViewer) {
@@ -426,39 +487,40 @@ export default function SimpleMachine() {
         </select>
       </label>
 
-      {/* Dimensions - Compact 2x2 grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+      {/* Dimensions - Compact inline */}
+      <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <span style={{ fontSize: '10px' }}>X (mm)</span>
+          <span style={{ fontSize: '10px' }}>X</span>
           <input
             type="number"
             value={tableSize.x}
             onChange={(e) => setTableSize({ ...tableSize, x: parseFloat(e.target.value) || 400 })}
             disabled={!isInitialized}
-            style={{ fontSize: '11px' }}
+            style={{ fontSize: '11px', width: '50px' }}
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <span style={{ fontSize: '10px' }}>Y (mm)</span>
+          <span style={{ fontSize: '10px' }}>Y</span>
           <input
             type="number"
             value={tableSize.y}
             onChange={(e) => setTableSize({ ...tableSize, y: parseFloat(e.target.value) || 300 })}
             disabled={!isInitialized}
-            style={{ fontSize: '11px' }}
+            style={{ fontSize: '11px', width: '50px' }}
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <span style={{ fontSize: '10px' }}>Z (mm)</span>
+          <span style={{ fontSize: '10px' }}>Z</span>
           <input
             type="number"
             value={spindleHeight}
             onChange={(e) => setSpindleHeight(parseFloat(e.target.value) || 250)}
             disabled={!isInitialized}
-            style={{ fontSize: '11px' }}
+            style={{ fontSize: '11px', width: '50px' }}
           />
         </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 4, paddingTop: '14px' }}>
+        <span style={{ fontSize: '10px', color: '#666' }}>mm</span>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 'auto' }}>
           <input
             type="checkbox"
             checked={showMachine}
@@ -473,8 +535,8 @@ export default function SimpleMachine() {
       <div style={{ display: 'flex', gap: 4 }}>
         <button
           onClick={() => {
-            setTableSize({ x: 300, y: 200 });
-            setSpindleHeight(200);
+            setTableSize({ x: 500, y: 400 });
+            setSpindleHeight(300);
           }}
           disabled={!isInitialized}
           style={{ flex: 1, fontSize: '11px', padding: '3px' }}
@@ -483,8 +545,8 @@ export default function SimpleMachine() {
         </button>
         <button
           onClick={() => {
-            setTableSize({ x: 500, y: 400 });
-            setSpindleHeight(300);
+            setTableSize({ x: 800, y: 600 });
+            setSpindleHeight(400);
           }}
           disabled={!isInitialized}
           style={{ flex: 1, fontSize: '11px', padding: '3px' }}
@@ -493,8 +555,8 @@ export default function SimpleMachine() {
         </button>
         <button
           onClick={() => {
-            setTableSize({ x: 800, y: 600 });
-            setSpindleHeight(400);
+            setTableSize({ x: 1200, y: 800 });
+            setSpindleHeight(500);
           }}
           disabled={!isInitialized}
           style={{ flex: 1, fontSize: '11px', padding: '3px' }}

@@ -1,9 +1,40 @@
 // Machine Module Version
 // Update this with each significant change
-export const MACHINE_MODULE_VERSION = 'v0.007';
+export const MACHINE_MODULE_VERSION = 'v0.010';
 
 // Version History
 export const VERSION_HISTORY = [
+  {
+    version: 'v0.010',
+    date: '2024-12-30',
+    changes: [
+      'Fixed machine persistence when closing/opening panel',
+      'Machine configuration now saves and restores from localStorage',
+      'Machine only recreates when settings actually change',
+      'Panel opens with last selected options',
+      'Prevents duplicate machines in scene'
+    ]
+  },
+  {
+    version: 'v0.009',
+    date: '2024-12-30',
+    changes: [
+      'Fixed input box width to 50px for X/Y/Z (just enough for 3-4 digits)',
+      'Changed layout to inline for more compact display',
+      'Added "mm" label after inputs',
+      'Created new Tool Magazine module for tool management'
+    ]
+  },
+  {
+    version: 'v0.008',
+    date: '2024-12-30',
+    changes: [
+      'Adjusted machine size presets to be more realistic',
+      'Small: 500x400x300mm (was 300x200x200)',
+      'Medium: 800x600x400mm (was 500x400x300)',
+      'Large: 1200x800x500mm (was 800x600x400)'
+    ]
+  },
   {
     version: 'v0.007',
     date: '2024-12-30',
