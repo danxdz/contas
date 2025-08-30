@@ -54,7 +54,10 @@ export default function SceneControls() {
           break;
       }
       
+      // Create much more faded/subtle gradients
       gradient.addColorStop(0, color1);
+      gradient.addColorStop(0.3, color1);  // Hold first color longer
+      gradient.addColorStop(0.7, color2);  // Start second color later
       gradient.addColorStop(1, color2);
       
       ctx.fillStyle = gradient;
