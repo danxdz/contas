@@ -1,9 +1,20 @@
 // Machine Module Version
 // Update this with each significant change
-export const MACHINE_MODULE_VERSION = 'v0.009';
+export const MACHINE_MODULE_VERSION = 'v0.010';
 
 // Version History
 export const VERSION_HISTORY = [
+  {
+    version: 'v0.010',
+    date: '2024-12-30',
+    changes: [
+      'Fixed machine persistence when closing/opening panel',
+      'Machine configuration now saves and restores from localStorage',
+      'Machine only recreates when settings actually change',
+      'Panel opens with last selected options',
+      'Prevents duplicate machines in scene'
+    ]
+  },
   {
     version: 'v0.009',
     date: '2024-12-30',

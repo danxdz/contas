@@ -431,6 +431,9 @@ export default function SimpleMachine() {
       machineGroupRef.current = machineGroup;
       scene.add(machineGroup);
       hasCreatedMachine.current = true;
+      
+      // Save the configuration that was actually rendered
+      lastRenderedConfig.current = currentConfig;
 
       // Store machine in window.cncViewer so it persists
       if (window.cncViewer) {
