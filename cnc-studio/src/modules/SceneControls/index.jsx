@@ -43,10 +43,11 @@ export default function SceneControls() {
             step={step}
             value={value}
             onChange={(e) => onChange(parseFloat(e.target.value))}
-            onPointerDown={() => setShow(true)}
-            onPointerUp={() => setShow(false)}
-            onPointerCancel={() => setShow(false)}
+            onMouseDown={() => setShow(true)}
+            onMouseUp={() => setShow(false)}
             onMouseLeave={() => setShow(false)}
+            onTouchStart={() => setShow(true)}
+            onTouchEnd={() => setShow(false)}
           />
         </div>
       </label>

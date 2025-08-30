@@ -67,6 +67,9 @@ export default function ViewerModule() {
       { x: -0.6, y: -0.4, z: 0.15 },
     ]);
     scene.add(path);
+    let parsedPts = [];
+    let currentIndex = 0;
+    let isPlaying = false;
 
     const handleResize = () => {
       const w = mount.clientWidth;
@@ -81,6 +84,14 @@ export default function ViewerModule() {
     let raf = 0;
     const animate = () => {
       raf = requestAnimationFrame(animate);
+      if (isPlaying && parsedPts.length > 0) {
+        const target = parsedPts[currentIndex];
+        tool.position.set(target.x, target.y, target.z + 1.0);
+        currentIndex = (currentIndex + 1) % parsedPts.length;
+        if (window.cncViewer && typeof window.cncViewer.tick === 'function') {
+          window.cncViewer.tick(currentIndex);
+        }
+      }
       tool.rotation.z += 0.08;
       controls.update();
       renderer.render(scene, camera);
@@ -128,7 +139,22 @@ export default function ViewerModule() {
         if (path) scene.remove(path);
         path = createPathLine(pts);
         scene.add(path);
-      }
+        parsedPts = pts;
+        currentIndex = 0;
+      },
+      play: () => { isPlaying = true; },
+      pause: () => { isPlaying = false; },
+      stop: () => { isPlaying = false; currentIndex = 0; },
+      step: (d) => {
+        if (parsedPts.length === 0) return;
+        currentIndex = Math.max(0, Math.min(parsedPts.length - 1, currentIndex + d));
+        const target = parsedPts[currentIndex];
+        tool.position.set(target.x, target.y, target.z + 1.0);
+        if (window.cncViewer && typeof window.cncViewer.tick === 'function') {
+          window.cncViewer.tick(currentIndex);
+        }
+      },
+      onTick: (cb) => { window.cncViewer.tick = cb; }
     };
 
     return () => {
