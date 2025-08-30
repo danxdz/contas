@@ -1,9 +1,21 @@
 // Machine Module Version
 // Update this with each significant change
-export const MACHINE_MODULE_VERSION = 'v0.004';
+export const MACHINE_MODULE_VERSION = 'v0.005';
 
 // Version History
 export const VERSION_HISTORY = [
+  {
+    version: 'v0.005',
+    date: '2024-12-30',
+    changes: [
+      'Fixed panel styling to match CNC Studio design',
+      'Removed custom backgrounds and borders',
+      'Consistent gap spacing (8px)',
+      'Standard label/input structure',
+      'Inline version display',
+      'Cleaner saved machines list'
+    ]
+  },
   {
     version: 'v0.004',
     date: '2024-12-30',

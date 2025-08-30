@@ -392,35 +392,16 @@ export default function SimpleMachine() {
   }, [machineType, tableSize, spindleHeight, showMachine, isInitialized]);
 
   return (
-    <div style={{ padding: '12px', background: '#f8f8f8' }}>
-      {/* Version Header */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        marginBottom: '12px'
-      }}>
-        <h3 style={{ margin: 0, fontSize: '16px' }}>Machine Setup</h3>
-        <span style={{ 
-          fontSize: '10px', 
-          color: '#666',
-          background: '#e0e0e0',
-          padding: '2px 6px',
-          borderRadius: '3px'
-        }}>
-          {MACHINE_MODULE_VERSION}
-        </span>
-      </div>
-      
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {/* Machine Type */}
-      <div style={{ marginBottom: '12px' }}>
-        <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px' }}>
+      <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <span style={{ fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           Machine Type
-        </label>
+          <span style={{ fontSize: '10px', opacity: 0.6 }}>{MACHINE_MODULE_VERSION}</span>
+        </span>
         <select 
           value={machineType}
           onChange={(e) => setMachineType(e.target.value)}
-          style={{ width: '100%', padding: '4px' }}
           disabled={!isInitialized}
         >
           <option value="3axis-mill">3-Axis Mill</option>
@@ -428,177 +409,101 @@ export default function SimpleMachine() {
           <option value="5axis-mill">5-Axis Mill</option>
           <option value="lathe">Lathe</option>
         </select>
-      </div>
+      </label>
 
       {/* Table Size */}
-      <div style={{ marginBottom: '12px' }}>
-        <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px' }}>
-          {machineType === 'lathe' ? 'Bed Length x Width (mm)' : 'Table Size (mm)'}
-        </label>
-        <div style={{ display: 'flex', gap: '8px' }}>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+          <span>{machineType === 'lathe' ? 'Length' : 'Table X'} (mm)</span>
           <input
             type="number"
             value={tableSize.x}
             onChange={(e) => setTableSize({ ...tableSize, x: parseFloat(e.target.value) || 400 })}
-            style={{ flex: 1, padding: '4px' }}
-            placeholder="X"
             disabled={!isInitialized}
           />
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+          <span>{machineType === 'lathe' ? 'Width' : 'Table Y'} (mm)</span>
           <input
             type="number"
             value={tableSize.y}
             onChange={(e) => setTableSize({ ...tableSize, y: parseFloat(e.target.value) || 300 })}
-            style={{ flex: 1, padding: '4px' }}
-            placeholder="Y"
             disabled={!isInitialized}
           />
-        </div>
-      </div>
-
-      {/* Spindle Height */}
-      <div style={{ marginBottom: '12px' }}>
-        <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px' }}>
-          {machineType === 'lathe' ? 'Center Height (mm)' : 'Spindle Height (mm)'}
         </label>
-        <input
-          type="number"
-          value={spindleHeight}
-          onChange={(e) => setSpindleHeight(parseFloat(e.target.value) || 250)}
-          style={{ width: '100%', padding: '4px' }}
-          disabled={!isInitialized}
-        />
-      </div>
-
-      {/* Work Envelope Display */}
-      <div style={{ 
-        padding: '8px', 
-        background: '#e8f8ff', 
-        borderRadius: '4px',
-        fontSize: '11px',
-        marginBottom: '12px',
-        border: '1px solid #d0e0f0'
-      }}>
-        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Work Envelope</div>
-        <div>X: {tableSize.x}mm</div>
-        <div>Y: {tableSize.y}mm</div>
-        <div>Z: {spindleHeight}mm</div>
-      </div>
-
-      {/* Show/Hide Machine */}
-      <label style={{ display: 'flex', alignItems: 'center', fontSize: '12px', marginBottom: '12px' }}>
-        <input
-          type="checkbox"
-          checked={showMachine}
-          onChange={(e) => setShowMachine(e.target.checked)}
-          style={{ marginRight: '6px' }}
-          disabled={!isInitialized}
-        />
-        Show Machine
-      </label>
-
-      {/* Quick Presets */}
-      <div style={{ marginBottom: '12px' }}>
-        <div style={{ fontSize: '12px', marginBottom: '6px' }}>Quick Presets:</div>
-        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-          <button
-            onClick={() => {
-              setTableSize({ x: 300, y: 200 });
-              setSpindleHeight(200);
-            }}
-            style={{ 
-              padding: '2px 8px', 
-              fontSize: '11px',
-              cursor: isInitialized ? 'pointer' : 'not-allowed',
-              border: '1px solid #ccc',
-              borderRadius: '3px',
-              background: 'white',
-              opacity: isInitialized ? 1 : 0.5
-            }}
-            disabled={!isInitialized}
-          >
-            Small
-          </button>
-          <button
-            onClick={() => {
-              setTableSize({ x: 500, y: 400 });
-              setSpindleHeight(300);
-            }}
-            style={{ 
-              padding: '2px 8px', 
-              fontSize: '11px',
-              cursor: isInitialized ? 'pointer' : 'not-allowed',
-              border: '1px solid #ccc',
-              borderRadius: '3px',
-              background: 'white',
-              opacity: isInitialized ? 1 : 0.5
-            }}
-            disabled={!isInitialized}
-          >
-            Medium
-          </button>
-          <button
-            onClick={() => {
-              setTableSize({ x: 800, y: 600 });
-              setSpindleHeight(400);
-            }}
-            style={{ 
-              padding: '2px 8px', 
-              fontSize: '11px',
-              cursor: isInitialized ? 'pointer' : 'not-allowed',
-              border: '1px solid #ccc',
-              borderRadius: '3px',
-              background: 'white',
-              opacity: isInitialized ? 1 : 0.5
-            }}
-            disabled={!isInitialized}
-          >
-            Large
-          </button>
-        </div>
-      </div>
-
-      {/* Save Current Machine */}
-      <div style={{ 
-        marginTop: '16px', 
-        paddingTop: '12px', 
-        borderTop: '1px solid #ddd' 
-      }}>
-        <div style={{ fontSize: '12px', marginBottom: '6px', fontWeight: 'bold' }}>
-          Save Configuration
-        </div>
-        <div style={{ display: 'flex', gap: '4px' }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+          <span>{machineType === 'lathe' ? 'Center' : 'Spindle'} Z (mm)</span>
           <input
-            type="text"
-            value={machineName}
-            onChange={(e) => setMachineName(e.target.value)}
-            placeholder="Machine name..."
-            style={{ flex: 1, padding: '4px', fontSize: '12px' }}
+            type="number"
+            value={spindleHeight}
+            onChange={(e) => setSpindleHeight(parseFloat(e.target.value) || 250)}
+            disabled={!isInitialized}
           />
-          <button
-            onClick={saveCurrentMachine}
-            disabled={!machineName.trim()}
-            style={{
-              padding: '4px 8px',
-              fontSize: '11px',
-              cursor: machineName.trim() ? 'pointer' : 'not-allowed',
-              border: '1px solid #4CAF50',
-              background: machineName.trim() ? '#4CAF50' : '#ccc',
-              color: 'white',
-              borderRadius: '3px'
-            }}
-          >
-            Save
-          </button>
-        </div>
+        </label>
+      </div>
+
+      {/* Quick Presets and Show Machine */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <button
+          onClick={() => {
+            setTableSize({ x: 300, y: 200 });
+            setSpindleHeight(200);
+          }}
+          disabled={!isInitialized}
+        >
+          Small
+        </button>
+        <button
+          onClick={() => {
+            setTableSize({ x: 500, y: 400 });
+            setSpindleHeight(300);
+          }}
+          disabled={!isInitialized}
+        >
+          Medium
+        </button>
+        <button
+          onClick={() => {
+            setTableSize({ x: 800, y: 600 });
+            setSpindleHeight(400);
+          }}
+          disabled={!isInitialized}
+        >
+          Large
+        </button>
+        <label style={{ display: 'flex', gap: 6, alignItems: 'center', marginLeft: 'auto' }}>
+          <input
+            type="checkbox"
+            checked={showMachine}
+            onChange={(e) => setShowMachine(e.target.checked)}
+            disabled={!isInitialized}
+          />
+          <span>Show</span>
+        </label>
+      </div>
+
+      {/* Save Configuration */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input
+          type="text"
+          value={machineName}
+          onChange={(e) => setMachineName(e.target.value)}
+          placeholder="Save config as..."
+          style={{ flex: 1 }}
+        />
+        <button
+          onClick={saveCurrentMachine}
+          disabled={!machineName.trim()}
+        >
+          Save
+        </button>
       </div>
 
       {/* Saved Machines */}
       {savedMachines.length > 0 && (
-        <div style={{ marginTop: '12px' }}>
-          <div style={{ fontSize: '12px', marginBottom: '6px', fontWeight: 'bold' }}>
-            Saved Machines
-          </div>
-          <div style={{ maxHeight: '120px', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span style={{ fontSize: '11px', opacity: 0.7 }}>Saved Configurations</span>
+          <div style={{ maxHeight: '100px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
             {savedMachines.map(machine => (
               <div 
                 key={machine.id}
@@ -606,41 +511,23 @@ export default function SimpleMachine() {
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  padding: '4px',
-                  marginBottom: '2px',
-                  background: 'white',
+                  padding: '4px 8px',
+                  background: 'rgba(255,255,255,0.05)',
                   borderRadius: '3px',
-                  fontSize: '11px',
-                  border: '1px solid #e0e0e0'
+                  fontSize: '11px'
                 }}
               >
-                <span>{machine.name} ({machine.type})</span>
-                <div style={{ display: 'flex', gap: '4px' }}>
+                <span>{machine.name}</span>
+                <div style={{ display: 'flex', gap: 4 }}>
                   <button
                     onClick={() => loadMachine(machine)}
-                    style={{
-                      padding: '2px 6px',
-                      fontSize: '10px',
-                      cursor: 'pointer',
-                      border: '1px solid #2196F3',
-                      background: '#2196F3',
-                      color: 'white',
-                      borderRadius: '2px'
-                    }}
+                    style={{ padding: '2px 6px', fontSize: '10px' }}
                   >
                     Load
                   </button>
                   <button
                     onClick={() => deleteMachine(machine.id)}
-                    style={{
-                      padding: '2px 6px',
-                      fontSize: '10px',
-                      cursor: 'pointer',
-                      border: '1px solid #f44336',
-                      background: '#f44336',
-                      color: 'white',
-                      borderRadius: '2px'
-                    }}
+                    style={{ padding: '2px 6px', fontSize: '10px' }}
                   >
                     ×
                   </button>
