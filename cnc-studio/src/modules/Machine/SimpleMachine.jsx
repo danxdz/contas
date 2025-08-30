@@ -35,6 +35,16 @@ export default function SimpleMachine() {
       machineGroupRef.current = null;
     }
 
+    // Remove default table and tool from Viewer if they exist
+    const defaultTable = scene.getObjectByName('defaultTable');
+    if (defaultTable) {
+      scene.remove(defaultTable);
+    }
+    const defaultTool = scene.getObjectByName('defaultTool');
+    if (defaultTool) {
+      scene.remove(defaultTool);
+    }
+
     // Create machine group
     const machineGroup = new THREE.Group();
     machineGroup.name = 'machineGroup';

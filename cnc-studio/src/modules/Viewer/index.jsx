@@ -53,9 +53,12 @@ export default function ViewerModule() {
     scene.add(grid);
 
     scene.add(createAxes(1.0));
+    // Default table and tool - will be replaced by Machine module if loaded
     let table = createTable(2, 1.2, 0.1);
+    table.name = 'defaultTable';
     scene.add(table);
     const tool = createTool();
+    tool.name = 'defaultTool';
     let spindleHome = 0.25; // 250mm default
     tool.position.set(0, 0, spindleHome);
     scene.add(tool);
@@ -133,6 +136,10 @@ export default function ViewerModule() {
     };
 
     window.cncViewer = {
+      scene: scene,  // Expose scene for Machine module
+      camera: camera,  // Expose camera
+      renderer: renderer,  // Expose renderer
+      render: () => { renderer.render(scene, camera); },  // Manual render method
       setLights: ({ intensity, ambient }) => {
         light.intensity = intensity;
         amb.intensity = ambient;
