@@ -1,9 +1,19 @@
 // Machine Module Version
 // Update this with each significant change
-export const MACHINE_MODULE_VERSION = 'v0.008';
+export const MACHINE_MODULE_VERSION = 'v0.009';
 
 // Version History
 export const VERSION_HISTORY = [
+  {
+    version: 'v0.009',
+    date: '2024-12-30',
+    changes: [
+      'Fixed input box width to 50px for X/Y/Z (just enough for 3-4 digits)',
+      'Changed layout to inline for more compact display',
+      'Added "mm" label after inputs',
+      'Created new Tool Magazine module for tool management'
+    ]
+  },
   {
     version: 'v0.008',
     date: '2024-12-30',

@@ -426,39 +426,40 @@ export default function SimpleMachine() {
         </select>
       </label>
 
-      {/* Dimensions - Compact 2x2 grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+      {/* Dimensions - Compact inline */}
+      <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <span style={{ fontSize: '10px' }}>X (mm)</span>
+          <span style={{ fontSize: '10px' }}>X</span>
           <input
             type="number"
             value={tableSize.x}
             onChange={(e) => setTableSize({ ...tableSize, x: parseFloat(e.target.value) || 400 })}
             disabled={!isInitialized}
-            style={{ fontSize: '11px' }}
+            style={{ fontSize: '11px', width: '50px' }}
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <span style={{ fontSize: '10px' }}>Y (mm)</span>
+          <span style={{ fontSize: '10px' }}>Y</span>
           <input
             type="number"
             value={tableSize.y}
             onChange={(e) => setTableSize({ ...tableSize, y: parseFloat(e.target.value) || 300 })}
             disabled={!isInitialized}
-            style={{ fontSize: '11px' }}
+            style={{ fontSize: '11px', width: '50px' }}
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <span style={{ fontSize: '10px' }}>Z (mm)</span>
+          <span style={{ fontSize: '10px' }}>Z</span>
           <input
             type="number"
             value={spindleHeight}
             onChange={(e) => setSpindleHeight(parseFloat(e.target.value) || 250)}
             disabled={!isInitialized}
-            style={{ fontSize: '11px' }}
+            style={{ fontSize: '11px', width: '50px' }}
           />
         </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 4, paddingTop: '14px' }}>
+        <span style={{ fontSize: '10px', color: '#666' }}>mm</span>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 'auto' }}>
           <input
             type="checkbox"
             checked={showMachine}
