@@ -3,7 +3,7 @@ import * as THREE from 'three';
 
 export const meta = {
   id: 'scene',
-  name: 'Scene Controls',
+  name: 'Scene Controls v1.1',
   area: 'right',
   order: 3,
   icon: '🎬',
@@ -21,7 +21,9 @@ export default function SceneControls() {
   const [showPath, setShowPath] = useState(true);
   
   // Visual settings
-  const [bg, setBg] = useState('#0b1224');
+  const [bgColor1, setBgColor1] = useState('#0b1224');
+  const [bgColor2, setBgColor2] = useState('#1a2332');
+  const [useGradient, setUseGradient] = useState(false);
   const [wireframe, setWireframe] = useState(false);
   
   // Camera controls
@@ -39,8 +41,28 @@ export default function SceneControls() {
 
   // Apply background changes
   useEffect(() => {
-    window.cncViewer?.setBackground?.(bg);
-  }, [bg]);
+    if (useGradient) {
+      // Create gradient texture for background
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+      
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, bgColor1);
+      gradient.addColorStop(1, bgColor2);
+      
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      const texture = new THREE.CanvasTexture(canvas);
+      if (window.cncViewer?.scene) {
+        window.cncViewer.scene.background = texture;
+      }
+    } else {
+      window.cncViewer?.setBackground?.(bgColor1);
+    }
+  }, [bgColor1, bgColor2, useGradient]);
 
   // Apply camera FOV changes
   useEffect(() => {
@@ -117,7 +139,7 @@ export default function SceneControls() {
 
   // UI Components
   const SliderRow = ({ label, min, max, step, value, onChange, format = (v) => v.toFixed(2) }) => (
-    <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
       <span style={{ minWidth: 80, fontSize: 12 }}>{label}</span>
       <input
         type="range"
@@ -125,23 +147,54 @@ export default function SceneControls() {
         max={max}
         step={step}
         value={value}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-        style={{ flex: 1 }}
+        onChange={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onChange(parseFloat(e.target.value));
+        }}
+        onInput={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onChange(parseFloat(e.target.value));
+        }}
+        style={{ 
+          flex: 1,
+          cursor: 'pointer',
+          WebkitAppearance: 'none',
+          appearance: 'none',
+          height: '4px',
+          background: 'rgba(23, 48, 77, 0.5)',
+          borderRadius: '2px',
+          outline: 'none'
+        }}
       />
       <span style={{ width: 42, textAlign: 'right', fontSize: 11, opacity: 0.8 }}>{format(value)}</span>
-    </label>
+    </div>
   );
 
   const CheckboxRow = ({ label, checked, onChange }) => (
-    <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4, cursor: 'pointer' }}>
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4, cursor: 'pointer' }}
+         onClick={(e) => {
+           e.preventDefault();
+           e.stopPropagation();
+           onChange(!checked);
+         }}>
       <input
         type="checkbox"
         checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        style={{ margin: 0 }}
+        onChange={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onChange(e.target.checked);
+        }}
+        style={{ 
+          margin: 0,
+          cursor: 'pointer',
+          pointerEvents: 'none'
+        }}
       />
-      <span style={{ fontSize: 12 }}>{label}</span>
-    </label>
+      <span style={{ fontSize: 12, userSelect: 'none' }}>{label}</span>
+    </div>
   );
 
   const ButtonRow = ({ children }) => (
@@ -174,15 +227,35 @@ export default function SceneControls() {
       
       <SectionHeader title="Environment" />
       <SliderRow label="Grid" min={0} max={0.6} step={0.05} value={grid} onChange={setGrid} />
-      <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-        <span style={{ fontSize: 12 }}>Background</span>
+      
+      <CheckboxRow 
+        label="Gradient Background" 
+        checked={useGradient} 
+        onChange={setUseGradient} 
+      />
+      
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+        <span style={{ fontSize: 12, minWidth: 80 }}>
+          {useGradient ? 'Top Color' : 'Background'}
+        </span>
         <input 
           type="color" 
-          value={bg} 
-          onChange={(e) => setBg(e.target.value)}
+          value={bgColor1} 
+          onChange={(e) => setBgColor1(e.target.value)}
           style={{ width: 32, height: 24, border: 'none', borderRadius: 4 }}
         />
-      </label>
+        {useGradient && (
+          <>
+            <span style={{ fontSize: 12 }}>Bottom</span>
+            <input 
+              type="color" 
+              value={bgColor2} 
+              onChange={(e) => setBgColor2(e.target.value)}
+              style={{ width: 32, height: 24, border: 'none', borderRadius: 4 }}
+            />
+          </>
+        )}
+      </div>
       
       <SectionHeader title="Visibility" />
       <CheckboxRow 
