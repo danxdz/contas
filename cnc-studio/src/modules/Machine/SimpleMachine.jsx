@@ -26,6 +26,7 @@ export default function SimpleMachine() {
   const [savedMachines, setSavedMachines] = useState(loadSavedMachines());
   const [machineName, setMachineName] = useState('');
   const machineGroupRef = useRef(null);
+  const hasCreatedMachine = useRef(false);
 
   // Initialize and check for viewer
   useEffect(() => {
@@ -303,10 +304,13 @@ export default function SimpleMachine() {
 
   // Create actual machine geometry in the scene
   useEffect(() => {
-    if (!isInitialized || !showMachine) return;
+    if (!isInitialized) return;
 
     const scene = window.cncViewer.scene;
     if (!scene) return;
+
+    // Only update if showMachine is true or if we need to update existing machine
+    if (!showMachine && !hasCreatedMachine.current) return;
 
     // Remove old machine group if exists
     if (machineGroupRef.current) {
@@ -314,14 +318,25 @@ export default function SimpleMachine() {
       machineGroupRef.current = null;
     }
 
-    // Remove default table and tool from Viewer if they exist
-    const defaultTable = scene.getObjectByName('defaultTable');
-    if (defaultTable) {
-      scene.remove(defaultTable);
+    // If showMachine is false, just hide it but keep the reference
+    if (!showMachine) {
+      hasCreatedMachine.current = false;
+      if (window.cncViewer.render) {
+        window.cncViewer.render();
+      }
+      return;
     }
-    const defaultTool = scene.getObjectByName('defaultTool');
-    if (defaultTool) {
-      scene.remove(defaultTool);
+
+    // Remove default table and tool from Viewer if they exist (only once)
+    if (!hasCreatedMachine.current) {
+      const defaultTable = scene.getObjectByName('defaultTable');
+      if (defaultTable) {
+        scene.remove(defaultTable);
+      }
+      const defaultTool = scene.getObjectByName('defaultTool');
+      if (defaultTool) {
+        scene.remove(defaultTool);
+      }
     }
 
     // Convert mm to scene units (assuming 1 unit = 1m)
@@ -357,10 +372,12 @@ export default function SimpleMachine() {
       const machineGroup = createMachineGeometry(machineType, scaleX, scaleY, scaleZ, materials);
       machineGroupRef.current = machineGroup;
       scene.add(machineGroup);
+      hasCreatedMachine.current = true;
 
-      // Update viewer references
+      // Store machine in window.cncViewer so it persists
       if (window.cncViewer) {
         window.cncViewer.machineGroup = machineGroup;
+        window.cncViewer.persistMachine = true;
         
         // Update table method
         window.cncViewer.setTable = (size) => {
@@ -382,76 +399,87 @@ export default function SimpleMachine() {
       console.error('Error creating machine geometry:', error);
     }
 
-    // Cleanup function
+    // Don't cleanup on unmount - keep machine in scene
     return () => {
-      if (scene && machineGroupRef.current) {
-        scene.remove(machineGroupRef.current);
-        machineGroupRef.current = null;
-      }
+      // Machine stays in scene when panel closes
     };
   }, [machineType, tableSize, spindleHeight, showMachine, isInitialized]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {/* Machine Type */}
+      {/* Machine Type - Compact with version */}
       <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <span style={{ fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          Machine Type
-          <span style={{ fontSize: '10px', opacity: 0.6 }}>{MACHINE_MODULE_VERSION}</span>
+        <span style={{ fontSize: '11px', display: 'flex', justifyContent: 'space-between' }}>
+          Type
+          <span style={{ opacity: 0.5 }}>{MACHINE_MODULE_VERSION}</span>
         </span>
         <select 
           value={machineType}
           onChange={(e) => setMachineType(e.target.value)}
           disabled={!isInitialized}
+          style={{ fontSize: '12px' }}
         >
-          <option value="3axis-mill">3-Axis Mill</option>
-          <option value="4axis-mill">4-Axis Mill</option>
-          <option value="5axis-mill">5-Axis Mill</option>
+          <option value="3axis-mill">3-Axis</option>
+          <option value="4axis-mill">4-Axis</option>
+          <option value="5axis-mill">5-Axis</option>
           <option value="lathe">Lathe</option>
         </select>
       </label>
 
-      {/* Table Size */}
-      <div style={{ display: 'flex', gap: 8 }}>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
-          <span>{machineType === 'lathe' ? 'Length' : 'Table X'} (mm)</span>
+      {/* Dimensions - Compact 2x2 grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span style={{ fontSize: '10px' }}>X (mm)</span>
           <input
             type="number"
             value={tableSize.x}
             onChange={(e) => setTableSize({ ...tableSize, x: parseFloat(e.target.value) || 400 })}
             disabled={!isInitialized}
+            style={{ fontSize: '11px' }}
           />
         </label>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
-          <span>{machineType === 'lathe' ? 'Width' : 'Table Y'} (mm)</span>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span style={{ fontSize: '10px' }}>Y (mm)</span>
           <input
             type="number"
             value={tableSize.y}
             onChange={(e) => setTableSize({ ...tableSize, y: parseFloat(e.target.value) || 300 })}
             disabled={!isInitialized}
+            style={{ fontSize: '11px' }}
           />
         </label>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
-          <span>{machineType === 'lathe' ? 'Center' : 'Spindle'} Z (mm)</span>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span style={{ fontSize: '10px' }}>Z (mm)</span>
           <input
             type="number"
             value={spindleHeight}
             onChange={(e) => setSpindleHeight(parseFloat(e.target.value) || 250)}
             disabled={!isInitialized}
+            style={{ fontSize: '11px' }}
           />
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 4, paddingTop: '14px' }}>
+          <input
+            type="checkbox"
+            checked={showMachine}
+            onChange={(e) => setShowMachine(e.target.checked)}
+            disabled={!isInitialized}
+          />
+          <span style={{ fontSize: '11px' }}>Show</span>
         </label>
       </div>
 
-      {/* Quick Presets and Show Machine */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+      {/* Presets - Compact buttons */}
+      <div style={{ display: 'flex', gap: 4 }}>
         <button
           onClick={() => {
             setTableSize({ x: 300, y: 200 });
             setSpindleHeight(200);
           }}
           disabled={!isInitialized}
+          style={{ flex: 1, fontSize: '11px', padding: '3px' }}
         >
-          Small
+          S
         </button>
         <button
           onClick={() => {
@@ -459,8 +487,9 @@ export default function SimpleMachine() {
             setSpindleHeight(300);
           }}
           disabled={!isInitialized}
+          style={{ flex: 1, fontSize: '11px', padding: '3px' }}
         >
-          Medium
+          M
         </button>
         <button
           onClick={() => {
@@ -468,42 +497,35 @@ export default function SimpleMachine() {
             setSpindleHeight(400);
           }}
           disabled={!isInitialized}
+          style={{ flex: 1, fontSize: '11px', padding: '3px' }}
         >
-          Large
+          L
         </button>
-        <label style={{ display: 'flex', gap: 6, alignItems: 'center', marginLeft: 'auto' }}>
-          <input
-            type="checkbox"
-            checked={showMachine}
-            onChange={(e) => setShowMachine(e.target.checked)}
-            disabled={!isInitialized}
-          />
-          <span>Show</span>
-        </label>
       </div>
 
-      {/* Save Configuration */}
-      <div style={{ display: 'flex', gap: 8 }}>
+      {/* Save - Compact */}
+      <div style={{ display: 'flex', gap: 4 }}>
         <input
           type="text"
           value={machineName}
           onChange={(e) => setMachineName(e.target.value)}
-          placeholder="Save config as..."
-          style={{ flex: 1 }}
+          placeholder="Save as..."
+          style={{ flex: 1, fontSize: '11px' }}
         />
         <button
           onClick={saveCurrentMachine}
           disabled={!machineName.trim()}
+          style={{ fontSize: '11px', padding: '2px 8px' }}
         >
           Save
         </button>
       </div>
 
-      {/* Saved Machines */}
+      {/* Saved Machines - Compact list */}
       {savedMachines.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span style={{ fontSize: '11px', opacity: 0.7 }}>Saved Configurations</span>
-          <div style={{ maxHeight: '100px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <>
+          <span style={{ fontSize: '10px', opacity: 0.6 }}>Saved</span>
+          <div style={{ maxHeight: '80px', overflowY: 'auto' }}>
             {savedMachines.map(machine => (
               <div 
                 key={machine.id}
@@ -511,23 +533,21 @@ export default function SimpleMachine() {
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  padding: '4px 8px',
-                  background: 'rgba(255,255,255,0.05)',
-                  borderRadius: '3px',
-                  fontSize: '11px'
+                  padding: '2px 4px',
+                  fontSize: '10px'
                 }}
               >
                 <span>{machine.name}</span>
-                <div style={{ display: 'flex', gap: 4 }}>
+                <div style={{ display: 'flex', gap: 2 }}>
                   <button
                     onClick={() => loadMachine(machine)}
-                    style={{ padding: '2px 6px', fontSize: '10px' }}
+                    style={{ padding: '1px 4px', fontSize: '9px' }}
                   >
                     Load
                   </button>
                   <button
                     onClick={() => deleteMachine(machine.id)}
-                    style={{ padding: '2px 6px', fontSize: '10px' }}
+                    style={{ padding: '1px 4px', fontSize: '9px' }}
                   >
                     ×
                   </button>
@@ -535,7 +555,7 @@ export default function SimpleMachine() {
               </div>
             ))}
           </div>
-        </div>
+        </>
       )}
     </div>
   );
