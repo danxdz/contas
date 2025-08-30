@@ -88,6 +88,7 @@ export default function ViewerModule() {
     let feedRate = 0;
     let wcs = 'G54';
     let stateCb = null;
+    let tickCb = null;
     const zAxis = new THREE.Vector3(0, 0, 1);
 
     const handleResize = () => {
@@ -135,9 +136,9 @@ export default function ViewerModule() {
         tool.rotation.x = Math.PI / 2;
         tool.rotation.y = 0;
         currentIndex = (currentIndex + Math.max(1, Math.floor(speed))) % parsedPts.length;
-        if (window.cncViewer && typeof window.cncViewer.tick === 'function') {
+        if (typeof tickCb === 'function') {
           const ln = parsedPts[currentIndex]?.lineNo ?? currentIndex + 1;
-          window.cncViewer.tick(ln);
+          tickCb(ln);
         }
         emitState();
       }
@@ -243,8 +244,8 @@ export default function ViewerModule() {
           currentIndex = idx;
           const t = parsedPts[currentIndex];
           tool.position.set(mmToWorld(t.x), mmToWorld(t.y), mmToWorld(t.z + 100));
-          if (window.cncViewer && typeof window.cncViewer.tick === 'function') {
-            window.cncViewer.tick(lineNo);
+          if (typeof tickCb === 'function') {
+            tickCb(lineNo);
           }
           emitState();
         }
@@ -278,13 +279,17 @@ export default function ViewerModule() {
         currentIndex = Math.max(0, Math.min(parsedPts.length - 1, currentIndex + d));
         const target = parsedPts[currentIndex];
         tool.position.set(mmToWorld(target.x), mmToWorld(target.y), mmToWorld(target.z + 100));
-        if (window.cncViewer && typeof window.cncViewer.tick === 'function') {
+        if (typeof tickCb === 'function') {
           const ln = parsedPts[currentIndex]?.lineNo ?? currentIndex + 1;
-          window.cncViewer.tick(ln);
+          tickCb(ln);
         }
         emitState();
       },
-      onTick: (cb) => { window.cncViewer.tick = cb; },
+      onTick: (cb) => { 
+        tickCb = cb;
+        // Return unsubscribe function
+        return () => { tickCb = null; };
+      },
       setSpeed: (s) => { speed = s; emitState(); },
       getState: () => {
         const total = Array.isArray(parsedPts) ? parsedPts.length : 0;
@@ -306,7 +311,11 @@ export default function ViewerModule() {
           wcs
         };
       },
-      onState: (cb) => { stateCb = cb; },
+      onState: (cb) => { 
+        stateCb = cb;
+        // Return unsubscribe function
+        return () => { stateCb = null; };
+      },
     };
 
     return () => {

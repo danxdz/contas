@@ -107,7 +107,7 @@ export default function SimpleMachine() {
     const { tableMaterial, frameMaterial, spindleMaterial, railMaterial } = materials;
 
     // Common components for all machines
-    const tableThickness = 0.02;
+    const tableThickness = mmToWorld(20); // 20mm thick table
     const tableGeometry = new THREE.BoxGeometry(scaleX, scaleY, tableThickness);
     const table = new THREE.Mesh(tableGeometry, tableMaterial);
     table.position.set(0, 0, -tableThickness/2);
@@ -115,9 +115,9 @@ export default function SimpleMachine() {
     
     // Add T-slots for mills
     if (type !== 'lathe') {
-      const slotWidth = 0.01;
-      const slotDepth = 0.005;
-      const slotSpacing = 0.05;
+      const slotWidth = mmToWorld(10);  // 10mm wide slots
+      const slotDepth = mmToWorld(5);   // 5mm deep slots
+      const slotSpacing = mmToWorld(50); // 50mm spacing
       const numSlots = Math.floor(scaleX / slotSpacing) - 1;
       
       for (let i = 0; i < numSlots; i++) {
@@ -137,9 +137,9 @@ export default function SimpleMachine() {
       case '4axis-mill':
       case '5axis-mill':
         // Column and frame
-        const columnWidth = 0.08;
-        const columnDepth = 0.12;
-        const columnHeight = scaleZ + 0.1;
+        const columnWidth = mmToWorld(80);  // 80mm wide column
+        const columnDepth = mmToWorld(120); // 120mm deep column
+        const columnHeight = scaleZ + mmToWorld(100); // Height + 100mm
         
         const columnGeometry = new THREE.BoxGeometry(scaleX * 0.8, columnDepth, columnHeight);
         const column = new THREE.Mesh(columnGeometry, frameMaterial);
@@ -158,14 +158,14 @@ export default function SimpleMachine() {
 
         // Spindle assembly
         const spindleGroup = new THREE.Group();
-        const headSize = 0.15;
+        const headSize = mmToWorld(150); // 150mm spindle head
         const headGeometry = new THREE.BoxGeometry(headSize, headSize, headSize * 1.2);
         const spindleHead = new THREE.Mesh(headGeometry, frameMaterial);
         spindleHead.position.set(0, 0, scaleZ);
         spindleGroup.add(spindleHead);
         
-        const spindleRadius = 0.03;
-        const spindleLength = 0.2;
+        const spindleRadius = mmToWorld(30); // 30mm spindle radius
+        const spindleLength = mmToWorld(200); // 200mm spindle length
         const spindleGeometry = new THREE.CylinderGeometry(
           spindleRadius, 
           spindleRadius * 0.8, 
@@ -178,18 +178,18 @@ export default function SimpleMachine() {
         spindle.name = 'spindle';
         spindleGroup.add(spindle);
         
-        const holderGeometry = new THREE.ConeGeometry(spindleRadius * 0.8, 0.05, 8);
+        const holderGeometry = new THREE.ConeGeometry(spindleRadius * 0.8, mmToWorld(50), 8);
         const toolHolder = new THREE.Mesh(holderGeometry, spindleMaterial);
         toolHolder.rotation.x = -Math.PI / 2;
-        toolHolder.position.set(0, 0, scaleZ - spindleLength - 0.025);
+        toolHolder.position.set(0, 0, scaleZ - spindleLength - mmToWorld(25));
         spindleGroup.add(toolHolder);
         
         machineGroup.add(spindleGroup);
 
         // Add 4th axis for 4-axis mill
         if (type === '4axis-mill') {
-          const rotaryTableRadius = 0.08;
-          const rotaryTableHeight = 0.03;
+          const rotaryTableRadius = mmToWorld(80); // 80mm rotary table radius
+          const rotaryTableHeight = mmToWorld(30); // 30mm height
           const rotaryGeometry = new THREE.CylinderGeometry(
             rotaryTableRadius, 
             rotaryTableRadius, 
@@ -202,7 +202,7 @@ export default function SimpleMachine() {
           machineGroup.add(rotaryTable);
           
           // A-axis indicator
-          const indicatorGeometry = new THREE.BoxGeometry(rotaryTableRadius * 1.5, 0.01, 0.01);
+          const indicatorGeometry = new THREE.BoxGeometry(rotaryTableRadius * 1.5, mmToWorld(10), mmToWorld(10));
           const indicator = new THREE.Mesh(indicatorGeometry, new THREE.MeshPhongMaterial({ color: 0xff0000 }));
           indicator.position.set(0, 0, tableThickness + rotaryTableHeight/2);
           machineGroup.add(indicator);
@@ -211,8 +211,8 @@ export default function SimpleMachine() {
         // Add 5th axis for 5-axis mill
         if (type === '5axis-mill') {
           // Trunnion table
-          const trunnionRadius = 0.1;
-          const trunnionWidth = 0.02;
+          const trunnionRadius = mmToWorld(100); // 100mm trunnion radius
+          const trunnionWidth = mmToWorld(20);   // 20mm width
           
           // C-axis (rotary table)
           const cAxisGeometry = new THREE.CylinderGeometry(
@@ -222,18 +222,18 @@ export default function SimpleMachine() {
             32
           );
           const cAxis = new THREE.Mesh(cAxisGeometry, frameMaterial);
-          cAxis.position.set(0, 0, 0.05);
+          cAxis.position.set(0, 0, mmToWorld(50));
           cAxis.rotation.x = Math.PI / 2;
           machineGroup.add(cAxis);
           
           // A-axis (tilt)
           const aAxisGeometry = new THREE.TorusGeometry(trunnionRadius, trunnionWidth, 8, 16, Math.PI);
           const aAxis = new THREE.Mesh(aAxisGeometry, frameMaterial);
-          aAxis.position.set(0, 0, 0.08);
+          aAxis.position.set(0, 0, mmToWorld(80));
           machineGroup.add(aAxis);
           
           // Trunnion supports
-          const supportHeight = 0.06;
+          const supportHeight = mmToWorld(60); // 60mm support height
           const supportGeom = new THREE.BoxGeometry(trunnionWidth, trunnionWidth, supportHeight);
           const leftTrunnion = new THREE.Mesh(supportGeom, frameMaterial);
           leftTrunnion.position.set(-trunnionRadius, 0, supportHeight/2);
@@ -245,39 +245,39 @@ export default function SimpleMachine() {
         }
 
         // Linear rails
-        const railRadius = 0.01;
+        const railRadius = mmToWorld(10); // 10mm rail radius
         const xRailGeometry = new THREE.CylinderGeometry(railRadius, railRadius, scaleX * 0.9, 8);
         const xRail1 = new THREE.Mesh(xRailGeometry, railMaterial);
         xRail1.rotation.z = Math.PI / 2;
-        xRail1.position.set(0, -scaleY/2 + 0.03, scaleZ * 0.8);
+        xRail1.position.set(0, -scaleY/2 + mmToWorld(30), scaleZ * 0.8);
         machineGroup.add(xRail1);
         
         const xRail2 = new THREE.Mesh(xRailGeometry, railMaterial);
         xRail2.rotation.z = Math.PI / 2;
-        xRail2.position.set(0, -scaleY/2 + 0.03, scaleZ * 0.6);
+        xRail2.position.set(0, -scaleY/2 + mmToWorld(30), scaleZ * 0.6);
         machineGroup.add(xRail2);
         break;
 
       case 'lathe':
         // Lathe bed
         const bedLength = scaleX;
-        const bedWidth = 0.15;
-        const bedHeight = 0.08;
+        const bedWidth = mmToWorld(150);  // 150mm bed width
+        const bedHeight = mmToWorld(80);   // 80mm bed height
         const bedGeometry = new THREE.BoxGeometry(bedLength, bedWidth, bedHeight);
         const bed = new THREE.Mesh(bedGeometry, frameMaterial);
         bed.position.set(0, 0, -bedHeight/2);
         machineGroup.add(bed);
 
         // Headstock
-        const headstockSize = 0.2;
+        const headstockSize = mmToWorld(200); // 200mm headstock
         const headstockGeometry = new THREE.BoxGeometry(headstockSize * 0.8, headstockSize, headstockSize * 1.2);
         const headstock = new THREE.Mesh(headstockGeometry, frameMaterial);
         headstock.position.set(-bedLength/2 + headstockSize/2, 0, headstockSize * 0.6);
         machineGroup.add(headstock);
 
         // Chuck
-        const chuckRadius = 0.08;
-        const chuckDepth = 0.04;
+        const chuckRadius = mmToWorld(80); // 80mm chuck radius
+        const chuckDepth = mmToWorld(40);  // 40mm chuck depth
         const chuckGeometry = new THREE.CylinderGeometry(chuckRadius, chuckRadius * 0.9, chuckDepth, 8);
         const chuck = new THREE.Mesh(chuckGeometry, spindleMaterial);
         chuck.rotation.z = Math.PI / 2;
@@ -285,20 +285,20 @@ export default function SimpleMachine() {
         machineGroup.add(chuck);
 
         // Tailstock
-        const tailstockSize = 0.15;
+        const tailstockSize = mmToWorld(150); // 150mm tailstock
         const tailstockGeometry = new THREE.BoxGeometry(tailstockSize * 0.8, tailstockSize, tailstockSize);
         const tailstock = new THREE.Mesh(tailstockGeometry, frameMaterial);
         tailstock.position.set(bedLength/2 - tailstockSize/2, 0, tailstockSize/2);
         machineGroup.add(tailstock);
 
         // Tool post
-        const toolPostGeometry = new THREE.BoxGeometry(0.06, 0.08, 0.1);
+        const toolPostGeometry = new THREE.BoxGeometry(mmToWorld(60), mmToWorld(80), mmToWorld(100));
         const toolPost = new THREE.Mesh(toolPostGeometry, frameMaterial);
-        toolPost.position.set(0, 0, 0.1);
+        toolPost.position.set(0, 0, mmToWorld(100));
         machineGroup.add(toolPost);
 
         // Ways
-        const wayRadius = 0.008;
+        const wayRadius = mmToWorld(8); // 8mm way radius
         const wayGeometry = new THREE.CylinderGeometry(wayRadius, wayRadius, bedLength * 0.9, 8);
         const way1 = new THREE.Mesh(wayGeometry, railMaterial);
         way1.rotation.z = Math.PI / 2;
@@ -313,14 +313,15 @@ export default function SimpleMachine() {
     }
 
     // Add base for all machines
-    const baseGeometry = new THREE.BoxGeometry(scaleX * 1.2, scaleY * 1.2, 0.05);
+    const baseThickness = mmToWorld(50); // 50mm base thickness
+    const baseGeometry = new THREE.BoxGeometry(scaleX * 1.2, scaleY * 1.2, baseThickness);
     const baseMaterial = new THREE.MeshPhongMaterial({ 
       color: 0x505050,
       metalness: 0.5,
       roughness: 0.5
     });
     const base = new THREE.Mesh(baseGeometry, baseMaterial);
-    base.position.set(0, 0, -0.05);
+    base.position.set(0, 0, -baseThickness);
     machineGroup.add(base);
 
     return machineGroup;
