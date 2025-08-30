@@ -207,6 +207,8 @@ export default function ViewerModule() {
       return pts.length ? pts : [{ x: 0, y: 0, z: 0, _line: '', lineNo: 1, mm: { x: 0, y: 0, z: spindleHome } }];
     };
 
+    // Expose viewer API globally
+    console.log('[Viewer] Creating window.cncViewer API');
     window.cncViewer = {
       scene: scene,  // Expose scene for Machine module
       camera: camera,  // Expose camera

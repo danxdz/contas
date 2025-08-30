@@ -101,8 +101,8 @@ export default function SimpleMachine() {
     const machineGroup = new THREE.Group();
     machineGroup.name = 'machineGroup';
     
-    // No rotation needed - machine faces correct direction
-    // machineGroup.rotation.z = Math.PI;
+    // Rotate entire machine 180 degrees so back faces Y+
+    machineGroup.rotation.z = Math.PI;
 
     const { tableMaterial, frameMaterial, spindleMaterial, railMaterial } = materials;
 
@@ -327,6 +327,14 @@ export default function SimpleMachine() {
     // Add axes helper for debugging
     const axesHelper = new THREE.AxesHelper(Math.max(scaleX, scaleY, scaleZ));
     machineGroup.add(axesHelper);
+    
+    // Add a large red sphere for debugging visibility
+    const debugSphere = new THREE.Mesh(
+      new THREE.SphereGeometry(mmToWorld(100), 16, 16),
+      new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true })
+    );
+    debugSphere.position.set(0, 0, mmToWorld(200));
+    machineGroup.add(debugSphere);
 
     return machineGroup;
   };
