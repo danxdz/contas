@@ -23,7 +23,9 @@ export default function ViewerModule() {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color('#0b1224');
     const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
-    camera.position.set(3, 3, 3);
+    // Z-up like a real machine
+    camera.up.set(0, 0, 1);
+    camera.position.set(3, 3, 2);
     camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -31,10 +33,11 @@ export default function ViewerModule() {
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     mount.appendChild(renderer.domElement);
 
-    const light = new THREE.DirectionalLight(0xffffff, 1.0);
-    light.position.set(4, 5, 6);
+    const light = new THREE.DirectionalLight(0xffffff, 1.2);
+    light.position.set(6, 7, 8);
     scene.add(light);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.25));
+    const amb = new THREE.AmbientLight(0xffffff, 0.35);
+    scene.add(amb);
 
     const grid = new THREE.GridHelper(10, 10, 0x123a5a, 0x123a5a);
     grid.material.opacity = 0.15;
@@ -79,11 +82,24 @@ export default function ViewerModule() {
     sceneRef.current = scene;
     cameraRef.current = camera;
 
+    // Expose minimal control API
+    window.cncViewer = {
+      setLights: ({ intensity, ambient }) => {
+        light.intensity = intensity;
+        amb.intensity = ambient;
+      },
+      setGridOpacity: (o) => {
+        grid.material.opacity = o;
+        grid.material.transparent = o < 1;
+      }
+    };
+
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', handleResize);
       mount.removeChild(renderer.domElement);
       renderer.dispose();
+      if (window.cncViewer) delete window.cncViewer;
     };
   }, []);
 

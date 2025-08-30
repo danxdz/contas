@@ -101,7 +101,10 @@ export default function AppShell() {
       state.maximized ? 'is-max' : '',
     ].join(' ');
     return (
-      <div key={m.id} className={classNames} style={{ position: 'relative', zIndex: panelZ[m.id] || 1 }} onMouseDown={() => bringToFront(m.id)}>
+      <div key={m.id} data-panel-id={m.id} className={classNames} style={{ position: 'relative', zIndex: panelZ[m.id] || 1 }} onMouseDown={() => bringToFront(m.id)} draggable onDragStart={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        e.dataTransfer.setData('text/plain', JSON.stringify({ id: m.id, dx: e.clientX - rect.left, dy: e.clientY - rect.top }));
+      }}>
         <div className="panel-titlebar">
           <span className="panel-title">{m.icon} {m.name}</span>
           <div className="panel-actions">
@@ -138,7 +141,21 @@ export default function AppShell() {
         ))}
       </div>
 
-      <div className="workspace">
+      <div className="workspace" onDragOver={(e) => e.preventDefault()} onDrop={(e) => {
+        const data = e.dataTransfer.getData('text/plain');
+        try {
+          const { id, dx, dy } = JSON.parse(data);
+          const host = e.currentTarget;
+          const x = e.clientX - host.getBoundingClientRect().left - dx;
+          const y = e.clientY - host.getBoundingClientRect().top - dy;
+          const el = host.querySelector(`[data-panel-id="${id}"]`);
+          if (el) {
+            el.style.position = 'absolute';
+            el.style.left = `${Math.max(0, x)}px`;
+            el.style.top = `${Math.max(0, y)}px`;
+          }
+        } catch {}
+      }}>
         <aside className="column left">
           {grouped.left.map(renderPanel)}
         </aside>
