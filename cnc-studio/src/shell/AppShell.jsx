@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import './shell.css';
+import { ToolProvider } from '../modules/shared/ToolContext';
 
 // Auto-discover modules: each module folder exports default React component and optional meta
 // Expected structure: src/modules/<ModuleName>/index.jsx with export default and optional export const meta
@@ -154,44 +155,46 @@ export default function AppShell() {
   };
 
   return (
-    <div className="shell">
-      <header className="topbar">
-        <div className="brand">CNC Studio {VERSION}</div>
-        <nav className="module-switcher">
-          {modules.filter(m => m.id !== 'viewer').map(m => (
-            <button key={m.id} onClick={() => toggleVisibility(m.id)} className="nav-item">
-              {m.icon} {m.name}
-            </button>
+    <ToolProvider>
+      <div className="shell">
+        <header className="topbar">
+          <div className="brand">CNC Studio {VERSION}</div>
+          <nav className="module-switcher">
+            {modules.filter(m => m.id !== 'viewer').map(m => (
+              <button key={m.id} onClick={() => toggleVisibility(m.id)} className="nav-item">
+                {m.icon} {m.name}
+              </button>
+            ))}
+          </nav>
+        </header>
+        {/* Background Viewer Layer */}
+        <div className="background-viewer">
+          {viewerModules.map(m => (
+            <m.Component key={m.id} />
           ))}
-        </nav>
-      </header>
-      {/* Background Viewer Layer */}
-      <div className="background-viewer">
-        {viewerModules.map(m => (
-          <m.Component key={m.id} />
-        ))}
-      </div>
+        </div>
 
-      <div className="workspace">
-        <aside className="column left">
-          {grouped.left.filter(m => !panelState[m.id]?.floating).map(renderPanel)}
-        </aside>
-        <main className="column center">
-          {grouped.center.filter(m => !panelState[m.id]?.floating).map(renderPanel)}
-        </main>
-        <aside className="column right">
-          {grouped.right.filter(m => !panelState[m.id]?.floating).map(renderPanel)}
-        </aside>
-      </div>
-      <footer className="dock bottom">
-        {grouped.bottom.filter(m => !panelState[m.id]?.floating).map(renderPanel)}
-      </footer>
+        <div className="workspace">
+          <aside className="column left">
+            {grouped.left.filter(m => !panelState[m.id]?.floating).map(renderPanel)}
+          </aside>
+          <main className="column center">
+            {grouped.center.filter(m => !panelState[m.id]?.floating).map(renderPanel)}
+          </main>
+          <aside className="column right">
+            {grouped.right.filter(m => !panelState[m.id]?.floating).map(renderPanel)}
+          </aside>
+        </div>
+        <footer className="dock bottom">
+          {grouped.bottom.filter(m => !panelState[m.id]?.floating).map(renderPanel)}
+        </footer>
 
-      {/* Floating layer renders pinned panels */}
-      <div className="floating-layer">
-        {modules.filter(m => panelState[m.id]?.floating).map(renderPanel)}
+        {/* Floating layer renders pinned panels */}
+        <div className="floating-layer">
+          {modules.filter(m => panelState[m.id]?.floating).map(renderPanel)}
+        </div>
       </div>
-    </div>
+    </ToolProvider>
   );
 }
 
