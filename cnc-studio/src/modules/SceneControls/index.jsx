@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export const meta = {
   id: 'scene',
@@ -13,11 +13,13 @@ export default function SceneControls() {
   const [ambient, setAmbient] = useState(0.35);
   const [grid, setGrid] = useState(0.15);
 
-  // Expose simple global hooks for the viewer (accessed via window.cncViewer)
-  const apply = () => {
+  // Apply live on change and when component mounts
+  useEffect(() => {
     window.cncViewer?.setLights?.({ intensity, ambient });
+  }, [intensity, ambient]);
+  useEffect(() => {
     window.cncViewer?.setGridOpacity?.(grid);
-  };
+  }, [grid]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -33,7 +35,7 @@ export default function SceneControls() {
         <span>Grid</span>
         <input type="range" min="0" max="0.6" step="0.05" value={grid} onChange={(e) => setGrid(parseFloat(e.target.value))} />
       </label>
-      <button onClick={apply}>Apply</button>
+      
     </div>
   );
 }

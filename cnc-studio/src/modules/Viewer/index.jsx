@@ -59,7 +59,7 @@ export default function ViewerModule() {
     tool.position.set(0, 0, 1.2);
     scene.add(tool);
 
-    const path = createPathLine([
+    let path = createPathLine([
       { x: -0.6, y: -0.4, z: 0.2 },
       { x: -0.6, y: 0.4, z: 0.15 },
       { x: 0.6, y: 0.4, z: 0.15 },
@@ -92,6 +92,28 @@ export default function ViewerModule() {
     cameraRef.current = camera;
 
     // Expose minimal control API
+    const parseGcode = (src) => {
+      const lines = src.split(/\r?\n/);
+      let x = 0, y = 0, z = 0, unit = 1; // mm
+      const pts = [];
+      for (const raw of lines) {
+        const line = raw.trim();
+        if (!line || line.startsWith(';') || line.startsWith('(')) continue;
+        if (/^G20/.test(line)) unit = 25.4; // inch to mm
+        if (/^G21/.test(line)) unit = 1;    // mm
+        const mx = line.match(/X(-?\d+(?:\.\d+)?)/i);
+        const my = line.match(/Y(-?\d+(?:\.\d+)?)/i);
+        const mz = line.match(/Z(-?\d+(?:\.\d+)?)/i);
+        if (mx) x = parseFloat(mx[1]) * 0.01 * unit; // scale down 1:100 for view
+        if (my) y = parseFloat(my[1]) * 0.01 * unit;
+        if (mz) z = parseFloat(mz[1]) * 0.01 * unit;
+        if (/^G0?1\b/.test(line) || /^G0\b/.test(line)) {
+          pts.push({ x, y, z });
+        }
+      }
+      return pts.length ? pts : [{ x: 0, y: 0, z: 0 }];
+    };
+
     window.cncViewer = {
       setLights: ({ intensity, ambient }) => {
         light.intensity = intensity;
@@ -100,6 +122,12 @@ export default function ViewerModule() {
       setGridOpacity: (o) => {
         grid.material.opacity = o;
         grid.material.transparent = o < 1;
+      },
+      setGCode: (code) => {
+        const pts = parseGcode(code);
+        if (path) scene.remove(path);
+        path = createPathLine(pts);
+        scene.add(path);
       }
     };
 
