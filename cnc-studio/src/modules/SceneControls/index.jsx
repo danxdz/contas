@@ -24,28 +24,33 @@ export default function SceneControls() {
     window.cncViewer?.setGridOpacity?.(value);
   };
 
-  const handleBgChange = (color1, color2 = null, direction = 'vertical') => {
+  const handleBgChange = (color1, color2 = null, direction = 'vertical', size = 'M') => {
     if (color2) {
-      // Create gradient with configurable direction
+      // Create gradient with configurable direction and size
       const canvas = document.createElement('canvas');
-      canvas.width = 512;
-      canvas.height = 512;
+      canvas.width = 2048;  // Much larger canvas
+      canvas.height = 2048;
       const ctx = canvas.getContext('2d');
+      
+      // Size multipliers for gradient spread
+      const sizeMultipliers = { S: 0.3, M: 1.0, L: 2.5 };
+      const mult = sizeMultipliers[size] || 1.0;
       
       let gradient;
       switch (direction) {
         case 'horizontal':
-          gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+          gradient = ctx.createLinearGradient(0, 0, canvas.width * mult, 0);
           break;
         case 'diagonal':
-          gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+          gradient = ctx.createLinearGradient(0, 0, canvas.width * mult, canvas.height * mult);
           break;
         case 'radial':
-          gradient = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, canvas.width/2);
+          const radius = (canvas.width / 2) * mult;
+          gradient = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, radius);
           break;
         case 'vertical':
         default:
-          gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+          gradient = ctx.createLinearGradient(0, 0, 0, canvas.height * mult);
           break;
       }
       
@@ -56,6 +61,9 @@ export default function SceneControls() {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       
       const texture = new THREE.CanvasTexture(canvas);
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      
       if (window.cncViewer?.scene) {
         window.cncViewer.scene.background = texture;
       }
@@ -174,19 +182,36 @@ export default function SceneControls() {
                  style={{ width: 32, height: 24, border: 'none', borderRadius: 4 }} />
         </div>
         
-        <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <span style={{ fontSize: 12 }}>Gradient:</span>
-          <select onChange={(e) => {
-            const color1 = document.querySelectorAll('input[type="color"]')[0].value;
-            const color2 = document.querySelectorAll('input[type="color"]')[1].value;
-            handleBgChange(color1, color2, e.target.value);
-          }} style={{ fontSize: 12, padding: '2px 4px' }}>
-            <option value="vertical">↕ Vertical</option>
-            <option value="horizontal">↔ Horizontal</option>
-            <option value="diagonal">↗ Diagonal</option>
-            <option value="radial">⊙ Radial</option>
-          </select>
-        </label>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <label style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+            <span style={{ fontSize: 12 }}>Direction:</span>
+            <select onChange={(e) => {
+              const color1 = document.querySelectorAll('input[type="color"]')[0].value;
+              const color2 = document.querySelectorAll('input[type="color"]')[1].value;
+              const size = document.querySelectorAll('select')[1]?.value || 'M';
+              handleBgChange(color1, color2, e.target.value, size);
+            }} style={{ fontSize: 11, padding: '2px 4px' }}>
+              <option value="vertical">↕ Vertical</option>
+              <option value="horizontal">↔ Horizontal</option>
+              <option value="diagonal">↗ Diagonal</option>
+              <option value="radial">⊙ Radial</option>
+            </select>
+          </label>
+          
+          <label style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+            <span style={{ fontSize: 12 }}>Size:</span>
+            <select onChange={(e) => {
+              const color1 = document.querySelectorAll('input[type="color"]')[0].value;
+              const color2 = document.querySelectorAll('input[type="color"]')[1].value;
+              const direction = document.querySelectorAll('select')[0]?.value || 'vertical';
+              handleBgChange(color1, color2, direction, e.target.value);
+            }} style={{ fontSize: 11, padding: '2px 4px' }}>
+              <option value="S">S</option>
+              <option value="M" selected>M</option>
+              <option value="L">L</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       {/* Visibility */}
