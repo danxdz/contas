@@ -1,4 +1,4 @@
-# Simple Machine Module
+# Simple Machine Module (v0.002)
 
 A practical, visual Machine module for CNC Studio that creates real 3D geometry in the scene.
 
@@ -61,6 +61,30 @@ The module automatically:
 - **Practical**: Focuses on real geometry
 - **Lightweight**: No complex state management
 - **Immediate**: Changes appear instantly in scene
+
+## Version Management
+
+Current Version: **v0.002**
+
+### Version History
+- **v0.002** - Fixed initialization, added status indicator and version tracking
+- **v0.001** - Initial simplified machine with real 3D geometry
+
+### Updating Version
+To update the version for a new commit:
+```bash
+node update-version.js "Your change description" "Another change"
+```
+
+Or manually edit `version.js` and increment the version number.
+
+## Troubleshooting
+
+If the machine doesn't appear:
+1. Check that the Viewer module is loaded
+2. Look for the status indicator (should show "✓ Connected to viewer")
+3. Check browser console for errors
+4. Try refreshing the page
 
 ## Future Enhancements
 
