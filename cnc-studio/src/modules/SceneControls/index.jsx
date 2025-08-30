@@ -1,4 +1,3 @@
-import { useEffect, useState, useCallback } from 'react';
 import * as THREE from 'three';
 
 export const meta = {
@@ -10,47 +9,32 @@ export const meta = {
 };
 
 export default function SceneControls() {
-  // Lighting controls
-  const [intensity, setIntensity] = useState(1.2);
-  const [ambient, setAmbient] = useState(0.35);
-  
-  // Scene visibility controls
-  const [grid, setGrid] = useState(0.15);
-  const [showAxes, setShowAxes] = useState(true);
-  const [showTool, setShowTool] = useState(true);
-  const [showPath, setShowPath] = useState(true);
-  
-  // Visual settings
-  const [bgColor1, setBgColor1] = useState('#0b1224');
-  const [bgColor2, setBgColor2] = useState('#1a2332');
-  const [useGradient, setUseGradient] = useState(false);
-  const [wireframe, setWireframe] = useState(false);
-  
-  // Camera controls
-  const [fov, setFov] = useState(50);
+  // Simple direct approach like the working Controls module
+  const handleLightChange = (type, value) => {
+    if (type === 'intensity') {
+      window.cncViewer?.setLights?.({ intensity: value, ambient: window.cncViewer.ambientLevel || 0.35 });
+    } else if (type === 'ambient') {
+      window.cncViewer?.setLights?.({ intensity: window.cncViewer.lightLevel || 1.2, ambient: value });
+      window.cncViewer.ambientLevel = value;
+    }
+    window.cncViewer.lightLevel = type === 'intensity' ? value : (window.cncViewer.lightLevel || 1.2);
+  };
 
-  // Apply lighting changes
-  useEffect(() => {
-    window.cncViewer?.setLights?.({ intensity, ambient });
-  }, [intensity, ambient]);
+  const handleGridChange = (value) => {
+    window.cncViewer?.setGridOpacity?.(value);
+  };
 
-  // Apply grid changes
-  useEffect(() => {
-    window.cncViewer?.setGridOpacity?.(grid);
-  }, [grid]);
-
-  // Apply background changes
-  useEffect(() => {
-    if (useGradient) {
-      // Create gradient texture for background
+  const handleBgChange = (color1, color2 = null) => {
+    if (color2) {
+      // Create gradient
       const canvas = document.createElement('canvas');
       canvas.width = 512;
       canvas.height = 512;
       const ctx = canvas.getContext('2d');
       
       const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      gradient.addColorStop(0, bgColor1);
-      gradient.addColorStop(1, bgColor2);
+      gradient.addColorStop(0, color1);
+      gradient.addColorStop(1, color2);
       
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -60,63 +44,59 @@ export default function SceneControls() {
         window.cncViewer.scene.background = texture;
       }
     } else {
-      window.cncViewer?.setBackground?.(bgColor1);
+      window.cncViewer?.setBackground?.(color1);
     }
-  }, [bgColor1, bgColor2, useGradient]);
+  };
 
-  // Apply camera FOV changes
-  useEffect(() => {
-    if (window.cncViewer?.camera) {
-      window.cncViewer.camera.fov = fov;
-      window.cncViewer.camera.updateProjectionMatrix();
-      window.cncViewer.render?.();
-    }
-  }, [fov]);
-
-  // Scene object visibility controls
-  const toggleSceneObject = useCallback((objectName, visible) => {
+  const toggleVisibility = (objectName) => {
     if (!window.cncViewer?.scene) return;
     
     const scene = window.cncViewer.scene;
-    const obj = scene.getObjectByName(objectName) || scene.children.find(child => 
-      child.type === 'AxesHelper' && objectName === 'axes'
-    );
+    let obj = scene.getObjectByName(objectName);
+    
+    if (!obj && objectName === 'axes') {
+      obj = scene.children.find(child => child.type === 'AxesHelper');
+    }
     
     if (obj) {
-      obj.visible = visible;
+      obj.visible = !obj.visible;
       window.cncViewer.render?.();
     }
-  }, []);
+  };
 
-  // Wireframe toggle
-  useEffect(() => {
+  const toggleWireframe = () => {
     if (!window.cncViewer?.scene) return;
+    
+    let wireframeEnabled = false;
+    window.cncViewer.scene.traverse((child) => {
+      if (child.material && child.material.wireframe !== undefined) {
+        wireframeEnabled = child.material.wireframe;
+      }
+    });
     
     window.cncViewer.scene.traverse((child) => {
       if (child.material && child.material.wireframe !== undefined) {
-        child.material.wireframe = wireframe;
+        child.material.wireframe = !wireframeEnabled;
       }
     });
     window.cncViewer.render?.();
-  }, [wireframe]);
+  };
 
-  // Camera control functions
-  const resetCamera = useCallback(() => {
+  const resetCamera = () => {
     if (!window.cncViewer?.camera) return;
     
     const camera = window.cncViewer.camera;
     camera.position.set(3, 3, 2);
     camera.lookAt(0, 0, 0);
     window.cncViewer.render?.();
-  }, []);
+  };
 
-  const fitToView = useCallback(() => {
+  const fitToView = () => {
     if (!window.cncViewer?.scene || !window.cncViewer?.camera) return;
     
     const scene = window.cncViewer.scene;
     const camera = window.cncViewer.camera;
     
-    // Calculate bounding box of all visible objects
     const box = new THREE.Box3();
     scene.traverse((child) => {
       if (child.visible && child.geometry) {
@@ -135,146 +115,74 @@ export default function SceneControls() {
       camera.lookAt(center);
       window.cncViewer.render?.();
     }
-  }, []);
-
-  // UI Components
-  const SliderRow = ({ label, min, max, step, value, onChange, format = (v) => v.toFixed(2) }) => (
-    <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
-      <span style={{ minWidth: 80, fontSize: 12 }}>{label}</span>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-      />
-      <span style={{ width: 42, textAlign: 'right', fontSize: 11, opacity: 0.8 }}>{format(value)}</span>
-    </label>
-  );
-
-  const CheckboxRow = ({ label, checked, onChange }) => (
-    <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4, cursor: 'pointer' }}>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        style={{ margin: 0 }}
-      />
-      <span style={{ fontSize: 12 }}>{label}</span>
-    </label>
-  );
-
-  const ButtonRow = ({ children }) => (
-    <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
-      {children}
-    </div>
-  );
-
-  const SectionHeader = ({ title }) => (
-    <div style={{ 
-      fontSize: 11, 
-      fontWeight: 600, 
-      color: '#9cd2ff', 
-      marginTop: 12, 
-      marginBottom: 6, 
-      textTransform: 'uppercase', 
-      letterSpacing: '0.5px',
-      borderBottom: '1px solid rgba(23, 48, 77, 0.35)',
-      paddingBottom: 2
-    }}>
-      {title}
-    </div>
-  );
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <SectionHeader title="Lighting" />
-      <SliderRow label="Dir Light" min={0} max={3} step={0.05} value={intensity} onChange={setIntensity} />
-      <SliderRow label="Ambient" min={0} max={1} step={0.05} value={ambient} onChange={setAmbient} />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* Lighting */}
+      <div style={{ fontSize: 11, fontWeight: 600, color: '#9cd2ff', textTransform: 'uppercase' }}>Lighting</div>
       
-      <SectionHeader title="Environment" />
-      <SliderRow label="Grid" min={0} max={0.6} step={0.05} value={grid} onChange={setGrid} />
+      <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <span style={{ minWidth: 70, fontSize: 12 }}>Dir Light</span>
+        <input type="range" min="0" max="3" step="0.05" defaultValue="1.2" 
+               onChange={(e) => handleLightChange('intensity', parseFloat(e.target.value))} />
+      </label>
       
-      <CheckboxRow 
-        label="Gradient Background" 
-        checked={useGradient} 
-        onChange={setUseGradient} 
-      />
+      <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <span style={{ minWidth: 70, fontSize: 12 }}>Ambient</span>
+        <input type="range" min="0" max="1" step="0.05" defaultValue="0.35" 
+               onChange={(e) => handleLightChange('ambient', parseFloat(e.target.value))} />
+      </label>
+
+      {/* Environment */}
+      <div style={{ fontSize: 11, fontWeight: 600, color: '#9cd2ff', textTransform: 'uppercase', marginTop: 12 }}>Environment</div>
       
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
-        <span style={{ fontSize: 12, minWidth: 80 }}>
-          {useGradient ? 'Top Color' : 'Background'}
-        </span>
-        <input 
-          type="color" 
-          value={bgColor1} 
-          onChange={(e) => setBgColor1(e.target.value)}
-          style={{ width: 32, height: 24, border: 'none', borderRadius: 4 }}
-        />
-        {useGradient && (
-          <>
-            <span style={{ fontSize: 12 }}>Bottom</span>
-            <input 
-              type="color" 
-              value={bgColor2} 
-              onChange={(e) => setBgColor2(e.target.value)}
-              style={{ width: 32, height: 24, border: 'none', borderRadius: 4 }}
-            />
-          </>
-        )}
+      <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <span style={{ minWidth: 70, fontSize: 12 }}>Grid</span>
+        <input type="range" min="0" max="0.6" step="0.05" defaultValue="0.15" 
+               onChange={(e) => handleGridChange(parseFloat(e.target.value))} />
+      </label>
+
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12 }}>Background:</span>
+        <input type="color" defaultValue="#0b1224" 
+               onChange={(e) => handleBgChange(e.target.value)} 
+               style={{ width: 32, height: 24, border: 'none', borderRadius: 4 }} />
+        <input type="color" defaultValue="#1a2332" 
+               onChange={(e) => handleBgChange(document.querySelector('input[type="color"]').value, e.target.value)} 
+               style={{ width: 32, height: 24, border: 'none', borderRadius: 4 }} />
       </div>
+
+      {/* Visibility */}
+      <div style={{ fontSize: 11, fontWeight: 600, color: '#9cd2ff', textTransform: 'uppercase', marginTop: 12 }}>Visibility</div>
       
-      <SectionHeader title="Visibility" />
-      <CheckboxRow 
-        label="Show Axes" 
-        checked={showAxes} 
-        onChange={(checked) => {
-          setShowAxes(checked);
-          toggleSceneObject('axes', checked);
-        }} 
-      />
-      <CheckboxRow 
-        label="Show Tool" 
-        checked={showTool} 
-        onChange={(checked) => {
-          setShowTool(checked);
-          toggleSceneObject('tool', checked);
-        }} 
-      />
-      <CheckboxRow 
-        label="Show Path" 
-        checked={showPath} 
-        onChange={(checked) => {
-          setShowPath(checked);
-          toggleSceneObject('path', checked);
-        }} 
-      />
-      <CheckboxRow 
-        label="Wireframe" 
-        checked={wireframe} 
-        onChange={setWireframe} 
-      />
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button onClick={() => toggleVisibility('axes')}>Toggle Axes</button>
+        <button onClick={() => toggleVisibility('tool')}>Toggle Tool</button>
+        <button onClick={() => toggleVisibility('path')}>Toggle Path</button>
+        <button onClick={toggleWireframe}>Toggle Wireframe</button>
+      </div>
+
+      {/* Camera */}
+      <div style={{ fontSize: 11, fontWeight: 600, color: '#9cd2ff', textTransform: 'uppercase', marginTop: 12 }}>Camera</div>
       
-      <SectionHeader title="Camera" />
-      <SliderRow 
-        label="FOV" 
-        min={20} 
-        max={120} 
-        step={5} 
-        value={fov} 
-        onChange={setFov}
-        format={(v) => `${v}°`}
-      />
-      
-      <ButtonRow>
-        <button onClick={resetCamera} style={{ fontSize: 11, padding: '4px 8px' }}>
-          Reset View
-        </button>
-        <button onClick={fitToView} style={{ fontSize: 11, padding: '4px 8px' }}>
-          Fit to View
-        </button>
-      </ButtonRow>
+      <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <span style={{ minWidth: 70, fontSize: 12 }}>FOV</span>
+        <input type="range" min="20" max="120" step="5" defaultValue="50" 
+               onChange={(e) => {
+                 const fov = parseFloat(e.target.value);
+                 if (window.cncViewer?.camera) {
+                   window.cncViewer.camera.fov = fov;
+                   window.cncViewer.camera.updateProjectionMatrix();
+                   window.cncViewer.render?.();
+                 }
+               }} />
+      </label>
+
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <button onClick={resetCamera}>Reset View</button>
+        <button onClick={fitToView}>Fit to View</button>
+      </div>
     </div>
   );
 }
