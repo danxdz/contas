@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import './shell.css';
 
 // Auto-discover modules: each module folder exports default React component and optional meta
@@ -59,7 +59,7 @@ export default function AppShell() {
   const [panelState, setPanelState] = useState(() => {
     const state = {};
     for (const m of modules) {
-      state[m.id] = { minimized: false, maximized: false, visible: true };
+      state[m.id] = { minimized: false, maximized: false, visible: true, floating: false, pos: { x: 60, y: 60 } };
     }
     return state;
   });
@@ -92,6 +92,30 @@ export default function AppShell() {
     setPanelZ(z => ({ ...z, [id]: zCounter + 1 }));
   }, [zCounter]);
 
+  const toggleFloating = useCallback((id) => {
+    setPanelState(s => ({ ...s, [id]: { ...s[id], floating: !s[id].floating } }));
+    bringToFront(id);
+  }, [bringToFront]);
+
+  // Dragging for floating panels
+  const [drag, setDrag] = useState(null);
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!drag) return;
+      setPanelState(s => ({
+        ...s,
+        [drag.id]: { ...s[drag.id], pos: { x: Math.max(0, e.clientX - drag.dx), y: Math.max(0, e.clientY - drag.dy) } }
+      }));
+    };
+    const onUp = () => setDrag(null);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, [drag]);
+
   const renderPanel = (m) => {
     const state = panelState[m.id];
     if (!state?.visible) return null;
@@ -100,14 +124,18 @@ export default function AppShell() {
       state.minimized ? 'is-min' : '',
       state.maximized ? 'is-max' : '',
     ].join(' ');
+    const floatingStyle = state.floating ? { position: 'absolute', left: state.pos.x, top: state.pos.y, zIndex: panelZ[m.id] || 1 } : { position: 'relative', zIndex: panelZ[m.id] || 1 };
     return (
-      <div key={m.id} data-panel-id={m.id} className={classNames} style={{ position: 'relative', zIndex: panelZ[m.id] || 1 }} onMouseDown={() => bringToFront(m.id)} draggable onDragStart={(e) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        e.dataTransfer.setData('text/plain', JSON.stringify({ id: m.id, dx: e.clientX - rect.left, dy: e.clientY - rect.top }));
-      }}>
-        <div className="panel-titlebar">
+      <div key={m.id} data-panel-id={m.id} className={classNames} style={floatingStyle} onMouseDown={() => bringToFront(m.id)}>
+        <div className="panel-titlebar" onMouseDown={(e) => {
+          if (state.floating) {
+            const rect = e.currentTarget.parentElement.getBoundingClientRect();
+            setDrag({ id: m.id, dx: e.clientX - rect.left, dy: e.clientY - rect.top });
+          }
+        }}>
           <span className="panel-title">{m.icon} {m.name}</span>
           <div className="panel-actions">
+            <button onClick={() => toggleFloating(m.id)} title={state.floating ? 'Unpin' : 'Pin'}>{state.floating ? '📌' : '📍'}</button>
             <button onClick={() => toggleMinimize(m.id)} title="Minimize">_</button>
             <button onClick={() => toggleMaximize(m.id)} title="Maximize">▣</button>
             <button onClick={() => toggleVisibility(m.id)} title="Close">×</button>
@@ -127,7 +155,7 @@ export default function AppShell() {
       <header className="topbar">
         <div className="brand">CNC Studio</div>
         <nav className="module-switcher">
-          {modules.map(m => (
+          {modules.filter(m => m.id !== 'viewer').map(m => (
             <button key={m.id} onClick={() => toggleVisibility(m.id)} className="nav-item">
               {m.icon} {m.name}
             </button>
@@ -141,21 +169,7 @@ export default function AppShell() {
         ))}
       </div>
 
-      <div className="workspace" onDragOver={(e) => e.preventDefault()} onDrop={(e) => {
-        const data = e.dataTransfer.getData('text/plain');
-        try {
-          const { id, dx, dy } = JSON.parse(data);
-          const host = e.currentTarget;
-          const x = e.clientX - host.getBoundingClientRect().left - dx;
-          const y = e.clientY - host.getBoundingClientRect().top - dy;
-          const el = host.querySelector(`[data-panel-id="${id}"]`);
-          if (el) {
-            el.style.position = 'absolute';
-            el.style.left = `${Math.max(0, x)}px`;
-            el.style.top = `${Math.max(0, y)}px`;
-          }
-        } catch {}
-      }}>
+      <div className="workspace">
         <aside className="column left">
           {grouped.left.map(renderPanel)}
         </aside>
@@ -169,6 +183,11 @@ export default function AppShell() {
       <footer className="dock bottom">
         {grouped.bottom.map(renderPanel)}
       </footer>
+
+      {/* Floating layer renders pinned panels */}
+      <div className="floating-layer">
+        {modules.filter(m => panelState[m.id]?.floating).map(renderPanel)}
+      </div>
     </div>
   );
 }
