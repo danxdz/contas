@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createAxes, createTable, createTool, createPathLine } from './machine';
 
 export const meta = {
@@ -32,6 +33,11 @@ export default function ViewerModule() {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     mount.appendChild(renderer.domElement);
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.screenSpacePanning = true;
+    controls.enablePan = true;
+    controls.enableZoom = true;
 
     const light = new THREE.DirectionalLight(0xffffff, 1.2);
     light.position.set(6, 7, 8);
@@ -42,6 +48,8 @@ export default function ViewerModule() {
     const grid = new THREE.GridHelper(10, 10, 0x123a5a, 0x123a5a);
     grid.material.opacity = 0.15;
     grid.material.transparent = true;
+    // Align grid to XY plane with Z up
+    grid.rotation.x = Math.PI / 2;
     scene.add(grid);
 
     scene.add(createAxes(1.0));
@@ -74,6 +82,7 @@ export default function ViewerModule() {
     const animate = () => {
       raf = requestAnimationFrame(animate);
       tool.rotation.z += 0.08;
+      controls.update();
       renderer.render(scene, camera);
     };
     animate();

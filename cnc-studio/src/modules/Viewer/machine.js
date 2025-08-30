@@ -20,6 +20,7 @@ export function createTool(color = 0xffcc00) {
   const tipMat = new THREE.MeshStandardMaterial({ color, metalness: 0.4, roughness: 0.5 });
   const shaftMesh = new THREE.Mesh(shaft, shaftMat);
   const tipMesh = new THREE.Mesh(tip, tipMat);
+  // Orient tool along +Z (machine spindle points down in Z+, tool tip towards work)
   shaftMesh.position.z = -0.25;
   tipMesh.position.z = -0.55;
   tipMesh.rotation.x = Math.PI;
