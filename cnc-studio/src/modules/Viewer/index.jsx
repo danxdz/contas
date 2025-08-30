@@ -79,6 +79,11 @@ export default function ViewerModule() {
     let units = 'mm'; // 'mm' | 'inch'
     let mode = 'G90'; // 'G90' | 'G91'
     let spindleOn = false;
+    // Extended metrics (best-effort; parsed from G-code commands if present)
+    let toolNumber = 0;
+    let spindleRpm = 0;
+    let feedRate = 0;
+    let wcs = 'G54';
     let stateCb = null;
     const zAxis = new THREE.Vector3(0, 0, 1);
 
@@ -108,7 +113,11 @@ export default function ViewerModule() {
             position: { x: mm.x, y: mm.y, z: mm.z },
             units,
             mode,
-            spindleOn
+            spindleOn,
+            tool: { number: toolNumber },
+            spindle: { rpm: spindleRpm },
+            feed: { rate: feedRate },
+            wcs
           });
         }
       } catch (e) {}
@@ -146,6 +155,10 @@ export default function ViewerModule() {
       let localUnits = 'mm';
       let localMode = 'G90';
       let localSpindleOn = false;
+      let localTool = toolNumber;
+      let localRpm = spindleRpm;
+      let localFeed = feedRate;
+      let localWcs = wcs;
       const pts = [];
       let lineNo = 0;
       for (const raw of lines) {
@@ -158,6 +171,14 @@ export default function ViewerModule() {
         if (/\bG91\b/.test(line)) { localMode = 'G91'; }
         if (/\bM3\b/.test(line)) { localSpindleOn = true; }
         if (/\bM5\b/.test(line)) { localSpindleOn = false; }
+        const tMatch = line.match(/\bT(\d+)\b/i);
+        if (tMatch) { localTool = parseInt(tMatch[1], 10) || 0; }
+        const sMatch = line.match(/\bS(\d+(?:\.\d+)?)\b/i);
+        if (sMatch) { localRpm = Math.round(parseFloat(sMatch[1])); }
+        const fMatch = line.match(/\bF(\d+(?:\.\d+)?)\b/i);
+        if (fMatch) { localFeed = Math.round(parseFloat(fMatch[1])); }
+        const wcsMatch = line.match(/\bG5[4-9]\b/);
+        if (wcsMatch) { localWcs = wcsMatch[0]; }
         const mx = line.match(/X(-?\d+(?:\.\d+)?)/i);
         const my = line.match(/Y(-?\d+(?:\.\d+)?)/i);
         const mz = line.match(/Z(-?\d+(?:\.\d+)?)/i);
@@ -172,6 +193,10 @@ export default function ViewerModule() {
       units = localUnits;
       mode = localMode;
       spindleOn = localSpindleOn;
+      toolNumber = localTool;
+      spindleRpm = localRpm;
+      feedRate = localFeed;
+      wcs = localWcs;
       return pts.length ? pts : [{ x: 0, y: 0, z: 0, _line: '', lineNo: 1, mm: { x: 0, y: 0, z: spindleHome * 1000 } }];
     };
 
@@ -259,7 +284,11 @@ export default function ViewerModule() {
           position: { x: mm.x, y: mm.y, z: mm.z },
           units,
           mode,
-          spindleOn
+          spindleOn,
+          tool: { number: toolNumber },
+          spindle: { rpm: spindleRpm },
+          feed: { rate: feedRate },
+          wcs
         };
       },
       onState: (cb) => { stateCb = cb; },
