@@ -27,7 +27,8 @@ export default function ViewerModule() {
     const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
     // Z-up like a real machine
     camera.up.set(0, 0, 1);
-    camera.position.set(3, 3, 2);
+    // Rotated 180 degrees - view from opposite side
+    camera.position.set(-3, -3, 2);
     camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });

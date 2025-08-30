@@ -101,8 +101,8 @@ export default function SimpleMachine() {
     const machineGroup = new THREE.Group();
     machineGroup.name = 'machineGroup';
     
-    // Rotate entire machine 180 degrees so back faces Y+
-    machineGroup.rotation.z = Math.PI;
+    // No rotation needed - machine faces correct direction
+    // machineGroup.rotation.z = Math.PI;
 
     const { tableMaterial, frameMaterial, spindleMaterial, railMaterial } = materials;
 
@@ -324,14 +324,20 @@ export default function SimpleMachine() {
     base.position.set(0, 0, -baseThickness);
     machineGroup.add(base);
 
+    // Add axes helper for debugging
+    const axesHelper = new THREE.AxesHelper(Math.max(scaleX, scaleY, scaleZ));
+    machineGroup.add(axesHelper);
+
     return machineGroup;
   };
 
   // Create actual machine geometry in the scene
   useEffect(() => {
+    console.log('[Machine] Effect triggered, isInitialized:', isInitialized);
     if (!isInitialized) return;
 
     const scene = window.cncViewer.scene;
+    console.log('[Machine] Scene available:', !!scene);
     if (!scene) return;
 
     // Create a config object for comparison
@@ -429,10 +435,12 @@ export default function SimpleMachine() {
     };
 
     try {
+      console.log('[Machine] Creating machine with scales:', { scaleX, scaleY, scaleZ });
       const machineGroup = createMachineGeometry(machineType, scaleX, scaleY, scaleZ, materials);
       machineGroupRef.current = machineGroup;
       scene.add(machineGroup);
       hasCreatedMachine.current = true;
+      console.log('[Machine] Machine added to scene successfully');
       
       // Save the configuration that was actually rendered
       lastRenderedConfig.current = currentConfig;
@@ -457,9 +465,10 @@ export default function SimpleMachine() {
       // Render the scene
       if (window.cncViewer.render) {
         window.cncViewer.render();
+        console.log('[Machine] Scene rendered');
       }
     } catch (error) {
-      console.error('Error creating machine geometry:', error);
+      console.error('[Machine] Error creating machine geometry:', error);
     }
 
     // Don't cleanup on unmount - keep machine in scene
