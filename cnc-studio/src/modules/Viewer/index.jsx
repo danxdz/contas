@@ -75,6 +75,11 @@ export default function ViewerModule() {
     let currentIndex = 0;
     let isPlaying = false;
     let speed = 1;
+    // Runtime/meta state for status bar
+    let units = 'mm'; // 'mm' | 'inch'
+    let mode = 'G90'; // 'G90' | 'G91'
+    let spindleOn = false;
+    let stateCb = null;
     const zAxis = new THREE.Vector3(0, 0, 1);
 
     const handleResize = () => {
@@ -88,6 +93,26 @@ export default function ViewerModule() {
     handleResize();
 
     let raf = 0;
+    const emitState = () => {
+      try {
+        const total = Array.isArray(parsedPts) ? parsedPts.length : 0;
+        const idx = Math.max(0, Math.min(total - 1, currentIndex));
+        const p = parsedPts[idx] || {};
+        const mm = p.mm || { x: 0, y: 0, z: spindleHome * 1000 };
+        const lineNo = p.lineNo ?? (idx + 1);
+        if (typeof stateCb === 'function') {
+          stateCb({
+            isPlaying,
+            speed,
+            line: { current: lineNo, total, text: p._line || '' },
+            position: { x: mm.x, y: mm.y, z: mm.z },
+            units,
+            mode,
+            spindleOn
+          });
+        }
+      } catch (e) {}
+    };
     const animate = () => {
       raf = requestAnimationFrame(animate);
       if (isPlaying && parsedPts.length > 0) {
@@ -101,6 +126,7 @@ export default function ViewerModule() {
           const ln = parsedPts[currentIndex]?.lineNo ?? currentIndex + 1;
           window.cncViewer.tick(ln);
         }
+        emitState();
       }
       tool.rotateOnWorldAxis(zAxis, 0.08);
       controls.update();
@@ -115,24 +141,38 @@ export default function ViewerModule() {
     // Expose minimal control API
     const parseGcode = (src) => {
       const lines = src.split(/\r?\n/);
-      let x = 0, y = 0, z = 0, unit = 1; // mm
+      let x = 0, y = 0, z = 0, unit = 1; // scale for inches->mm
+      let mmX = 0, mmY = 0, mmZ = spindleHome * 1000;
+      let localUnits = 'mm';
+      let localMode = 'G90';
+      let localSpindleOn = false;
       const pts = [];
+      let lineNo = 0;
       for (const raw of lines) {
+        lineNo += 1;
         const line = raw.trim();
         if (!line || line.startsWith(';') || line.startsWith('(')) continue;
-        if (/^G20/.test(line)) unit = 25.4; // inch to mm
-        if (/^G21/.test(line)) unit = 1;    // mm
+        if (/\bG20\b/.test(line)) { unit = 25.4; localUnits = 'inch'; }
+        if (/\bG21\b/.test(line)) { unit = 1; localUnits = 'mm'; }
+        if (/\bG90\b/.test(line)) { localMode = 'G90'; }
+        if (/\bG91\b/.test(line)) { localMode = 'G91'; }
+        if (/\bM3\b/.test(line)) { localSpindleOn = true; }
+        if (/\bM5\b/.test(line)) { localSpindleOn = false; }
         const mx = line.match(/X(-?\d+(?:\.\d+)?)/i);
         const my = line.match(/Y(-?\d+(?:\.\d+)?)/i);
         const mz = line.match(/Z(-?\d+(?:\.\d+)?)/i);
-        if (mx) x = parseFloat(mx[1]) * 0.01 * unit; // scale down 1:100 for view
-        if (my) y = parseFloat(my[1]) * 0.01 * unit;
-        if (mz) z = parseFloat(mz[1]) * 0.01 * unit;
+        if (mx) { mmX = parseFloat(mx[1]) * unit; x = mmX * 0.01; }
+        if (my) { mmY = parseFloat(my[1]) * unit; y = mmY * 0.01; }
+        if (mz) { mmZ = parseFloat(mz[1]) * unit; z = mmZ * 0.01; }
         if (/^G0?1\b/.test(line) || /^G0\b/.test(line)) {
-          pts.push({ x, y, z, _line: raw });
+          pts.push({ x, y, z, _line: raw, lineNo, mm: { x: mmX, y: mmY, z: mmZ } });
         }
       }
-      return pts.length ? pts : [{ x: 0, y: 0, z: 0, _line: '' }];
+      // Persist most recently seen modal states
+      units = localUnits;
+      mode = localMode;
+      spindleOn = localSpindleOn;
+      return pts.length ? pts : [{ x: 0, y: 0, z: 0, _line: '', lineNo: 1, mm: { x: 0, y: 0, z: spindleHome * 1000 } }];
     };
 
     window.cncViewer = {
@@ -155,6 +195,7 @@ export default function ViewerModule() {
         scene.add(path);
         parsedPts = pts;
         currentIndex = 0;
+        emitState();
       },
       seekToLine: (lineNo) => {
         if (!Array.isArray(parsedPts) || parsedPts.length === 0) return;
@@ -166,6 +207,7 @@ export default function ViewerModule() {
           if (window.cncViewer && typeof window.cncViewer.tick === 'function') {
             window.cncViewer.tick(lineNo);
           }
+          emitState();
         }
       },
       setBackground: (c) => { scene.background = new THREE.Color(c); },
@@ -180,9 +222,17 @@ export default function ViewerModule() {
         spindleHome = z;
         tool.position.setZ(spindleHome);
       },
-      play: () => { isPlaying = true; },
-      pause: () => { isPlaying = false; },
-      stop: () => { isPlaying = false; currentIndex = 0; },
+      play: () => { isPlaying = true; emitState(); },
+      pause: () => { isPlaying = false; emitState(); },
+      stop: () => { isPlaying = false; currentIndex = 0; emitState(); },
+      reset: () => {
+        isPlaying = false;
+        currentIndex = 0;
+        const t = parsedPts[0];
+        if (t) tool.position.set(t.x, t.y, t.z + 1.0);
+        else tool.position.set(0, 0, spindleHome);
+        emitState();
+      },
       step: (d) => {
         if (parsedPts.length === 0) return;
         currentIndex = Math.max(0, Math.min(parsedPts.length - 1, currentIndex + d));
@@ -192,9 +242,27 @@ export default function ViewerModule() {
           const ln = parsedPts[currentIndex]?.lineNo ?? currentIndex + 1;
           window.cncViewer.tick(ln);
         }
+        emitState();
       },
       onTick: (cb) => { window.cncViewer.tick = cb; },
-      setSpeed: (s) => { speed = s; }
+      setSpeed: (s) => { speed = s; emitState(); },
+      getState: () => {
+        const total = Array.isArray(parsedPts) ? parsedPts.length : 0;
+        const idx = Math.max(0, Math.min(total - 1, currentIndex));
+        const p = parsedPts[idx] || {};
+        const mm = p.mm || { x: 0, y: 0, z: spindleHome * 1000 };
+        const lineNo = p.lineNo ?? (idx + 1);
+        return {
+          isPlaying,
+          speed,
+          line: { current: lineNo, total, text: p._line || '' },
+          position: { x: mm.x, y: mm.y, z: mm.z },
+          units,
+          mode,
+          spindleOn
+        };
+      },
+      onState: (cb) => { stateCb = cb; },
     };
 
     return () => {

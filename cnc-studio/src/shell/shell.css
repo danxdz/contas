@@ -15,6 +15,8 @@
 .bottom { display: flex; gap: 8px; padding: 8px; border-top: 1px solid rgba(23, 48, 77, 0.35); overflow-x: auto; backdrop-filter: saturate(140%) blur(8px); background: rgba(13, 19, 38, 0.35); }
 
 .panel { display: flex; flex-direction: column; min-height: 120px; min-width: 180px; background: rgba(15, 23, 42, 0.55); border: 1px solid rgba(23, 48, 77, 0.55); border-radius: 10px; overflow: hidden; box-shadow: 0 10px 24px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.03); resize: both; }
+.panel-bare { min-height: 36px; resize: none; border-radius: 8px; }
+.panel-bare .panel-body { padding: 4px 6px; }
 .panel.is-min { height: 36px; }
 .panel.is-max { position: relative; z-index: 20; height: calc(100vh - 84px); }
 .panel-titlebar { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 6px; backdrop-filter: saturate(140%) blur(8px); background: rgba(13,19,38,.35); border-bottom: 1px solid rgba(23, 48, 77, 0.35); }

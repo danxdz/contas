@@ -16,6 +16,7 @@ function normalizeModules(rawModules) {
       area: meta.area || 'left', // left | right | bottom | center
       order: meta.order ?? 0,
       icon: meta.icon || '🧩',
+      chrome: meta.chrome || 'default',
       hidden: !!meta.hidden,
       Component: mod.default,
     };
@@ -62,7 +63,7 @@ export default function AppShell() {
   const [panelState, setPanelState] = useState(() => {
     const state = {};
     for (const m of modules) {
-      const defaultVisible = (m.id === 'gcode' || m.id === 'controls' || m.id === 'toolManager' || m.id === 'machine');
+      const defaultVisible = (m.id === 'gcode' || m.id === 'controls' || m.id === 'toolManager' || m.id === 'machine' || m.id === 'status');
       state[m.id] = { minimized: false, maximized: false, visible: !!defaultVisible, floating: false, pos: { x: 60, y: 60 } };
     }
     return state;
@@ -123,29 +124,33 @@ export default function AppShell() {
   const renderPanel = (m) => {
     const state = panelState[m.id];
     if (!state?.visible) return null;
+    const isBare = m.chrome === 'bare';
     const classNames = [
       'panel',
+      isBare ? 'panel-bare' : '',
       state.minimized ? 'is-min' : '',
       state.maximized ? 'is-max' : '',
     ].join(' ');
     const floatingStyle = state.floating ? { position: 'absolute', left: state.pos.x, top: state.pos.y, zIndex: panelZ[m.id] || 1 } : { position: 'relative', zIndex: panelZ[m.id] || 1 };
     return (
       <div key={m.id} data-panel-id={m.id} className={classNames} style={floatingStyle} onMouseDown={() => bringToFront(m.id)}>
-        <div className="panel-titlebar" onMouseDown={(e) => {
-          if (state.floating) {
-            const rect = e.currentTarget.parentElement.getBoundingClientRect();
-            setDrag({ id: m.id, dx: e.clientX - rect.left, dy: e.clientY - rect.top });
-          }
-        }}>
-          <span className="panel-title">{m.icon} {m.name}</span>
-          <div className="panel-actions">
-            <button onClick={() => toggleFloating(m.id)} title={state.floating ? 'Unpin' : 'Pin'}>{state.floating ? '📌' : '📍'}</button>
-            <button onClick={() => toggleMinimize(m.id)} title="Minimize">_</button>
-            <button onClick={() => toggleMaximize(m.id)} title="Maximize">▣</button>
-            <button onClick={() => toggleVisibility(m.id)} title="Close">×</button>
+        {!isBare && (
+          <div className="panel-titlebar" onMouseDown={(e) => {
+            if (state.floating) {
+              const rect = e.currentTarget.parentElement.getBoundingClientRect();
+              setDrag({ id: m.id, dx: e.clientX - rect.left, dy: e.clientY - rect.top });
+            }
+          }}>
+            <span className="panel-title">{m.icon} {m.name}</span>
+            <div className="panel-actions">
+              <button onClick={() => toggleFloating(m.id)} title={state.floating ? 'Unpin' : 'Pin'}>{state.floating ? '📌' : '📍'}</button>
+              <button onClick={() => toggleMinimize(m.id)} title="Minimize">_</button>
+              <button onClick={() => toggleMaximize(m.id)} title="Maximize">▣</button>
+              <button onClick={() => toggleVisibility(m.id)} title="Close">×</button>
+            </div>
           </div>
-        </div>
-        {!state.minimized && (
+        )}
+        {(!state.minimized || isBare) && (
           <div className="panel-body">
             <m.Component app={{ modules, panelState, setPanelState, panelOrder, setPanelOrder, moveModule, toggleVisibility }} />
           </div>
