@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Machine Visibility</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: monospace; background: #1a1a1a; color: #fff; }
+        pre { background: #2a2a2a; padding: 10px; border-radius: 4px; }
+        .status { margin: 10px 0; padding: 10px; background: #333; border-radius: 4px; }
+        .success { color: #4f4; }
+        .error { color: #f44; }
+        .warning { color: #fa4; }
+    </style>
+</head>
+<body>
+    <h1>Machine Module Debug</h1>
+    <div id="output"></div>
+    
+    <script>
+        const output = document.getElementById('output');
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = message;
+            output.appendChild(div);
+        }
+        
+        // Wait for app to load
+        setTimeout(() => {
+            // Check viewer
+            if (window.cncViewer) {
+                log('✓ Viewer found', 'success');
+                
+                if (window.cncViewer.scene) {
+                    log('✓ Scene found', 'success');
+                    
+                    // Check for machine objects
+                    const machineGroup = window.cncViewer.scene.getObjectByName('machineGroup');
+                    if (machineGroup) {
+                        log(`✓ Machine group found: visible=${machineGroup.visible}`, 'success');
+                        log(`  Position: ${JSON.stringify(machineGroup.position)}`, 'info');
+                        log(`  Children: ${machineGroup.children.length}`, 'info');
+                    } else {
+                        log('✗ Machine group not found', 'error');
+                    }
+                    
+                    // Check for default objects
+                    const defaultTable = window.cncViewer.scene.getObjectByName('defaultTable');
+                    const defaultTool = window.cncViewer.scene.getObjectByName('defaultTool');
+                    
+                    if (defaultTable) {
+                        log('⚠ Default table still exists', 'warning');
+                    }
+                    if (defaultTool) {
+                        log('⚠ Default tool still exists', 'warning');
+                    }
+                    
+                    // List all named objects
+                    const namedObjects = [];
+                    window.cncViewer.scene.traverse((obj) => {
+                        if (obj.name) {
+                            namedObjects.push(obj.name);
+                        }
+                    });
+                    log(`Scene objects: ${namedObjects.join(', ')}`, 'info');
+                    
+                    // Check scale
+                    if (window.cncViewer.getWorldScale) {
+                        log(`World scale: ${window.cncViewer.getWorldScale()}`, 'info');
+                    }
+                    
+                } else {
+                    log('✗ Scene not found', 'error');
+                }
+            } else {
+                log('✗ Viewer not found', 'error');
+            }
+            
+            // Check localStorage
+            const machineConfig = localStorage.getItem('cnc_last_machine_config');
+            if (machineConfig) {
+                log(`Machine config: ${machineConfig}`, 'info');
+            }
+            
+        }, 2000);
+    </script>
+</body>
+</html>
