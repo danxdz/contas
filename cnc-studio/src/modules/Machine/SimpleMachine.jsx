@@ -17,16 +17,39 @@ const saveMachines = (machines) => {
   localStorage.setItem('cnc_saved_machines', JSON.stringify(machines));
 };
 
+// Load last machine configuration from localStorage
+const loadLastConfig = () => {
+  try {
+    const saved = localStorage.getItem('cnc_last_machine_config');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch {}
+  return {
+    machineType: '3axis-mill',
+    tableSize: { x: 400, y: 300 },
+    spindleHeight: 250,
+    showMachine: true
+  };
+};
+
+// Save current configuration to localStorage
+const saveLastConfig = (config) => {
+  localStorage.setItem('cnc_last_machine_config', JSON.stringify(config));
+};
+
 export default function SimpleMachine() {
-  const [machineType, setMachineType] = useState('3axis-mill');
-  const [tableSize, setTableSize] = useState({ x: 400, y: 300 });
-  const [spindleHeight, setSpindleHeight] = useState(250);
-  const [showMachine, setShowMachine] = useState(true);
+  const lastConfig = loadLastConfig();
+  const [machineType, setMachineType] = useState(lastConfig.machineType);
+  const [tableSize, setTableSize] = useState(lastConfig.tableSize);
+  const [spindleHeight, setSpindleHeight] = useState(lastConfig.spindleHeight);
+  const [showMachine, setShowMachine] = useState(lastConfig.showMachine);
   const [isInitialized, setIsInitialized] = useState(false);
   const [savedMachines, setSavedMachines] = useState(loadSavedMachines());
   const [machineName, setMachineName] = useState('');
   const machineGroupRef = useRef(null);
   const hasCreatedMachine = useRef(false);
+  const lastRenderedConfig = useRef(null);
 
   // Initialize and check for viewer
   useEffect(() => {
@@ -309,18 +332,53 @@ export default function SimpleMachine() {
     const scene = window.cncViewer.scene;
     if (!scene) return;
 
-    // Only update if showMachine is true or if we need to update existing machine
-    if (!showMachine && !hasCreatedMachine.current) return;
+    // Create a config object for comparison
+    const currentConfig = {
+      machineType,
+      tableSize,
+      spindleHeight,
+      showMachine
+    };
 
+    // Save current configuration
+    saveLastConfig(currentConfig);
+
+    // Check if configuration has actually changed
+    const configChanged = !lastRenderedConfig.current || 
+      JSON.stringify(lastRenderedConfig.current) !== JSON.stringify(currentConfig);
+
+    // If nothing changed and machine exists, do nothing
+    if (!configChanged && machineGroupRef.current) {
+      return;
+    }
+
+    // Handle visibility toggle without recreating
+    if (!configChanged && !showMachine && machineGroupRef.current) {
+      machineGroupRef.current.visible = false;
+      if (window.cncViewer.render) {
+        window.cncViewer.render();
+      }
+      return;
+    }
+
+    if (!configChanged && showMachine && machineGroupRef.current) {
+      machineGroupRef.current.visible = true;
+      if (window.cncViewer.render) {
+        window.cncViewer.render();
+      }
+      return;
+    }
+
+    // Configuration changed, need to recreate machine
     // Remove old machine group if exists
     if (machineGroupRef.current) {
       scene.remove(machineGroupRef.current);
       machineGroupRef.current = null;
     }
 
-    // If showMachine is false, just hide it but keep the reference
+    // If showMachine is false, don't create new machine
     if (!showMachine) {
-      hasCreatedMachine.current = false;
+      lastRenderedConfig.current = currentConfig;
       if (window.cncViewer.render) {
         window.cncViewer.render();
       }
