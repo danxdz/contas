@@ -125,10 +125,10 @@ export default function ViewerModule() {
         if (my) y = parseFloat(my[1]) * 0.01 * unit;
         if (mz) z = parseFloat(mz[1]) * 0.01 * unit;
         if (/^G0?1\b/.test(line) || /^G0\b/.test(line)) {
-          pts.push({ x, y, z });
+          pts.push({ x, y, z, _line: raw });
         }
       }
-      return pts.length ? pts : [{ x: 0, y: 0, z: 0 }];
+      return pts.length ? pts : [{ x: 0, y: 0, z: 0, _line: '' }];
     };
 
     window.cncViewer = {
