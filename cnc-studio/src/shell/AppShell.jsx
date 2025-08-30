@@ -174,17 +174,17 @@ export default function AppShell() {
 
       <div className="workspace">
         <aside className="column left">
-          {grouped.left.map(renderPanel)}
+          {grouped.left.filter(m => !panelState[m.id]?.floating).map(renderPanel)}
         </aside>
         <main className="column center">
-          {grouped.center.map(renderPanel)}
+          {grouped.center.filter(m => !panelState[m.id]?.floating).map(renderPanel)}
         </main>
         <aside className="column right">
-          {grouped.right.map(renderPanel)}
+          {grouped.right.filter(m => !panelState[m.id]?.floating).map(renderPanel)}
         </aside>
       </div>
       <footer className="dock bottom">
-        {grouped.bottom.map(renderPanel)}
+        {grouped.bottom.filter(m => !panelState[m.id]?.floating).map(renderPanel)}
       </footer>
 
       {/* Floating layer renders pinned panels */}
