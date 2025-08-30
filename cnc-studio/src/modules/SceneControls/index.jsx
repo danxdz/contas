@@ -12,27 +12,43 @@ export default function SceneControls() {
   // Simple direct approach like the working Controls module
   const handleLightChange = (type, value) => {
     if (type === 'intensity') {
-      window.cncViewer?.setLights?.({ intensity: value, ambient: window.cncViewer.ambientLevel || 0.35 });
+      window.cncViewer?.setLights?.({ intensity: value, ambient: window.cncViewer.ambientLevel || 0.6 });
     } else if (type === 'ambient') {
-      window.cncViewer?.setLights?.({ intensity: window.cncViewer.lightLevel || 1.2, ambient: value });
+      window.cncViewer?.setLights?.({ intensity: window.cncViewer.lightLevel || 2.0, ambient: value });
       window.cncViewer.ambientLevel = value;
     }
-    window.cncViewer.lightLevel = type === 'intensity' ? value : (window.cncViewer.lightLevel || 1.2);
+    window.cncViewer.lightLevel = type === 'intensity' ? value : (window.cncViewer.lightLevel || 2.0);
   };
 
   const handleGridChange = (value) => {
     window.cncViewer?.setGridOpacity?.(value);
   };
 
-  const handleBgChange = (color1, color2 = null) => {
+  const handleBgChange = (color1, color2 = null, direction = 'vertical') => {
     if (color2) {
-      // Create gradient
+      // Create gradient with configurable direction
       const canvas = document.createElement('canvas');
       canvas.width = 512;
       canvas.height = 512;
       const ctx = canvas.getContext('2d');
       
-      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      let gradient;
+      switch (direction) {
+        case 'horizontal':
+          gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+          break;
+        case 'diagonal':
+          gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+          break;
+        case 'radial':
+          gradient = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, canvas.width/2);
+          break;
+        case 'vertical':
+        default:
+          gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+          break;
+      }
+      
       gradient.addColorStop(0, color1);
       gradient.addColorStop(1, color2);
       
@@ -124,13 +140,13 @@ export default function SceneControls() {
       
       <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
         <span style={{ minWidth: 70, fontSize: 12 }}>Dir Light</span>
-        <input type="range" min="0" max="3" step="0.05" defaultValue="1.2" 
+        <input type="range" min="0" max="3" step="0.05" defaultValue="2.0" 
                onChange={(e) => handleLightChange('intensity', parseFloat(e.target.value))} />
       </label>
       
       <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
         <span style={{ minWidth: 70, fontSize: 12 }}>Ambient</span>
-        <input type="range" min="0" max="1" step="0.05" defaultValue="0.35" 
+        <input type="range" min="0" max="1" step="0.05" defaultValue="0.6" 
                onChange={(e) => handleLightChange('ambient', parseFloat(e.target.value))} />
       </label>
 
@@ -143,14 +159,34 @@ export default function SceneControls() {
                onChange={(e) => handleGridChange(parseFloat(e.target.value))} />
       </label>
 
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 12 }}>Background:</span>
-        <input type="color" defaultValue="#0b1224" 
-               onChange={(e) => handleBgChange(e.target.value)} 
-               style={{ width: 32, height: 24, border: 'none', borderRadius: 4 }} />
-        <input type="color" defaultValue="#1a2332" 
-               onChange={(e) => handleBgChange(document.querySelector('input[type="color"]').value, e.target.value)} 
-               style={{ width: 32, height: 24, border: 'none', borderRadius: 4 }} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12 }}>Background:</span>
+          <input type="color" defaultValue="#1a2a42" 
+                 onChange={(e) => handleBgChange(e.target.value)} 
+                 style={{ width: 32, height: 24, border: 'none', borderRadius: 4 }} />
+          <input type="color" defaultValue="#2a3a52" 
+                 onChange={(e) => {
+                   const color1 = document.querySelectorAll('input[type="color"]')[0].value;
+                   const direction = document.querySelector('select').value;
+                   handleBgChange(color1, e.target.value, direction);
+                 }} 
+                 style={{ width: 32, height: 24, border: 'none', borderRadius: 4 }} />
+        </div>
+        
+        <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <span style={{ fontSize: 12 }}>Gradient:</span>
+          <select onChange={(e) => {
+            const color1 = document.querySelectorAll('input[type="color"]')[0].value;
+            const color2 = document.querySelectorAll('input[type="color"]')[1].value;
+            handleBgChange(color1, color2, e.target.value);
+          }} style={{ fontSize: 12, padding: '2px 4px' }}>
+            <option value="vertical">↕ Vertical</option>
+            <option value="horizontal">↔ Horizontal</option>
+            <option value="diagonal">↗ Diagonal</option>
+            <option value="radial">⊙ Radial</option>
+          </select>
+        </label>
       </div>
 
       {/* Visibility */}
