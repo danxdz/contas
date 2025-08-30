@@ -95,7 +95,8 @@ export default function ViewerModule() {
         tool.rotation.y = 0;
         currentIndex = (currentIndex + Math.max(1, Math.floor(speed))) % parsedPts.length;
         if (window.cncViewer && typeof window.cncViewer.tick === 'function') {
-          window.cncViewer.tick(currentIndex);
+          const ln = parsedPts[currentIndex]?.lineNo ?? currentIndex + 1;
+          window.cncViewer.tick(ln);
         }
       }
       tool.rotateOnWorldAxis(zAxis, 0.08);
@@ -148,6 +149,18 @@ export default function ViewerModule() {
         parsedPts = pts;
         currentIndex = 0;
       },
+      seekToLine: (lineNo) => {
+        if (!Array.isArray(parsedPts) || parsedPts.length === 0) return;
+        const idx = parsedPts.findIndex(p => p.lineNo === lineNo);
+        if (idx >= 0) {
+          currentIndex = idx;
+          const t = parsedPts[currentIndex];
+          tool.position.set(t.x, t.y, t.z + 1.0);
+          if (window.cncViewer && typeof window.cncViewer.tick === 'function') {
+            window.cncViewer.tick(lineNo);
+          }
+        }
+      },
       setBackground: (c) => { scene.background = new THREE.Color(c); },
       setTable: ({ x, y }) => {
         if (x || y) {
@@ -169,7 +182,8 @@ export default function ViewerModule() {
         const target = parsedPts[currentIndex];
         tool.position.set(target.x, target.y, target.z + 1.0);
         if (window.cncViewer && typeof window.cncViewer.tick === 'function') {
-          window.cncViewer.tick(currentIndex);
+          const ln = parsedPts[currentIndex]?.lineNo ?? currentIndex + 1;
+          window.cncViewer.tick(ln);
         }
       },
       onTick: (cb) => { window.cncViewer.tick = cb; },

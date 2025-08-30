@@ -42,8 +42,14 @@ export default function GCodeEditor() {
     return parts;
   };
   useEffect(() => {
-    window.cncViewer?.onTick?.((i) => setActive(i));
+    window.cncViewer?.onTick?.((ln) => setActive(Math.max(0, (ln || 1) - 1)));
   }, []);
+
+  const onLineClick = (i) => {
+    const ln = i + 1;
+    setActive(i);
+    window.cncViewer?.seekToLine?.(ln);
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -55,7 +61,7 @@ export default function GCodeEditor() {
         </div>
         <div style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', padding: '4px 6px', fontSize: 12, lineHeight: '18px' }}>
           {lines.map((line, i) => (
-            <div key={i} style={{ whiteSpace: 'pre', background: i === active ? 'rgba(0,212,255,.15)' : 'transparent', color: i === active ? '#e6f9ff' : undefined, lineHeight: '18px' }}>
+            <div key={i} onClick={() => onLineClick(i)} style={{ whiteSpace: 'pre', background: i === active ? 'rgba(0,212,255,.15)' : 'transparent', color: i === active ? '#e6f9ff' : undefined, lineHeight: '18px', cursor: 'pointer' }}>
               {colorize(line)}
             </div>
           ))}
