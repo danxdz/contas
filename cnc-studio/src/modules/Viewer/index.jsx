@@ -72,6 +72,7 @@ export default function ViewerModule() {
     let currentIndex = 0;
     let isPlaying = false;
     let speed = 1;
+    const zAxis = new THREE.Vector3(0, 0, 1);
 
     const handleResize = () => {
       const w = mount.clientWidth;
@@ -89,15 +90,15 @@ export default function ViewerModule() {
       if (isPlaying && parsedPts.length > 0) {
         const target = parsedPts[currentIndex];
         tool.position.set(target.x, target.y, target.z + 1.0);
-        tool.rotation.x = Math.PI / 2; // ensure tool axis is Z
+        // ensure tool axis is Z and spin around Z only
+        tool.rotation.x = Math.PI / 2;
         tool.rotation.y = 0;
-        // Spin around Z axis only
         currentIndex = (currentIndex + Math.max(1, Math.floor(speed))) % parsedPts.length;
         if (window.cncViewer && typeof window.cncViewer.tick === 'function') {
           window.cncViewer.tick(currentIndex);
         }
       }
-      tool.rotation.z += 0.08;
+      tool.rotateOnWorldAxis(zAxis, 0.08);
       controls.update();
       renderer.render(scene, camera);
     };

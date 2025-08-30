@@ -48,27 +48,20 @@ export default function GCodeEditor() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr', gap: 4, alignItems: 'start', maxHeight: 260, overflow: 'auto', background: 'rgba(15,26,51,.4)', border: '1px solid rgba(23,48,77,.6)', borderRadius: 6 }}>
-        <div>
+        <div style={{ fontSize: 12, lineHeight: '18px' }}>
           {lines.map((_, i) => (
-            <div key={i} style={{ textAlign: 'right', padding: '0 6px', opacity: .5, fontSize: 12, background: i === active ? 'rgba(0,212,255,.25)' : 'transparent', color: i === active ? '#e6f9ff' : undefined }}>{i + 1}</div>
+            <div key={i} style={{ textAlign: 'right', padding: '0 6px', opacity: .5, background: i === active ? 'rgba(0,212,255,.25)' : 'transparent', color: i === active ? '#e6f9ff' : undefined, lineHeight: '18px' }}>{i + 1}</div>
           ))}
         </div>
-        <div style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', padding: '4px 6px' }}>
+        <div style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', padding: '4px 6px', fontSize: 12, lineHeight: '18px' }}>
           {lines.map((line, i) => (
-            <div key={i} style={{ whiteSpace: 'pre', background: i === active ? 'rgba(0,212,255,.15)' : 'transparent', color: i === active ? '#e6f9ff' : undefined }}>
+            <div key={i} style={{ whiteSpace: 'pre', background: i === active ? 'rgba(0,212,255,.15)' : 'transparent', color: i === active ? '#e6f9ff' : undefined, lineHeight: '18px' }}>
               {colorize(line)}
             </div>
           ))}
         </div>
       </div>
       <div style={{ fontSize: 12, opacity: .6 }}>Edits apply live; active line highlighted during playback.</div>
-      <div style={{ display: 'flex', gap: 6 }}>
-        <button onClick={() => window.cncViewer?.play?.()}>Play</button>
-        <button onClick={() => window.cncViewer?.pause?.()}>Pause</button>
-        <button onClick={() => window.cncViewer?.stop?.()}>Stop</button>
-        <button onClick={() => window.cncViewer?.step?.(1)}>Step +</button>
-        <button onClick={() => window.cncViewer?.step?.(-1)}>Step -</button>
-      </div>
     </div>
   );
 }
