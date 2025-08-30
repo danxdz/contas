@@ -473,8 +473,8 @@ export default function SimpleMachine() {
       <div style={{ display: 'flex', gap: 4 }}>
         <button
           onClick={() => {
-            setTableSize({ x: 300, y: 200 });
-            setSpindleHeight(200);
+            setTableSize({ x: 500, y: 400 });
+            setSpindleHeight(300);
           }}
           disabled={!isInitialized}
           style={{ flex: 1, fontSize: '11px', padding: '3px' }}
@@ -483,8 +483,8 @@ export default function SimpleMachine() {
         </button>
         <button
           onClick={() => {
-            setTableSize({ x: 500, y: 400 });
-            setSpindleHeight(300);
+            setTableSize({ x: 800, y: 600 });
+            setSpindleHeight(400);
           }}
           disabled={!isInitialized}
           style={{ flex: 1, fontSize: '11px', padding: '3px' }}
@@ -493,8 +493,8 @@ export default function SimpleMachine() {
         </button>
         <button
           onClick={() => {
-            setTableSize({ x: 800, y: 600 });
-            setSpindleHeight(400);
+            setTableSize({ x: 1200, y: 800 });
+            setSpindleHeight(500);
           }}
           disabled={!isInitialized}
           style={{ flex: 1, fontSize: '11px', padding: '3px' }}
