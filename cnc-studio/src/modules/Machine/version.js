@@ -1,9 +1,23 @@
 // Machine Module Version
 // Update this with each significant change
-export const MACHINE_MODULE_VERSION = 'v0.003';
+export const MACHINE_MODULE_VERSION = 'v0.004';
 
 // Version History
 export const VERSION_HISTORY = [
+  {
+    version: 'v0.004',
+    date: '2024-12-30',
+    changes: [
+      'Rotated machine 180° so back faces Y+',
+      'Removed "Connected to viewer" status indicator',
+      'Fixed white square issue (added proper background)',
+      'Added save/load custom machine configurations',
+      'Implemented 4-axis mill with rotary table',
+      'Implemented 5-axis mill with trunnion table',
+      'Implemented lathe with chuck and tailstock',
+      'Added saved machines list with localStorage'
+    ]
+  },
   {
     version: 'v0.003',
     date: '2024-12-30',
