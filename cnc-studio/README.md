@@ -28,8 +28,6 @@ npm run build && npm run preview
 
 Deploy to Netlify:
 
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/yourusername/cnc-studio)
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/danxdz/contas&base=cnc-studio&build=npm%20run%20build&publish=dist)
 
-Netlify will detect Vite automatically; if needed, use:
-- Build command: `npm run build`
-- Publish directory: `dist`
+This button deploys the `cnc-studio` subfolder.
