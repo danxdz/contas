@@ -404,84 +404,10 @@ const CNCProSuite = () => {
     }
   });
 
-  const [simulation_old, setSimulation] = useState({
-    isPlaying: false,
-    speed: 1.0,
-    currentLine: 0,
-    position: { x: 0, y: 0, z: 250, a: 0, b: 0, c: 0 },  // Start at safe machine home
-    feedRate: 500,
-    spindleSpeed: 12000,
-    tool: 1,
-    toolLengthCompActive: false,  // G43 active
-    cutterCompActive: false,  // G41/G42 active
-    activeHCode: 0,  // H code (tool length register)
-    activeDCode: 0,  // D code (cutter diameter register)
-    machinePosition: { x: 0, y: 0, z: 0 },  // Machine coordinates
-    workPosition: { x: 0, y: 0, z: 0 },  // Work coordinates
-    compMode: 'none'  // none, left (G41), right (G42)
-  });
+  // Old state variables removed - now using reducer
   
-  const [toolDatabase_old, setToolDatabase] = useState([
-    { 
-      id: 1, tNumber: 'T1', name: 'End Mill 10mm', diameter: 10, flutes: 4, type: 'endmill', 
-      material: 'Carbide', coating: 'TiAlN', lengthOffset: 75.5, wearOffset: 0,
-      holder: { type: 'SK40/BT40', holderType: 'Collet Chuck', collet: 'ER32-10' },
-      stickout: 35, cuttingLength: 22, overallLength: 72
-    },
-    { 
-      id: 2, tNumber: 'T2', name: 'End Mill 6mm', diameter: 6, flutes: 3, type: 'endmill', 
-      material: 'Carbide', coating: 'TiN', lengthOffset: 65.2, wearOffset: 0,
-      holder: { type: 'SK40/BT40', holderType: 'Hydraulic Chuck', collet: null },
-      stickout: 30, cuttingLength: 18, overallLength: 63
-    },
-    { 
-      id: 3, tNumber: 'T3', name: 'Ball End 8mm', diameter: 8, flutes: 2, type: 'ballend', 
-      material: 'HSS', coating: 'None', lengthOffset: 70.0, wearOffset: 0,
-      holder: { type: 'SK40/BT40', holderType: 'Collet Chuck', collet: 'ER32-8' },
-      stickout: 32, cuttingLength: 16, overallLength: 65
-    },
-    { 
-      id: 4, tNumber: 'T4', name: 'Drill 5mm', diameter: 5, flutes: 2, type: 'drill', 
-      material: 'Carbide', coating: 'TiAlN', lengthOffset: 85.3, wearOffset: 0,
-      holder: { type: 'SK30/BT30', holderType: 'Collet Chuck', collet: 'ER32-5' },
-      stickout: 40, cuttingLength: 28, overallLength: 80
-    },
-    { 
-      id: 5, tNumber: 'T5', name: 'Face Mill 50mm', diameter: 50, flutes: 6, type: 'facemill', 
-      material: 'Carbide', coating: 'TiAlN', lengthOffset: 50.0, wearOffset: 0,
-      holder: { type: 'SK50/BT50', holderType: 'Shell Mill Holder', collet: null },
-      stickout: 0, cuttingLength: 10, overallLength: 45
-    },
-    { 
-      id: 6, tNumber: 'T6', name: 'Chamfer Mill 90°', diameter: 12, flutes: 4, type: 'chamfer', 
-      material: 'Carbide', coating: 'TiN', lengthOffset: 68.7, wearOffset: 0,
-      holder: { type: 'SK40/BT40', holderType: 'End Mill Holder', collet: null },
-      stickout: 28, cuttingLength: 15, overallLength: 60
-    }
-  ]);
-  
-  const [toolAssemblies_old, setToolAssemblies] = useState([]);
-  
-  // Tool Offset Table (like real CNC machine)
-  const [toolOffsetTable_old, setToolOffsetTable] = useState({
-    // H codes (Tool Length Offsets) - up to 99 in real machines
-    H: Array(100).fill(null).map((_, i) => ({
-      register: i,
-      lengthGeometry: i === 0 ? 0 : (i <= 6 ? [75.5, 65.2, 70.0, 85.3, 50.0, 68.7][i-1] || 0 : 0),
-      lengthWear: 0
-    })),
-    // D codes (Cutter Diameter Compensation) - up to 99 in real machines  
-    D: Array(100).fill(null).map((_, i) => ({
-      register: i,
-      diameterGeometry: i === 0 ? 0 : (i <= 6 ? [10, 6, 8, 5, 50, 12][i-1] || 0 : 0),
-      diameterWear: 0
-    }))
-  });
-
-  const [project_old, setProject] = useState({
-    name: 'Example Pocket Milling',
-    gcode: {
-      channel1: `; POCKET MILLING EXAMPLE
+  // Default G-code for initial project
+  const defaultGCode = `; POCKET MILLING EXAMPLE
 ; Material: Aluminum 6061
 ; Tool: 10mm End Mill
 ; ====================
@@ -555,36 +481,7 @@ M09 ; Coolant OFF
 M05 ; Spindle OFF
 G28 G91 Z0 ; Home Z
 G28 X0 Y0 ; Home XY
-M30 ; Program end`,
-      channel2: `; SUB SPINDLE PROGRAM
-; For dual-spindle lathes
-; ====================
-
-G21 G90 G94
-G55 ; Second work offset
-T11 M06
-S8000 M03
-G0 X0 Y0 Z5
-
-; Waiting for main spindle
-M00 ; Optional stop
-
-; Sub operations here
-G01 Z-10 F200
-G01 X20 F500
-G01 Y20
-G01 X-20
-G01 Y-20
-G0 Z5
-
-M30 ; End`
-    },
-    stepFile: null,
-    stepContent: null,
-    features: [],
-    suggestedTools: [],
-    tools: []
-  });
+M30 ; Program end`;
 
   const [draggedPanel, setDraggedPanel] = useState(null);
   const [resizingPanel, setResizingPanel] = useState(null);
@@ -1229,8 +1126,8 @@ M30 ; End`
       stepBackward,
       setView: setCameraView,
       togglePanel,
-      increaseSpeed: () => setSimulation(prev => ({ ...prev, speed: Math.min(prev.speed * 2, 10) })),
-      decreaseSpeed: () => setSimulation(prev => ({ ...prev, speed: Math.max(prev.speed / 2, 0.1) })),
+      increaseSpeed: () => dispatch(actions.setSimulation({ speed: Math.min(simulation.speed * 2, 10) })),
+      decreaseSpeed: () => dispatch(actions.setSimulation({ speed: Math.max(simulation.speed / 2, 0.1) })),
       newProject,
       openFile: () => document.getElementById('file-input')?.click(),
       saveFile: saveProject,
@@ -1447,7 +1344,7 @@ M30 ; End`
             
             // Only pause if stopOnCollision is enabled
             if (stopOnCollision) {
-              setSimulation(prev => ({ ...prev, isPlaying: false }));
+              dispatch(actions.pauseSimulation());
             }
           }
         }
@@ -1471,8 +1368,7 @@ M30 ; End`
       // Update simulation state with compensation info
       if (currentPos.g43 !== simulation.toolLengthCompActive || 
           currentPos.h !== simulation.activeHCode) {
-        setSimulation(prev => ({ 
-          ...prev, 
+        dispatch(actions.setSimulation({ 
           toolLengthCompActive: currentPos.g43,
           activeHCode: currentPos.h,
           activeDCode: currentPos.d
@@ -1481,7 +1377,7 @@ M30 ; End`
       
       // Update spindle speed from G-code
       if (currentPos.s !== undefined && currentPos.s !== simulation.spindleSpeed) {
-        setSimulation(prev => ({ ...prev, spindleSpeed: currentPos.s }));
+        dispatch(actions.setSimulation({ spindleSpeed: currentPos.s }));
       }
     }
   }, [simulation.currentLine, project.gcode.channel1, setupConfig.workOffsets, toolOffsetTable]);
@@ -1610,39 +1506,39 @@ M30 ; End`
     
     // Line advancement timer
     simulationIntervalRef.current = setInterval(() => {
-      setSimulation(prev => {
-        if (prev.currentLine >= lines.length - 1) {
-          return { ...prev, isPlaying: false };
-        }
-        
-        // Find next non-comment line
-        let nextLine = prev.currentLine + 1;
-        while (nextLine < lines.length && 
-               (lines[nextLine].trim().startsWith(';') || 
-                lines[nextLine].trim().startsWith('(') ||
-                lines[nextLine].trim() === '')) {
-          nextLine++;
-        }
-        
-        if (nextLine >= lines.length) {
-          return { ...prev, isPlaying: false };
-        }
-        
-        // Set up tweening for next move
-        const currentPos = positions[prev.currentLine] || prev.position;
-        const nextPos = positions[nextLine] || prev.position;
-        
-        lastPositionRef.current = { x: currentPos.x, y: currentPos.y, z: currentPos.z };
-        targetPositionRef.current = { x: nextPos.x, y: nextPos.y, z: nextPos.z };
-        tweenProgressRef.current = 0;
-        
-        return { 
-          ...prev, 
-          currentLine: nextLine,
-          position: { x: nextPos.x, y: nextPos.y, z: nextPos.z, a: 0, b: 0, c: 0 }
-        };
-      });
-    }, 200 / simulation.speed); // Adjust speed for line advancement
+      // Check if we've reached the end
+      if (simulation.currentLine >= lines.length - 1) {
+        dispatch(actions.pauseSimulation());
+        return;
+      }
+      
+      // Find next non-comment line
+      let nextLine = simulation.currentLine + 1;
+      while (nextLine < lines.length && 
+             (lines[nextLine].trim().startsWith(';') || 
+              lines[nextLine].trim().startsWith('(') ||
+              lines[nextLine].trim() === '')) {
+        nextLine++;
+      }
+      
+      if (nextLine >= lines.length) {
+        dispatch(actions.pauseSimulation());
+        return;
+      }
+      
+      // Set up tweening for next move
+      const currentPos = positions[simulation.currentLine] || simulation.position;
+      const nextPos = positions[nextLine] || simulation.position;
+      
+      lastPositionRef.current = { x: currentPos.x, y: currentPos.y, z: currentPos.z };
+      targetPositionRef.current = { x: nextPos.x, y: nextPos.y, z: nextPos.z };
+      tweenProgressRef.current = 0;
+      
+      dispatch(actions.setSimulation({
+        currentLine: nextLine,
+        position: { x: nextPos.x, y: nextPos.y, z: nextPos.z, a: 0, b: 0, c: 0 }
+      }));
+    }, 200 / (simulation.speed || 1)); // Adjust speed for line advancement
     
     return () => {
       if (simulationIntervalRef.current) {
@@ -2028,7 +1924,7 @@ M30 ; End`
           <button
             onClick={() => {
               setCollisionAlert(null);
-              setSimulation(prev => ({ ...prev, isPlaying: true }));
+              dispatch(actions.playSimulation());
             }}
             style={{
               flex: 1,
@@ -2155,7 +2051,7 @@ M30 ; End`
       
       <div style={{ display: 'flex', gap: '5px' }}>
         <button 
-          onClick={() => simulation.isPlaying ? pauseSimulation() : setSimulation(prev => ({ ...prev, isPlaying: true }))}
+          onClick={() => simulation.isPlaying ? pauseSimulation() : dispatch(actions.playSimulation())}
           className={simulation.isPlaying ? 'active' : ''}
           title="Play/Pause"
         >
@@ -2171,7 +2067,7 @@ M30 ; End`
           max="5"
           step="0.1"
           value={simulation.speed}
-          onChange={(e) => setSimulation(prev => ({ ...prev, speed: parseFloat(e.target.value) }))}
+          onChange={(e) => dispatch(actions.setSimulation({ speed: parseFloat(e.target.value) }))}
           className="speed-slider"
           title={`Speed: ${simulation.speed}x`}
         />
@@ -2506,8 +2402,7 @@ M30 ; End`
       }
       
       // Reset simulation with proper starting position
-      setSimulation(prev => ({
-        ...prev,
+      dispatch(actions.setSimulation({
         currentLine: 0,
         isPlaying: false,
         position: { 
@@ -2606,33 +2501,33 @@ M30 ; End`
   });
   
   const playPauseSimulation = () => {
-    setSimulation(prev => ({
-      ...prev,
-      isPlaying: !prev.isPlaying
-    }));
+    if (simulation.isPlaying) {
+      dispatch(actions.pauseSimulation());
+    } else {
+      dispatch(actions.playSimulation());
+    }
   };
 
   const stepForward = () => {
     const lines = project.gcode.channel1.split('\n');
     const positions = parseGCodePositions(project.gcode.channel1);
     
-    setSimulation(prev => {
-      let nextLine = prev.currentLine + 1;
-      // Skip comments and empty lines
-      while (nextLine < lines.length && 
-             (lines[nextLine].trim().startsWith(';') || 
-              lines[nextLine].trim().startsWith('(') ||
-              lines[nextLine].trim() === '')) {
-        nextLine++;
-      }
-      nextLine = Math.min(nextLine, lines.length - 1);
-      const pos = positions[nextLine] || prev.position;
-      
-      // Trigger smooth animation
-      if (toolRef.current && pos) {
-        lastPositionRef.current = { ...prev.position };
-        targetPositionRef.current = { x: pos.x, y: pos.y, z: pos.z };
-        tweenProgressRef.current = 0;
+    let nextLine = simulation.currentLine + 1;
+    // Skip comments and empty lines
+    while (nextLine < lines.length && 
+           (lines[nextLine].trim().startsWith(';') || 
+            lines[nextLine].trim().startsWith('(') ||
+            lines[nextLine].trim() === '')) {
+      nextLine++;
+    }
+    nextLine = Math.min(nextLine, lines.length - 1);
+    const pos = positions[nextLine] || simulation.position;
+    
+    // Trigger smooth animation
+    if (toolRef.current && pos) {
+      lastPositionRef.current = { ...simulation.position };
+      targetPositionRef.current = { x: pos.x, y: pos.y, z: pos.z };
+      tweenProgressRef.current = 0;
         
         // Animate over 500ms
         const animateStep = () => {
@@ -2645,39 +2540,35 @@ M30 ; End`
         };
         animateStep();
       }
-      
-      return {
-        ...prev,
-        currentLine: nextLine,
-        position: { x: pos.x, y: pos.y, z: pos.z, a: 0, b: 0, c: 0 },
-        isPlaying: false
-      };
-    });
+    }
+    
+    dispatch(actions.setSimulation({
+      currentLine: nextLine,
+      position: { x: pos.x, y: pos.y, z: pos.z, a: 0, b: 0, c: 0 },
+      isPlaying: false
+    }));
   };
   
   const stepBackward = () => {
     const lines = project.gcode.channel1.split('\n');
     const positions = parseGCodePositions(project.gcode.channel1);
     
-    setSimulation(prev => {
-      let prevLine = prev.currentLine - 1;
-      // Skip comments and empty lines
-      while (prevLine >= 0 && 
-             (lines[prevLine].trim().startsWith(';') || 
-              lines[prevLine].trim().startsWith('(') ||
-              lines[prevLine].trim() === '')) {
-        prevLine--;
-      }
-      prevLine = Math.max(prevLine, 0);
-      const pos = positions[prevLine] || prev.position;
-      
-      return {
-        ...prev,
-        currentLine: prevLine,
-        position: { x: pos.x, y: pos.y, z: pos.z, a: 0, b: 0, c: 0 },
-        isPlaying: false
-      };
-    });
+    let prevLine = simulation.currentLine - 1;
+    // Skip comments and empty lines
+    while (prevLine >= 0 && 
+           (lines[prevLine].trim().startsWith(';') || 
+            lines[prevLine].trim().startsWith('(') ||
+            lines[prevLine].trim() === '')) {
+      prevLine--;
+    }
+    prevLine = Math.max(prevLine, 0);
+    const pos = positions[prevLine] || simulation.position;
+    
+    dispatch(actions.setSimulation({
+      currentLine: prevLine,
+      position: { x: pos.x, y: pos.y, z: pos.z, a: 0, b: 0, c: 0 },
+      isPlaying: false
+    }));
   };
 
   // Top menu system
@@ -2744,7 +2635,7 @@ M30 ; End`
     simulation: {
       label: 'Simulation',
       items: [
-        { id: 'play', label: simulation.isPlaying ? 'Pause' : 'Play', action: () => setSimulation(prev => ({ ...prev, isPlaying: !prev.isPlaying })) },
+        { id: 'play', label: simulation.isPlaying ? 'Pause' : 'Play', action: playPauseSimulation },
         { id: 'stop', label: 'Stop', action: stopSimulation },
         { id: 'stepForward', label: 'Step Forward', action: stepForward },
         { id: 'stepBackward', label: 'Step Backward', action: stepBackward },
@@ -2922,7 +2813,7 @@ M30 ; End`
           simulation={simulation}
           onSimulationControl={(action) => {
             if (action === 'playPause') {
-              simulation.isPlaying ? pauseSimulation() : setSimulation(prev => ({ ...prev, isPlaying: true }));
+              simulation.isPlaying ? pauseSimulation() : dispatch(actions.playSimulation());
             } else if (action === 'stop') {
               stopSimulation();
             } else if (action === 'reset') {
@@ -3052,8 +2943,7 @@ M30 ; End`
                 gcode: { ...prev.gcode, channel1: newCode } 
               }))}
               currentLine={simulation.currentLine}
-              onLineClick={(lineNum) => setSimulation(prev => ({ 
-                ...prev, 
+              onLineClick={(lineNum) => dispatch(actions.setSimulation({ 
                 currentLine: lineNum 
               }))}
             />
@@ -3070,7 +2960,7 @@ M30 ; End`
           }}
           onAssemblySelect={(assembly) => {
             // Update simulation with selected tool assembly
-            setSimulation(prev => ({ ...prev, toolAssembly: assembly }));
+            dispatch(actions.setSimulation({ toolAssembly: assembly }));
             
             // Update 3D visualization
             window.updateTool3D?.(assembly);
@@ -3128,8 +3018,7 @@ M30 ; End`
               });
               
               // Set this as the active tool
-              setSimulation(prev => ({ 
-                ...prev, 
+              dispatch(actions.setSimulation({ 
                 tool: toolNumber,
                 activeHCode: toolNumber,
                 activeDCode: toolNumber
@@ -3153,9 +3042,9 @@ M30 ; End`
           onApplyOffset={(type, register) => {
             // Update simulation with new active offset
             if (type === 'H') {
-              setSimulation(prev => ({ ...prev, activeHCode: register }));
+              dispatch(actions.setSimulation({ activeHCode: register }));
             } else {
-              setSimulation(prev => ({ ...prev, activeDCode: register }));
+              dispatch(actions.setSimulation({ activeDCode: register }));
             }
           }}
         />
