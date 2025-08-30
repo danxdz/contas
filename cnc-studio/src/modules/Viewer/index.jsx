@@ -70,6 +70,7 @@ export default function ViewerModule() {
     let parsedPts = [];
     let currentIndex = 0;
     let isPlaying = false;
+    let speed = 1;
 
     const handleResize = () => {
       const w = mount.clientWidth;
@@ -87,7 +88,7 @@ export default function ViewerModule() {
       if (isPlaying && parsedPts.length > 0) {
         const target = parsedPts[currentIndex];
         tool.position.set(target.x, target.y, target.z + 1.0);
-        currentIndex = (currentIndex + 1) % parsedPts.length;
+        currentIndex = (currentIndex + Math.max(1, Math.floor(speed))) % parsedPts.length;
         if (window.cncViewer && typeof window.cncViewer.tick === 'function') {
           window.cncViewer.tick(currentIndex);
         }
@@ -142,6 +143,7 @@ export default function ViewerModule() {
         parsedPts = pts;
         currentIndex = 0;
       },
+      setBackground: (c) => { scene.background = new THREE.Color(c); },
       play: () => { isPlaying = true; },
       pause: () => { isPlaying = false; },
       stop: () => { isPlaying = false; currentIndex = 0; },
@@ -154,7 +156,8 @@ export default function ViewerModule() {
           window.cncViewer.tick(currentIndex);
         }
       },
-      onTick: (cb) => { window.cncViewer.tick = cb; }
+      onTick: (cb) => { window.cncViewer.tick = cb; },
+      setSpeed: (s) => { speed = s; }
     };
 
     return () => {

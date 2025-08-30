@@ -41,7 +41,12 @@ export default function GCodeEditor() {
             <div key={i} style={{ textAlign: 'right', padding: '0 6px', opacity: .5, fontSize: 12, background: i === active ? 'rgba(0,212,255,.15)' : 'transparent' }}>{i + 1}</div>
           ))}
         </div>
-        <textarea value={code} onChange={(e) => setCode(e.target.value)} rows={12} style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }} />
+        <textarea
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          rows={12}
+          style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}
+        />
       </div>
       <div style={{ fontSize: 12, opacity: .6 }}>Edits apply live; active line highlighted during playback.</div>
       <div style={{ display: 'flex', gap: 6 }}>

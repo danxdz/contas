@@ -12,6 +12,7 @@ export default function SceneControls() {
   const [intensity, setIntensity] = useState(1.2);
   const [ambient, setAmbient] = useState(0.35);
   const [grid, setGrid] = useState(0.15);
+  const [bg, setBg] = useState('#0b1224');
 
   // Apply live on change and when component mounts
   useEffect(() => {
@@ -20,6 +21,9 @@ export default function SceneControls() {
   useEffect(() => {
     window.cncViewer?.setGridOpacity?.(grid);
   }, [grid]);
+  useEffect(() => {
+    window.cncViewer?.setBackground?.(bg);
+  }, [bg]);
 
   const SliderRow = ({ label, min, max, step, value, onChange, format = (v) => v.toFixed(2) }) => {
     const [show, setShow] = useState(false);
@@ -59,6 +63,10 @@ export default function SceneControls() {
       <SliderRow label="Dir Light" min={0} max={2} step={0.05} value={intensity} onChange={setIntensity} />
       <SliderRow label="Ambient" min={0} max={1} step={0.05} value={ambient} onChange={setAmbient} />
       <SliderRow label="Grid" min={0} max={0.6} step={0.05} value={grid} onChange={setGrid} />
+      <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>Background</span>
+        <input type="color" value={bg} onChange={(e) => setBg(e.target.value)} />
+      </label>
       
     </div>
   );

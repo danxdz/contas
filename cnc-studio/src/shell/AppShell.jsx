@@ -59,7 +59,8 @@ export default function AppShell() {
   const [panelState, setPanelState] = useState(() => {
     const state = {};
     for (const m of modules) {
-      state[m.id] = { minimized: false, maximized: false, visible: true, floating: false, pos: { x: 60, y: 60 } };
+      const defaultVisible = (m.id === 'gcode' || m.id === 'controls' || m.id === 'toolManager');
+      state[m.id] = { minimized: false, maximized: false, visible: !!defaultVisible, floating: false, pos: { x: 60, y: 60 } };
     }
     return state;
   });
