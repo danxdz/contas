@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Scene3D from './components/Scene3D';
 import MobileLayout from './components/MobileLayout';
 import DesktopLayout from './components/DesktopLayout';
-import ModernMenu from './components/ModernMenu';
+import ModernTopBar from './components/ModernTopBar';
 import './App.css';
 
 const App = () => {
@@ -225,17 +225,30 @@ M30 ; Program end`,
       overflow: 'hidden',
       position: 'relative'
     }}>
-      {/* Modern Menu - Desktop only */}
+      {/* Modern Top Bar - Desktop only */}
       {!isMobile && (
-        <ModernMenu
-          project={project}
-          onNewProject={handleNewProject}
-          onSaveProject={handleSaveProject}
-          onLoadProject={handleLoadProject}
-          onTogglePanel={handleTogglePanel}
-          onViewChange={handleViewChange}
+        <ModernTopBar
+          panels={{
+            gcode: { visible: false },
+            tools: { visible: false },
+            workOffsets: { visible: false },
+            machineControl: { visible: false },
+            lighting: { visible: false }
+          }}
+          togglePanel={handleTogglePanel}
           simulation={simulation}
           onSimulationControl={handleSimulationControl}
+          onFileAction={(action) => {
+            switch(action) {
+              case 'new': handleNewProject(); break;
+              case 'save': handleSaveProject(); break;
+              case 'open': document.getElementById('file-input')?.click(); break;
+              case 'import': document.getElementById('file-input')?.click(); break;
+              case 'export': handleSaveProject(); break;
+            }
+          }}
+          onViewChange={handleViewChange}
+          projectName={project.name}
         />
       )}
 
@@ -272,6 +285,15 @@ M30 ; Program end`,
           <DesktopLayout {...commonProps} scene3D={scene3D} />
         )}
       </div>
+
+      {/* Hidden file input for loading projects */}
+      <input
+        id="file-input"
+        type="file"
+        accept=".nc,.gcode,.txt,.cnc"
+        style={{ display: 'none' }}
+        onChange={handleLoadProject}
+      />
     </div>
   );
 };
