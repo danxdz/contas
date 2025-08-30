@@ -139,7 +139,7 @@ export default function SceneControls() {
 
   // UI Components
   const SliderRow = ({ label, min, max, step, value, onChange, format = (v) => v.toFixed(2) }) => (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+    <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
       <span style={{ minWidth: 80, fontSize: 12 }}>{label}</span>
       <input
         type="range"
@@ -147,54 +147,22 @@ export default function SceneControls() {
         max={max}
         step={step}
         value={value}
-        onChange={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onChange(parseFloat(e.target.value));
-        }}
-        onInput={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onChange(parseFloat(e.target.value));
-        }}
-        style={{ 
-          flex: 1,
-          cursor: 'pointer',
-          WebkitAppearance: 'none',
-          appearance: 'none',
-          height: '4px',
-          background: 'rgba(23, 48, 77, 0.5)',
-          borderRadius: '2px',
-          outline: 'none'
-        }}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
       />
       <span style={{ width: 42, textAlign: 'right', fontSize: 11, opacity: 0.8 }}>{format(value)}</span>
-    </div>
+    </label>
   );
 
   const CheckboxRow = ({ label, checked, onChange }) => (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4, cursor: 'pointer' }}
-         onClick={(e) => {
-           e.preventDefault();
-           e.stopPropagation();
-           onChange(!checked);
-         }}>
+    <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4, cursor: 'pointer' }}>
       <input
         type="checkbox"
         checked={checked}
-        onChange={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onChange(e.target.checked);
-        }}
-        style={{ 
-          margin: 0,
-          cursor: 'pointer',
-          pointerEvents: 'none'
-        }}
+        onChange={(e) => onChange(e.target.checked)}
+        style={{ margin: 0 }}
       />
-      <span style={{ fontSize: 12, userSelect: 'none' }}>{label}</span>
-    </div>
+      <span style={{ fontSize: 12 }}>{label}</span>
+    </label>
   );
 
   const ButtonRow = ({ children }) => (
