@@ -1,4 +1,4 @@
-import MachineModule from './MachineModule';
+import SimpleMachine from './SimpleMachine';
 
 export const meta = {
   id: 'machine',
@@ -8,5 +8,4 @@ export const meta = {
   icon: '🏭',
 };
 
-export default MachineModule;
-
+export default SimpleMachine;
