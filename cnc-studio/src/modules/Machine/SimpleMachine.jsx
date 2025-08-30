@@ -388,8 +388,27 @@ export default function SimpleMachine() {
     // Configuration changed, need to recreate machine
     // Remove old machine group if exists
     if (machineGroupRef.current) {
+      console.log('[Machine] Removing old machine from scene');
       scene.remove(machineGroupRef.current);
+      // Also dispose of geometries and materials to prevent memory leaks
+      machineGroupRef.current.traverse((child) => {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach(m => m.dispose());
+          } else {
+            child.material.dispose();
+          }
+        }
+      });
       machineGroupRef.current = null;
+    }
+    
+    // Also check for any orphaned machine groups and remove them
+    const existingMachine = scene.getObjectByName('machineGroup');
+    if (existingMachine && existingMachine !== machineGroupRef.current) {
+      console.log('[Machine] Found orphaned machine, removing');
+      scene.remove(existingMachine);
     }
 
     // If showMachine is false, don't create new machine
@@ -443,6 +462,13 @@ export default function SimpleMachine() {
     };
 
     try {
+      // Final check - make sure we don't already have a machine
+      if (scene.getObjectByName('machineGroup')) {
+        console.log('[Machine] WARNING: Machine already exists in scene, removing it first');
+        const existing = scene.getObjectByName('machineGroup');
+        scene.remove(existing);
+      }
+      
       console.log('[Machine] Creating machine with scales:', { scaleX, scaleY, scaleZ });
       const machineGroup = createMachineGeometry(machineType, scaleX, scaleY, scaleZ, materials);
       machineGroupRef.current = machineGroup;
