@@ -6,6 +6,7 @@ export const meta = {
   area: 'left',
   order: 5,
   icon: '🧾',
+  hidden: true,
 };
 
 const sample = `; Simple rectangle path
