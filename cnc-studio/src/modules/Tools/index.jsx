@@ -2,8 +2,9 @@ export const meta = {
   id: 'tools',
   name: 'Tools',
   area: 'right',
-  order: 1,
+  order: 10,
   icon: '🛠️',
+  hidden: true,
 };
 
 export default function ToolsModule() {

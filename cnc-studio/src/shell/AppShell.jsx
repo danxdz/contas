@@ -73,7 +73,7 @@ export default function AppShell() {
           <span className="panel-title">{m.icon} {m.name}</span>
           <div className="panel-actions">
             <button onClick={() => toggleMinimize(m.id)} title="Minimize">_</button>
-            <button onClick={() => toggleMaximize(m.id)} title="Maximize">[ ]</button>
+            <button onClick={() => toggleMaximize(m.id)} title="Maximize">▣</button>
             <button onClick={() => toggleVisibility(m.id)} title="Close">×</button>
           </div>
         </div>

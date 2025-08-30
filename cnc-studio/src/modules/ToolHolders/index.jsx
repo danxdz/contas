@@ -2,8 +2,9 @@ export const meta = {
   id: 'holders',
   name: 'Tool Holders',
   area: 'right',
-  order: 2,
+  order: 11,
   icon: '🔗',
+  hidden: true,
 };
 
 export default function ToolHoldersModule() {
