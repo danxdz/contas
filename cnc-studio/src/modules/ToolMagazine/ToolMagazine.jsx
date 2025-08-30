@@ -5,8 +5,8 @@ import './ToolMagazine.css';
 export const meta = {
   id: 'toolmagazine',
   name: 'Tool Magazine',
-  area: 'left',
-  order: 5,
+  area: 'right',
+  order: 2,
   icon: '🔧',
 };
 
