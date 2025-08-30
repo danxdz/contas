@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { MACHINE_MODULE_VERSION } from './version';
+import { mmToWorld } from '../shared/units';
 
 // Load saved machines from localStorage
 const loadSavedMachines = () => {
@@ -397,10 +398,10 @@ export default function SimpleMachine() {
       }
     }
 
-    // Convert mm to scene units (assuming 1 unit = 1m)
-    const scaleX = tableSize.x / 1000;
-    const scaleY = tableSize.y / 1000;
-    const scaleZ = spindleHeight / 1000;
+    // Convert mm to scene units using centralized scale
+    const scaleX = mmToWorld(tableSize.x);
+    const scaleY = mmToWorld(tableSize.y);
+    const scaleZ = mmToWorld(spindleHeight);
 
     // Materials
     const materials = {
@@ -440,15 +441,15 @@ export default function SimpleMachine() {
         window.cncViewer.machineGroup = machineGroup;
         window.cncViewer.persistMachine = true;
         
-        // Update table method
+        // Update table method (expects mm)
         window.cncViewer.setTable = (size) => {
-          if (size.x !== undefined) setTableSize(prev => ({ ...prev, x: size.x * 1000 }));
-          if (size.y !== undefined) setTableSize(prev => ({ ...prev, y: size.y * 1000 }));
+          if (size.x !== undefined) setTableSize(prev => ({ ...prev, x: size.x }));
+          if (size.y !== undefined) setTableSize(prev => ({ ...prev, y: size.y }));
         };
         
-        // Update spindle home method
+        // Update spindle home method (expects mm)
         window.cncViewer.setSpindleHome = (height) => {
-          setSpindleHeight(height * 1000);
+          setSpindleHeight(height);
         };
       }
 

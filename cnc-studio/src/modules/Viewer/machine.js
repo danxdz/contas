@@ -1,10 +1,16 @@
 import * as THREE from 'three';
+import { mmToWorld } from '../shared/units';
 
 export function createAxes(size = 0.5) {
   return new THREE.AxesHelper(size);
 }
 
-export function createTable(width = 2, depth = 1, height = 0.1) {
+export function createTable(widthMm = 2000, depthMm = 1200, heightMm = 100) {
+  // Convert mm dimensions to world units
+  const width = mmToWorld(widthMm);
+  const depth = mmToWorld(depthMm);
+  const height = mmToWorld(heightMm);
+  
   const geo = new THREE.BoxGeometry(width, depth, height);
   const mat = new THREE.MeshStandardMaterial({ color: 0x1b2a3f, metalness: 0.1, roughness: 0.8 });
   const mesh = new THREE.Mesh(geo, mat);
@@ -14,20 +20,38 @@ export function createTable(width = 2, depth = 1, height = 0.1) {
 }
 
 export function createTool(color = 0xffcc00) {
-  const shaft = new THREE.CylinderGeometry(0.03, 0.03, 0.4, 24);
-  const tip = new THREE.ConeGeometry(0.05, 0.1, 32);
-  const holder = new THREE.CylinderGeometry(0.12, 0.12, 0.2, 24);
+  // Tool dimensions in mm
+  const shaftDiaMm = 6;     // 6mm diameter shaft
+  const shaftLenMm = 40;    // 40mm length
+  const tipDiaMm = 10;      // 10mm diameter at base
+  const tipLenMm = 10;      // 10mm length
+  const holderDiaMm = 24;   // 24mm diameter holder
+  const holderLenMm = 20;   // 20mm length
+  
+  // Convert to world units
+  const shaft = new THREE.CylinderGeometry(
+    mmToWorld(shaftDiaMm/2), mmToWorld(shaftDiaMm/2), mmToWorld(shaftLenMm), 24
+  );
+  const tip = new THREE.ConeGeometry(
+    mmToWorld(tipDiaMm/2), mmToWorld(tipLenMm), 32
+  );
+  const holder = new THREE.CylinderGeometry(
+    mmToWorld(holderDiaMm/2), mmToWorld(holderDiaMm/2), mmToWorld(holderLenMm), 24
+  );
+  
   const shaftMat = new THREE.MeshStandardMaterial({ color: 0xb0b8c0, metalness: 0.6, roughness: 0.3 });
   const tipMat = new THREE.MeshStandardMaterial({ color, metalness: 0.4, roughness: 0.5 });
   const holderMat = new THREE.MeshStandardMaterial({ color: 0x555b66, metalness: 0.5, roughness: 0.4 });
   const shaftMesh = new THREE.Mesh(shaft, shaftMat);
   const tipMesh = new THREE.Mesh(tip, tipMat);
   const holderMesh = new THREE.Mesh(holder, holderMat);
+  
   // Build tool along local -Y, then rotate group to Z-up
-  shaftMesh.position.y = -0.25;
-  tipMesh.position.y = -0.55;
+  // Position in world units
+  shaftMesh.position.y = mmToWorld(-25);  // Center at -25mm
+  tipMesh.position.y = mmToWorld(-55);    // Tip at -55mm
   tipMesh.rotation.x = Math.PI; // point cone to -Y
-  holderMesh.position.y = 0.1; // above shaft towards spindle
+  holderMesh.position.y = mmToWorld(10);  // Holder at 10mm
   const group = new THREE.Group();
   group.add(shaftMesh);
   group.add(tipMesh);
@@ -39,7 +63,12 @@ export function createTool(color = 0xffcc00) {
 }
 
 export function createPathLine(points) {
-  const curvePts = points.map(p => new THREE.Vector3(p.x, p.y, p.z));
+  // Points are expected to be in mm, convert to world units
+  const curvePts = points.map(p => new THREE.Vector3(
+    mmToWorld(p.x), 
+    mmToWorld(p.y), 
+    mmToWorld(p.z)
+  ));
   const geo = new THREE.BufferGeometry().setFromPoints(curvePts);
   const mat = new THREE.LineBasicMaterial({ color: 0x2aa8ff, transparent: true, opacity: 0.8 });
   return new THREE.Line(geo, mat);

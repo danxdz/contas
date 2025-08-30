@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createAxes, createTable, createTool, createPathLine } from './machine';
+import { mmToWorld, worldToMm, setWorldScale, getWorldScale } from '../shared/units';
 
 export const meta = {
   id: 'viewer',
@@ -54,21 +55,23 @@ export default function ViewerModule() {
 
     scene.add(createAxes(1.0));
     // Default table and tool - will be replaced by Machine module if loaded
-    let table = createTable(2, 1.2, 0.1);
+    // Table dimensions in mm: 2000mm x 1200mm x 100mm
+    let table = createTable(2000, 1200, 100);
     table.name = 'defaultTable';
     scene.add(table);
     const tool = createTool();
     tool.name = 'defaultTool';
-    let spindleHome = 0.25; // 250mm default
-    tool.position.set(0, 0, spindleHome);
+    let spindleHome = 250; // 250mm default (stored in mm)
+    tool.position.set(0, 0, mmToWorld(spindleHome));
     scene.add(tool);
 
+    // Default path in mm coordinates
     let path = createPathLine([
-      { x: -0.6, y: -0.4, z: 0.2 },
-      { x: -0.6, y: 0.4, z: 0.15 },
-      { x: 0.6, y: 0.4, z: 0.15 },
-      { x: 0.6, y: -0.4, z: 0.15 },
-      { x: -0.6, y: -0.4, z: 0.15 },
+      { x: -600, y: -400, z: 200 },
+      { x: -600, y: 400, z: 150 },
+      { x: 600, y: 400, z: 150 },
+      { x: 600, y: -400, z: 150 },
+      { x: -600, y: -400, z: 150 },
     ]);
     scene.add(path);
     let parsedPts = [];
@@ -103,7 +106,7 @@ export default function ViewerModule() {
         const total = Array.isArray(parsedPts) ? parsedPts.length : 0;
         const idx = Math.max(0, Math.min(total - 1, currentIndex));
         const p = parsedPts[idx] || {};
-        const mm = p.mm || { x: 0, y: 0, z: spindleHome * 1000 };
+        const mm = p.mm || { x: 0, y: 0, z: spindleHome };
         const lineNo = p.lineNo ?? (idx + 1);
         if (typeof stateCb === 'function') {
           stateCb({
@@ -126,7 +129,8 @@ export default function ViewerModule() {
       raf = requestAnimationFrame(animate);
       if (isPlaying && parsedPts.length > 0) {
         const target = parsedPts[currentIndex];
-        tool.position.set(target.x, target.y, target.z + 1.0);
+        // target coordinates are already in mm, convert to world
+        tool.position.set(mmToWorld(target.x), mmToWorld(target.y), mmToWorld(target.z + 100));
         // ensure tool axis is Z and spin around Z only
         tool.rotation.x = Math.PI / 2;
         tool.rotation.y = 0;
@@ -151,7 +155,7 @@ export default function ViewerModule() {
     const parseGcode = (src) => {
       const lines = src.split(/\r?\n/);
       let x = 0, y = 0, z = 0, unit = 1; // scale for inches->mm
-      let mmX = 0, mmY = 0, mmZ = spindleHome * 1000;
+      let mmX = 0, mmY = 0, mmZ = spindleHome;
       let localUnits = 'mm';
       let localMode = 'G90';
       let localSpindleOn = false;
@@ -182,10 +186,11 @@ export default function ViewerModule() {
         const mx = line.match(/X(-?\d+(?:\.\d+)?)/i);
         const my = line.match(/Y(-?\d+(?:\.\d+)?)/i);
         const mz = line.match(/Z(-?\d+(?:\.\d+)?)/i);
-        if (mx) { mmX = parseFloat(mx[1]) * unit; x = mmX * 0.01; }
-        if (my) { mmY = parseFloat(my[1]) * unit; y = mmY * 0.01; }
-        if (mz) { mmZ = parseFloat(mz[1]) * unit; z = mmZ * 0.01; }
+        if (mx) { mmX = parseFloat(mx[1]) * unit; x = mmX; }
+        if (my) { mmY = parseFloat(my[1]) * unit; y = mmY; }
+        if (mz) { mmZ = parseFloat(mz[1]) * unit; z = mmZ; }
         if (/^G0?1\b/.test(line) || /^G0\b/.test(line)) {
+          // Store coordinates in mm (x, y, z are now in mm)
           pts.push({ x, y, z, _line: raw, lineNo, mm: { x: mmX, y: mmY, z: mmZ } });
         }
       }
@@ -197,7 +202,7 @@ export default function ViewerModule() {
       spindleRpm = localRpm;
       feedRate = localFeed;
       wcs = localWcs;
-      return pts.length ? pts : [{ x: 0, y: 0, z: 0, _line: '', lineNo: 1, mm: { x: 0, y: 0, z: spindleHome * 1000 } }];
+      return pts.length ? pts : [{ x: 0, y: 0, z: 0, _line: '', lineNo: 1, mm: { x: 0, y: 0, z: spindleHome } }];
     };
 
     window.cncViewer = {
@@ -205,6 +210,15 @@ export default function ViewerModule() {
       camera: camera,  // Expose camera
       renderer: renderer,  // Expose renderer
       render: () => { renderer.render(scene, camera); },  // Manual render method
+      // Expose scale conversion functions
+      mmToWorld: mmToWorld,
+      worldToMm: worldToMm,
+      getWorldScale: getWorldScale,
+      setWorldScale: (scale) => {
+        setWorldScale(scale);
+        // Re-render scene after scale change
+        renderer.render(scene, camera);
+      },
       setLights: ({ intensity, ambient }) => {
         light.intensity = intensity;
         amb.intensity = ambient;
@@ -228,7 +242,7 @@ export default function ViewerModule() {
         if (idx >= 0) {
           currentIndex = idx;
           const t = parsedPts[currentIndex];
-          tool.position.set(t.x, t.y, t.z + 1.0);
+          tool.position.set(mmToWorld(t.x), mmToWorld(t.y), mmToWorld(t.z + 100));
           if (window.cncViewer && typeof window.cncViewer.tick === 'function') {
             window.cncViewer.tick(lineNo);
           }
@@ -239,13 +253,14 @@ export default function ViewerModule() {
       setTable: ({ x, y }) => {
         if (x || y) {
           scene.remove(table);
-          table = createTable(x || 2, y || 1.2, 0.1);
+          // x and y are expected to be in mm
+          table = createTable(x || 2000, y || 1200, 100);
           scene.add(table);
         }
       },
       setSpindleHome: (z) => {
-        spindleHome = z;
-        tool.position.setZ(spindleHome);
+        spindleHome = z; // z is in mm
+        tool.position.setZ(mmToWorld(spindleHome));
       },
       play: () => { isPlaying = true; emitState(); },
       pause: () => { isPlaying = false; emitState(); },
@@ -254,15 +269,15 @@ export default function ViewerModule() {
         isPlaying = false;
         currentIndex = 0;
         const t = parsedPts[0];
-        if (t) tool.position.set(t.x, t.y, t.z + 1.0);
-        else tool.position.set(0, 0, spindleHome);
+        if (t) tool.position.set(mmToWorld(t.x), mmToWorld(t.y), mmToWorld(t.z + 100));
+        else tool.position.set(0, 0, mmToWorld(spindleHome));
         emitState();
       },
       step: (d) => {
         if (parsedPts.length === 0) return;
         currentIndex = Math.max(0, Math.min(parsedPts.length - 1, currentIndex + d));
         const target = parsedPts[currentIndex];
-        tool.position.set(target.x, target.y, target.z + 1.0);
+        tool.position.set(mmToWorld(target.x), mmToWorld(target.y), mmToWorld(target.z + 100));
         if (window.cncViewer && typeof window.cncViewer.tick === 'function') {
           const ln = parsedPts[currentIndex]?.lineNo ?? currentIndex + 1;
           window.cncViewer.tick(ln);
@@ -275,7 +290,7 @@ export default function ViewerModule() {
         const total = Array.isArray(parsedPts) ? parsedPts.length : 0;
         const idx = Math.max(0, Math.min(total - 1, currentIndex));
         const p = parsedPts[idx] || {};
-        const mm = p.mm || { x: 0, y: 0, z: spindleHome * 1000 };
+        const mm = p.mm || { x: 0, y: 0, z: spindleHome };
         const lineNo = p.lineNo ?? (idx + 1);
         return {
           isPlaying,

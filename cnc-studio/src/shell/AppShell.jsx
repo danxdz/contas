@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import './shell.css';
 import { ToolProvider } from '../modules/shared/ToolContext';
+import { UnitsProvider } from '../modules/shared/UnitsContext';
 
 // Auto-discover modules: each module folder exports default React component and optional meta
 // Expected structure: src/modules/<ModuleName>/index.jsx with export default and optional export const meta
@@ -161,7 +162,8 @@ export default function AppShell() {
 
   return (
     <ToolProvider>
-      <div className="shell">
+      <UnitsProvider>
+        <div className="shell">
         <header className="topbar">
           <div className="brand">CNC Studio {VERSION}</div>
           <nav className="module-switcher">
@@ -199,6 +201,7 @@ export default function AppShell() {
           {modules.filter(m => panelState[m.id]?.floating).map(renderPanel)}
         </div>
       </div>
+      </UnitsProvider>
     </ToolProvider>
   );
 }

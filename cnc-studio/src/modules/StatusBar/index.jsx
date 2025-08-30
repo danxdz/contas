@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useUnits } from '../shared/UnitsContext';
 
 export const meta = {
   id: 'status',
@@ -19,6 +20,9 @@ function Field({ label, value }) {
 }
 
 export default function StatusBar() {
+  const { units, setUnits, worldScale, converters } = useUnits();
+  const { fromMm } = converters;
+  
   const [state, setState] = useState(() => ({
     isPlaying: false,
     speed: 1,
@@ -33,6 +37,27 @@ export default function StatusBar() {
     feed: { rate: 0 },
     wcs: 'G54',
   }));
+  
+  // Field visibility preferences
+  const [fieldPrefs, setFieldPrefs] = useState(() => {
+    const stored = localStorage.getItem('cnc-studio-field-prefs');
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {}
+    }
+    return {
+      tool: true,
+      rpm: true,
+      feed: true,
+      wcs: true,
+      position: true,
+      mode: true,
+      spindle: true
+    };
+  });
+  
+  const [showPrefsMenu, setShowPrefsMenu] = useState(false);
 
   // Subscribe to viewer state
   useEffect(() => {
@@ -50,8 +75,22 @@ export default function StatusBar() {
 
   const posFmt = (v) => {
     const n = typeof v === 'number' ? v : 0;
-    return state.units === 'inch' ? (n / 25.4).toFixed(3) : n.toFixed(2);
+    // Convert from mm to display units
+    const converted = fromMm(n, units);
+    return units === 'inch' ? converted.toFixed(3) : converted.toFixed(2);
   };
+  
+  // Toggle units between mm and inch
+  const toggleUnits = useCallback(() => {
+    setUnits(units === 'mm' ? 'inch' : 'mm');
+  }, [units, setUnits]);
+  
+  // Toggle field preference
+  const toggleFieldPref = useCallback((field) => {
+    const newPrefs = { ...fieldPrefs, [field]: !fieldPrefs[field] };
+    setFieldPrefs(newPrefs);
+    localStorage.setItem('cnc-studio-field-prefs', JSON.stringify(newPrefs));
+  }, [fieldPrefs]);
 
   const onStartPause = () => {
     if (state.isPlaying) window.cncViewer?.pause?.();
@@ -103,17 +142,98 @@ export default function StatusBar() {
         </div>
 
         {/* Right: DROs and modal states */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Field label="TOOL" value={state.tool?.number || 0} />
-          <Field label="RPM" value={state.spindle?.rpm || 0} />
-          <Field label="FEED" value={state.feed?.rate || 0} />
-          <Field label="WCS" value={state.wcs || 'G54'} />
-          <Field label="X" value={posFmt(state.position.x)} />
-          <Field label="Y" value={posFmt(state.position.y)} />
-          <Field label="Z" value={posFmt(state.position.z)} />
-          <Field label="UNITS" value={state.units === 'inch' ? 'G20' : 'G21'} />
-          <Field label="MODE" value={state.mode} />
-          <Field label="SPINDLE" value={state.spindleOn ? 'ON' : 'OFF'} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, position: 'relative' }}>
+          {fieldPrefs.tool && <Field label="TOOL" value={state.tool?.number || 0} />}
+          {fieldPrefs.rpm && <Field label="RPM" value={state.spindle?.rpm || 0} />}
+          {fieldPrefs.feed && <Field label="FEED" value={state.feed?.rate || 0} />}
+          {fieldPrefs.wcs && <Field label="WCS" value={state.wcs || 'G54'} />}
+          {fieldPrefs.position && (
+            <>
+              <Field label="X" value={posFmt(state.position.x)} />
+              <Field label="Y" value={posFmt(state.position.y)} />
+              <Field label="Z" value={posFmt(state.position.z)} />
+            </>
+          )}
+          <button 
+            onClick={toggleUnits} 
+            title="Toggle units"
+            style={{ 
+              padding: '2px 6px', 
+              fontSize: 11, 
+              cursor: 'pointer',
+              background: 'rgba(42, 168, 255, 0.1)',
+              border: '1px solid rgba(42, 168, 255, 0.3)',
+              borderRadius: 3,
+              color: '#2aa8ff'
+            }}
+          >
+            {units.toUpperCase()}
+          </button>
+          <Field label="SCALE" value={worldScale.toFixed(3)} />
+          {fieldPrefs.mode && <Field label="MODE" value={state.mode} />}
+          {fieldPrefs.spindle && <Field label="SPINDLE" value={state.spindleOn ? 'ON' : 'OFF'} />}
+          
+          {/* Preferences menu button */}
+          <button
+            onClick={() => setShowPrefsMenu(!showPrefsMenu)}
+            title="Field preferences"
+            style={{
+              padding: '2px 4px',
+              fontSize: 11,
+              cursor: 'pointer',
+              background: 'transparent',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: 3,
+              color: 'rgba(255, 255, 255, 0.6)'
+            }}
+          >
+            ⚙
+          </button>
+          
+          {/* Preferences dropdown */}
+          {showPrefsMenu && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              right: 0,
+              marginTop: 4,
+              background: '#0b1224',
+              border: '1px solid rgba(42, 168, 255, 0.3)',
+              borderRadius: 4,
+              padding: 8,
+              zIndex: 1000,
+              minWidth: 150,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+            }}>
+              <div style={{ fontSize: 11, marginBottom: 8, fontWeight: 'bold', color: '#2aa8ff' }}>Field Visibility</div>
+              {Object.entries({
+                tool: 'Tool Number',
+                rpm: 'Spindle RPM',
+                feed: 'Feed Rate',
+                wcs: 'Work Coordinate',
+                position: 'Position (XYZ)',
+                mode: 'Mode (G90/G91)',
+                spindle: 'Spindle State'
+              }).map(([key, label]) => (
+                <label key={key} style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 6, 
+                  marginBottom: 4,
+                  cursor: 'pointer',
+                  fontSize: 11
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={fieldPrefs[key]}
+                    onChange={() => toggleFieldPref(key)}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
